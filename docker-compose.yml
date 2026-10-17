@@ -1,0 +1,21 @@
+name: clinic-scheduler
+
+# M0: the database only. The API and UI services are added in M5 once their Dockerfiles exist.
+# Host port 5433 (not 5432) avoids clashing with a PostgreSQL installed on the host.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: clinic
+      POSTGRES_PASSWORD: clinic
+      POSTGRES_DB: clinic
+    ports: ["5433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinic -d clinic"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
