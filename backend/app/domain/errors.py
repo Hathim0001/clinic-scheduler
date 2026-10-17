@@ -1,8 +1,10 @@
 """The error catalogue and the domain exception types.
 
-Every response the API can give is identified by one ErrorCode. The domain raises only the codes in
-the "rule", "conflict" and "not found" groups; the HTTP edge adds the request and infrastructure
-codes. A DomainError carries its code, a human sentence and a details dict, and its class says what
+Every response the API can give is identified by one ErrorCode. The domain raises only the codes
+in the "rule", "conflict" and "not found" groups (plus VALIDATION_ERROR, which it shares with
+the HTTP edge); the edge adds the other request codes and the infrastructure codes.
+
+A DomainError carries its code, a human sentence and a details dict, and its class says what
 kind of failure it is so the API can pick the HTTP status (rule 422, conflict 409, not found 404).
 """
 
@@ -13,7 +15,8 @@ from typing import Any, ClassVar
 
 
 class ErrorCode(StrEnum):
-    # Request level: raised by the HTTP edge, never by the domain.
+    # Request level: raised by the HTTP edge. VALIDATION_ERROR is also raised for malformed
+    # windows and as the safety net for a database CHECK or data error.
     MALFORMED_JSON = "MALFORMED_JSON"
     VALIDATION_ERROR = "VALIDATION_ERROR"
     INVALID_TEST_CLOCK = "INVALID_TEST_CLOCK"
@@ -60,6 +63,7 @@ _NOT_FOUND_CODES = frozenset(
 )
 _RULE_CODES = frozenset(
     {
+        ErrorCode.VALIDATION_ERROR,
         ErrorCode.BOOKING_IN_PAST,
         ErrorCode.BOOKING_TOO_FAR,
         ErrorCode.OFF_GRID,
