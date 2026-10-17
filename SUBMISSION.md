@@ -12,7 +12,8 @@ rescheduling, completed and no-show, patient history, a day view, today's queue 
 clock. All seven business rules are enforced in the backend and hold under concurrent requests, with a
 boundary test for every number. Partial: the hosted instance is configured (Render, Neon and Vercel
 files, a runbook) but not deployed yet, and the UI has component tests but no browser end-to-end tests.
-I built no Stretch items.
+I also built the Stretch items: a per-doctor, per-day waitlist with an automatic 30-minute offer when a
+slot is cancelled or moved, recurring appointments (all or none), and calendar (.ics) export.
 
 ## B. Three design decisions
 
@@ -86,7 +87,7 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 | Data modelling and persistence (9) | 5 | Exclusion and CHECK constraints, migrations, realistic seed, derived versus stored documented |
 | API design (8) | 4 | Resource paths, pagination, OpenAPI checked by tests and a fuzz run; cancel and mark are action endpoints |
 | UI usability (6) | 4 | Flows work without instructions, buttons follow the server, loading, error and phone layouts; never tried by a real receptionist |
-| Testing (7) | 5 | 827 backend tests, a boundary test per number, property and race tests, 100 % on the rules layer; UI coverage not measured |
+| Testing (7) | 5 | 879 backend tests, a boundary test per number, property and race tests, 100 % on the rules layer; UI coverage not measured |
 | Deployment and operability (5) | 3 | One-command local stack, Dockerfiles, CI and blueprint committed; not deployed yet, to be raised after the first deploy |
 | Git hygiene (4) | 4 | Conventional commits with milestone tags in logical steps; one working day of history |
 | Documentation and write-up (4) | 4 | README follows the format with limitations stated; this write-up cites commits |

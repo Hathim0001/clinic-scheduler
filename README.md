@@ -184,10 +184,10 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 834 passing in about 2 minutes: 363 unit (no database), 228 integration and race tests (real PostgreSQL), 243 through HTTP |
-| Backend line and branch coverage, all of `app/` | 99 % (2,049 statements, 8 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 100 % (905 statements, none missed); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 82 passing |
+| Backend tests | 879 passing in about 3 minutes: 369 unit (no database), 252 integration and race tests (real PostgreSQL), 258 through HTTP |
+| Backend line and branch coverage, all of `app/` | 99 % (2,332 statements, 8 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 100 % (1,104 statements, none missed); the gate is 80 % |
+| Frontend tests (Vitest, network faked at `fetch`) | 89 passing |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one
@@ -222,6 +222,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/readyz` (root) | The database answers | 503 `SERVICE_UNAVAILABLE` |
 | GET | `/clock` | Effective "now", test-clock status, seed dates | 400 `INVALID_TEST_CLOCK` |
 | GET, POST | `/doctors` | List, create | 422 |
+| DELETE | `/doctors/{id}` | Remove a doctor with no appointments on record | 404, 409 `DOCTOR_HAS_APPOINTMENTS` |
 | GET, PATCH | `/doctors/{id}` | Read; change name, speciality, cap, slot length | 404, 409 `SLOT_LENGTH_LOCKED` |
 | GET, PUT | `/doctors/{id}/weekly-windows` | Weekly pattern (replace) | 409 `AVAILABILITY_CONFLICTS`, 422 `WINDOW_OVERLAP`, `WINDOW_OFF_GRID` |
 | GET | `/doctors/{id}/overrides?from&to` | Date overrides in a range (at most 90 days) | 422 |
@@ -229,16 +230,21 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/doctors/{id}/slots?date&patient_id?` | Free slots, with `unavailable_reason` | 404, 422 |
 | GET | `/doctors/{id}/schedule?date&patient_id?` | Every grid slot of a day with its state | 404, 422 |
 | GET, POST | `/patients` | Search by phone or name prefix; register | 409 `PHONE_TAKEN`, 422 |
-| GET | `/patients/{id}` | Patient with the deposit status | 404 |
+| GET | `/patients/{id}` | Patient with the deposit status and a literal `deposit_required` flag | 404 |
 | GET | `/patients/{id}/appointments` | History, newest first | 404 |
 | GET | `/appointments` | List with filters, including `needs_attention` | 422 |
 | POST | `/appointments` | Book | 404, 409 `SLOT_TAKEN`, `PATIENT_OVERLAP`, `DAILY_CAP_REACHED`; 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR`, `OFF_GRID`, `OUTSIDE_AVAILABILITY`, `DEPOSIT_REQUIRED` |
 | GET | `/appointments/{id}` | One appointment, with `allowed_actions` and `needs_attention` | 404 |
 | GET | `/appointments/{id}/calendar.ics`, `/patients/{id}/calendar.ics` | Download an appointment, or a patient's upcoming ones, as an iCalendar file | 404 |
-| POST | `/appointments/{id}/cancel` | Cancel (patient or clinic) | 409 `INVALID_TRANSITION`, `APPOINTMENT_ALREADY_STARTED` |
-| POST | `/appointments/{id}/reschedule` | Cancel and rebook atomically | 409, 422 `RESCHEDULE_NO_CHANGE`, `DEPOSIT_REQUIRED` |
+| POST | `/appointments/recurring` | Book a series (every 1 to 60 days, 2 to 12 appointments), all or none; `details.occurrence` says which one failed | 409 `SLOT_TAKEN`, 422 as for a booking |
+| POST | `/appointments/{id}/cancel` | Cancel (patient or clinic); after the start a patient cancel is a late cancel | 409 `INVALID_TRANSITION` |
+| POST | `/appointments/{id}/reschedule` | Cancel and rebook atomically (before the start only) | 409 `APPOINTMENT_ALREADY_STARTED`, 422 `RESCHEDULE_NO_CHANGE`, `DEPOSIT_REQUIRED` |
 | POST | `/appointments/{id}/complete`, `/no-show` | Mark after the start | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
 | GET | `/queue?date&doctor_id&include_cancelled` | One day's queue in time order | 422 |
+| POST, GET | `/doctors/{id}/waitlist` | Join the waitlist for a doctor and India date; list who is waiting or holds an offer (`?date`) | 409 `ALREADY_WAITING`, 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR` |
+| GET | `/patients/{id}/waitlist` | A patient's live waitlist entries, with any open offer | 404 |
+| DELETE | `/waitlist/{id}` | Leave the waitlist | 404 `WAITLIST_ENTRY_NOT_FOUND`, 409 |
+| POST | `/waitlist/{id}/accept` | Turn an offer into a booking, with every rule checked | 409 `OFFER_EXPIRED`, `SLOT_TAKEN`, 422 `DEPOSIT_REQUIRED` |
 
 Lists are paginated (`limit` 1 to 100, default 20; `offset` 0 to 100,000) and return
 `{items, total, limit, offset}`. The only unpaginated lists are bounded by construction.
@@ -282,7 +288,7 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-05 | "Not more than 60 days ahead" means the India date of the start is at most today plus 60 days (calendar days, not 60 x 24 hours) |
 | A-06 | The slot length cannot change while future booked appointments exist, or if existing windows would leave the new grid |
 | A-07 | "Past" is a start at or before now; a slot starting exactly now cannot be booked |
-| A-08 | An appointment cannot be cancelled or rescheduled at or after its start (mark it completed or no-show instead) |
+| A-08 | A patient cancel at or after the start is a Late-Cancel (it is less than 2 hours ahead, as the problem statement says); a clinic cancel never is. Only a reschedule is refused once the appointment has started, because it would book a new slot while leaving a started one |
 | A-09 | A cancellation by the clinic is always a normal cancel and never counts against the patient |
 | A-10 | A reschedule is a cancel (following the 2-hour rule) plus a booking, so a reschedule inside 2 hours records a late cancellation |
 | A-11 | Deposit eligibility for a reschedule uses the patient's status before that reschedule's own cancellation |
@@ -315,6 +321,10 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-38 | In the day schedule a slot that holds an appointment shows as booked even when it is in the past; past, capped, closed and busy apply to slots with no appointment |
 | A-39 | Removing a date override that does not exist succeeds and does nothing |
 | A-40 | A new patient's date of birth must be between 1900-01-01 and today by the effective clock |
+| A-41 | The waitlist is per doctor and India date, first come first served. A cancellation or reschedule offers the freed slot to the first waiting patient who could actually book it (same check as a booking); the offer lasts 30 minutes or until the slot starts, is not a reservation, and accepting it is an ordinary booking (the deposit rule applies, and a lost race returns the patient to the queue) |
+| A-42 | A recurring series keeps the same India time of day, books all occurrences in one transaction, and checks each exactly as a single booking; if one fails none is booked |
+| A-43 | A doctor can be deleted only while no appointment of any status references them; their hours and leave go with them |
+| A-44 | `deposit_required` on a patient is derived from the same rule as the deposit status, never stored; it is null in search results |
 
 ## 9. Error handling and logging
 
@@ -404,10 +414,10 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
   off by default everywhere else.
 - Final statuses cannot be corrected (a mistaken no-show stays), and there is no audit trail beyond
   the timestamps on the row.
-- One clinic, India Standard Time only, appointments exactly one slot long. Not built: the Stretch
-  items (waitlist with auto-offer, recurring appointments), notifications and corrections of final
-  statuses. They were left out on purpose: the assignment prefers a complete Core to a Core plus
-  half-finished extras, and each would change the verified rules.
+- One clinic, India Standard Time only, appointments exactly one slot long. The Stretch items are
+  built (waitlist with auto-offer, recurring appointments, calendar export). Not built:
+  notifications (an offer is only visible on the patient page, nobody is messaged) and corrections of
+  final statuses.
 - The `needs_attention` list is derived from the current hours for every matching row, so on a very
   large database it would need a stored flag or an index. The patient history page loads 50
   appointments and a button shows up to 100; the needs-attention list shows the first 100.

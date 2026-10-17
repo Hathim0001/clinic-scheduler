@@ -1,7 +1,7 @@
 == Test run ==
 ........................................................................ [ 98%]
-..............                                                           [100%]
-878 passed in 217.24s (0:03:37)
+...............                                                          [100%]
+879 passed in 203.65s (0:03:23)
 
 == Line and branch coverage of app/ ==
 Name                                   Stmts   Miss Branch BrPart  Cover   Missing
@@ -52,10 +52,10 @@ app\services\meta_service.py              18      0      0      0   100%
 app\services\patient_service.py           51      0      6      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    127      0      0      0   100%
-app\services\waitlist_offers.py           31      1      6      1    95%   59
+app\services\waitlist_offers.py           31      0      6      0   100%
 app\services\waitlist_service.py         113      0     22      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   2332      9    346      9    99%
+TOTAL                                   2332      8    346      8    99%
 
 8 empty files skipped.
 
@@ -82,9 +82,9 @@ app\services\meta_service.py              18      0      0      0   100%
 app\services\patient_service.py           51      0      6      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    127      0      0      0   100%
-app\services\waitlist_offers.py           31      1      6      1    95%   59
+app\services\waitlist_offers.py           31      0      6      0   100%
 app\services\waitlist_service.py         113      0     22      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   1104      1    188      1    99%
+TOTAL                                   1104      0    188      0   100%
 
 2 empty files skipped.
