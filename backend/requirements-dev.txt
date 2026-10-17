@@ -1,0 +1,8 @@
+-r requirements.txt
+pytest==9.1.1
+pytest-cov==7.1.0
+# Starlette 1.8's TestClient deprecates httpx and asks for httpx2.
+httpx2==2.13.1
+hypothesis==6.170.1
+ruff==0.17.1
+mypy==2.4.0

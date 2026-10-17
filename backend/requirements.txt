@@ -1,0 +1,11 @@
+# Runtime dependencies. Pinned to the latest stable versions checked on 2026-10-17.
+fastapi==0.143.3
+uvicorn==0.54.0
+SQLAlchemy==2.1.5
+alembic==1.20.0
+psycopg[binary]==3.3.6
+pydantic==2.14.1
+pydantic-settings==2.16.0
+structlog==26.1.0
+# zoneinfo needs the IANA database; Windows and slim Docker images do not ship one.
+tzdata==2026.5
