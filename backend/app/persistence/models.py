@@ -1,0 +1,122 @@
+"""SQLAlchemy models. They mirror the tables created by migrations/versions/0001_initial.sql and are
+used for queries. The migration, not these classes, defines the schema, including every constraint
+that backs a booking rule (see plan section 23).
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    Text,
+    func,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def _created_at() -> Mapped[datetime]:
+    return mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+def _updated_at() -> Mapped[datetime]:
+    return mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AppMeta(Base):
+    """Facts written by the seed script, such as the anchor date used for the clock presets."""
+
+    __tablename__ = "app_meta"
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
+
+
+class Doctor(Base):
+    __tablename__ = "doctors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    speciality: Mapped[str] = mapped_column(Text)
+    slot_length_min: Mapped[int] = mapped_column(SmallInteger)
+    daily_cap: Mapped[int] = mapped_column(SmallInteger)
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = _updated_at()
+
+
+class WeeklyWindowRow(Base):
+    """One recurring window; weekday 0 is Monday, times are minutes since IST midnight."""
+
+    __tablename__ = "weekly_windows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id", ondelete="CASCADE"))
+    weekday: Mapped[int] = mapped_column(SmallInteger)
+    start_min: Mapped[int] = mapped_column(SmallInteger)
+    end_min: Mapped[int] = mapped_column(SmallInteger)
+
+
+class OverrideRow(Base):
+    """A date-specific replacement of the weekly pattern. No windows at all means leave."""
+
+    __tablename__ = "availability_overrides"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id", ondelete="CASCADE"))
+    on_date: Mapped[date] = mapped_column(Date)
+    note: Mapped[str | None] = mapped_column(Text)
+    windows: Mapped[list[OverrideWindowRow]] = relationship(
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="OverrideWindowRow.start_min",
+    )
+
+
+class OverrideWindowRow(Base):
+    __tablename__ = "override_windows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    override_id: Mapped[int] = mapped_column(
+        ForeignKey("availability_overrides.id", ondelete="CASCADE")
+    )
+    start_min: Mapped[int] = mapped_column(SmallInteger)
+    end_min: Mapped[int] = mapped_column(SmallInteger)
+
+
+class Patient(Base):
+    __tablename__ = "patients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    phone: Mapped[str] = mapped_column(Text)
+    date_of_birth: Mapped[date] = mapped_column(Date)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"))
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(Text)
+    deposit_required_at_booking: Mapped[bool] = mapped_column(Boolean, default=False)
+    deposit_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_by: Mapped[str | None] = mapped_column(Text)
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rescheduled_to_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = _updated_at()
