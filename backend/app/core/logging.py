@@ -40,7 +40,13 @@ def configure_logging(level: str) -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(level)
-    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    for name in ("uvicorn", "uvicorn.error"):
         logging.getLogger(name).handlers = []  # propagate to the root handler instead
         logging.getLogger(name).propagate = True
+    access = logging.getLogger("uvicorn.access")
+    if access.handlers:  # uvicorn's own access log is on: send it through ours as JSON
+        access.handlers = []
+        access.propagate = True
+    # With --no-access-log uvicorn has already switched it off (no handlers, no propagation);
+    # leave that alone, because our middleware logs every request itself.
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
