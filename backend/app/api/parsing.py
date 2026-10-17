@@ -61,7 +61,12 @@ def parse_hhmm(value: object) -> int:
 
 
 def parse_bool_text(value: object) -> bool:
-    """The text true or false, nothing else (a query parameter written as yes or 1 is refused)."""
+    """The text true or false, nothing else (a query parameter written as yes or 1 is refused).
+
+    A real bool is accepted too: FastAPI validates a parameter's default value the same way.
+    """
+    if isinstance(value, bool):
+        return value
     if value == "true":
         return True
     if value == "false":

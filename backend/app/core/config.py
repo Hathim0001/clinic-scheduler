@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     # Secure by default: the X-Test-Clock header only works when this is switched on explicitly.
     test_clock_enabled: bool = False
     log_level: str = "INFO"
+    # Seconds to wait for the database to accept a connection (Neon may need a few to wake up).
+    db_connect_timeout_s: int = Field(default=10, ge=1, le=60)
     seed_anchor_date: date | None = None
 
     @field_validator("log_level")

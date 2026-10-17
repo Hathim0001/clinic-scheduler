@@ -33,7 +33,9 @@ DESCRIPTION = (
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
-    engine = create_db_engine(settings.database_url)
+    engine = create_db_engine(
+        settings.database_url, connect_timeout_s=settings.db_connect_timeout_s
+    )
     factory = create_session_factory(engine)
 
     @asynccontextmanager
