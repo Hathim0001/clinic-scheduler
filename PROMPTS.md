@@ -16,3 +16,9 @@ assistant; the author should check them against what was actually typed.
 | 6 | 2026-10-17 | "now read through the plan file and make improvements for the plan.md file with the new model and effort" | Produced `plan.md` revision 2 and the evidence scripts that check its claims (schema, rules, hostile input, concurrency); adopted after review |
 | 7 | 2026-10-17 | "start the implementation of the plan" | Started the implementation in this repository, milestone by milestone |
 | 8 | 2026-10-17 | "github is Hathim0001" (reply to a question about which identity to commit under) | Commits use the repository-local identity `Hathim0001`; the machine's global git identity is not used |
+| 9 | 2026-10-17 | `+` (sent while the React interface was being built) | Read as "keep going"; the work continued with the UI, its tests, Docker and CI |
+
+Automated notices in the session (a usage limit resetting, a background command finishing) are not
+prompts and are not logged. The assistant also made some decisions on its own while implementing the
+plan; they are visible as commits and, where they changed a rule or an assumption, in
+[README section 8](README.md#8-business-rules-and-assumptions).
