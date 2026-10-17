@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match
 
 from app.domain.errors import DomainError, ErrorCode
 from app.persistence.db_errors import is_unavailable
@@ -51,6 +52,7 @@ STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.PHONE_TAKEN: 409,
     ErrorCode.SLOT_LENGTH_LOCKED: 409,
     ErrorCode.CONFLICT: 409,
+    ErrorCode.RATE_LIMITED: 429,
     ErrorCode.SERVICE_UNAVAILABLE: 503,
     ErrorCode.INTERNAL_ERROR: 500,
 }
@@ -172,12 +174,24 @@ _HTTP_STATUS_TO_CODE = {
 }
 
 
+def _allowed_methods(request: Request) -> list[str]:
+    """The methods some route of this app accepts for the path, found by asking the router."""
+    allowed = []
+    for method in ("GET", "POST", "PUT", "PATCH", "DELETE"):
+        probe = {**request.scope, "method": method}
+        if any(route.matches(probe)[0] == Match.FULL for route in request.app.routes):
+            allowed.append(method)
+    return allowed
+
+
 async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, StarletteHTTPException)  # noqa: S101
     code, message = _HTTP_STATUS_TO_CODE.get(
         exc.status_code, (ErrorCode.VALIDATION_ERROR, "The request could not be processed.")
     )
     headers = {k: v for k, v in (exc.headers or {}).items() if k.lower() == "allow"}
+    if exc.status_code == 405:  # Starlette names one method; list every method of the path
+        headers["Allow"] = ", ".join(_allowed_methods(request))
     return error_response(request_id_of(request), code, message, headers=headers or None)
 
 

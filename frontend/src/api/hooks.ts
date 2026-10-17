@@ -38,10 +38,11 @@ export const usePatient = (id: number | null) =>
     enabled: id !== null,
   });
 
-export const usePatientAppointments = (id: number | null) =>
+export const usePatientAppointments = (id: number | null, limit = 50) =>
   useQuery({
-    queryKey: ["patientAppointments", id],
-    queryFn: () => api.patientAppointments(id as number),
+    queryKey: ["patientAppointments", id, limit],
+    queryFn: () => api.patientAppointments(id as number, limit),
+    placeholderData: (previous) => previous, // keep the list on screen while more is loading
     enabled: id !== null,
   });
 

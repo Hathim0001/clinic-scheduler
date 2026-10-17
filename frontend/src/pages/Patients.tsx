@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { usePatient, usePatientAppointments } from "../api/hooks";
 import { ActionButtons } from "../components/ActionButtons";
@@ -23,7 +24,8 @@ export function PatientDetail() {
   const { id } = useParams();
   const patientId = Number(id) || null;
   const patient = usePatient(patientId);
-  const history = usePatientAppointments(patientId);
+  const [shown, setShown] = useState(50);
+  const history = usePatientAppointments(patientId, shown);
 
   if (patient.isPending) return <Skeleton rows={4} />;
   if (patient.error) return <ErrorBanner error={patient.error} />;
@@ -90,6 +92,13 @@ export function PatientDetail() {
               ))}
             </tbody>
           </table>
+        )}
+        {history.data && history.data.total > history.data.items.length && (
+          <p>
+            <button type="button" onClick={() => setShown((n) => Math.min(n + 50, 100))}>
+              Show more ({history.data.items.length} of {history.data.total})
+            </button>
+          </p>
         )}
       </section>
     </div>

@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     # Secure by default: the X-Test-Clock header only works when this is switched on explicitly.
     test_clock_enabled: bool = False
     log_level: str = "INFO"
+    # Requests per minute allowed from one client address; 0 switches the limit off.
+    rate_limit_per_minute: int = Field(default=600, ge=0, le=100_000)
     # Seconds to wait for the database to accept a connection (Neon may need a few to wake up).
     db_connect_timeout_s: int = Field(default=10, ge=1, le=60)
     seed_anchor_date: date | None = None

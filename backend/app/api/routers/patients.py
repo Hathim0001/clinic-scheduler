@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 from app.api.deps import NowDep, ServicesDep
+from app.api.ics import calendar_text
 from app.api.params import Limit, Offset, PatientId
 from app.api.presenters import appointment_out, patient_out
 from app.api.schemas.requests import PatientCreate
@@ -68,4 +69,19 @@ def patient_appointments(
         total=page.total,
         limit=page.limit,
         offset=page.offset,
+    )
+
+
+@router.get(
+    "/{patient_id}/calendar.ics",
+    summary="Download a patient's upcoming booked appointments as a calendar (iCalendar)",
+    response_class=Response,
+)
+def patient_calendar(patient_id: PatientId, services: ServicesDep, now: NowDep) -> Response:
+    page = services.queries.for_patient(patient_id, Status.BOOKED, 100, 0, now)
+    upcoming = [a for a in page.items if a.start_at >= now]
+    return Response(
+        calendar_text(upcoming, now),
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="patient-{patient_id}.ics"'},
     )

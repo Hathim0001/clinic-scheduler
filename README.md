@@ -133,6 +133,7 @@ npm run dev                                  # http://localhost:5173
 | `TEST_CLOCK_ENABLED` | backend | `true` lets a request set "now" with the `X-Test-Clock` header (reviewer aid, section 10). Off by default |
 | `LOG_LEVEL` | backend | `DEBUG`, `INFO` (default), `WARNING`, `ERROR` |
 | `DB_CONNECT_TIMEOUT_S` | backend | Seconds to wait for a database connection (default 10) |
+| `RATE_LIMIT_PER_MINUTE` | backend | Requests per minute from one client address before `429 RATE_LIMITED` (default 600; 0 turns it off) |
 | `SEED_ANCHOR_DATE` | seed | `YYYY-MM-DD` (India date) the seed scenarios are built around; default today |
 | `TEST_DATABASE_URL` | tests | Test database; default `postgresql+psycopg://clinic:clinic@localhost:5433/clinic_test`, created on demand |
 | `PORT` | backend (Render) | Listening port, default 8000 |
@@ -183,9 +184,9 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 827 passing in about 2 minutes: 362 unit (no database), 228 integration and race tests (real PostgreSQL), 237 through HTTP |
-| Backend line and branch coverage, all of `app/` | 99 % (1,958 statements, 3 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 100 % (904 statements, none missed); the gate is 80 % |
+| Backend tests | 834 passing in about 2 minutes: 363 unit (no database), 228 integration and race tests (real PostgreSQL), 243 through HTTP |
+| Backend line and branch coverage, all of `app/` | 99 % (2,049 statements, 8 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 100 % (905 statements, none missed); the gate is 80 % |
 | Frontend tests (Vitest, network faked at `fetch`) | 82 passing |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
@@ -197,7 +198,7 @@ mutation run (ten deliberate bugs, for example an exclusive look-back) is caught
 Integration tests run the services against real PostgreSQL, including races between real
 connections: ten bookings of one slot give exactly one success, a cap of three holds against ten
 simultaneous bookings, a booking racing a leave day always has one winner, and a real deadlock is
-retried. 237 tests go through HTTP: every error code, hostile input (bad JSON, NaN, huge or
+retried. 243 tests go through HTTP: every error code, hostile input (bad JSON, NaN, huge or
 deeply nested bodies, ids out of range, year 1 and 9999, control characters, wrong methods, bad test
 clocks), CORS and request ids, and logging without personal data. A test runs the burst script
 against a real uvicorn socket. The schema is tested constraint by constraint, and an
@@ -233,6 +234,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/appointments` | List with filters, including `needs_attention` | 422 |
 | POST | `/appointments` | Book | 404, 409 `SLOT_TAKEN`, `PATIENT_OVERLAP`, `DAILY_CAP_REACHED`; 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR`, `OFF_GRID`, `OUTSIDE_AVAILABILITY`, `DEPOSIT_REQUIRED` |
 | GET | `/appointments/{id}` | One appointment, with `allowed_actions` and `needs_attention` | 404 |
+| GET | `/appointments/{id}/calendar.ics`, `/patients/{id}/calendar.ics` | Download an appointment, or a patient's upcoming ones, as an iCalendar file | 404 |
 | POST | `/appointments/{id}/cancel` | Cancel (patient or clinic) | 409 `INVALID_TRANSITION`, `APPOINTMENT_ALREADY_STARTED` |
 | POST | `/appointments/{id}/reschedule` | Cancel and rebook atomically | 409, 422 `RESCHEDULE_NO_CHANGE`, `DEPOSIT_REQUIRED` |
 | POST | `/appointments/{id}/complete`, `/no-show` | Mark after the start | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
@@ -329,9 +331,10 @@ an oversized body, a database that is down and the catch-all 500):
 | Rule violation or conflict | `domain/` raises `RuleViolation` or `ConflictError` with a code | 422 or 409; `NotFoundError` is 404 |
 | Constraint the checks missed (a race) | PostgreSQL SQLSTATE and constraint name, mapped in `persistence/db_errors.py` | The same 409 or 422 the pre-check would have given |
 | Database busy or down, lock timeout, deadlock after one retry | `OperationalError`, pool timeout | 503 `SERVICE_UNAVAILABLE` with `Retry-After: 1` |
+| A client sending too many requests | In-memory sliding window per address | 429 `RATE_LIMITED` with `Retry-After` |
 | Anything else | Any other exception | 500 `INTERNAL_ERROR` with a generic message and the request id; the stack trace is logged, never sent |
 
-All 30 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
+All 31 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
 in one transaction, so a failure leaves the data as it was.
 
 **Logging.** structlog writes one JSON line per event to stdout: `ts` (UTC), `level`, `event` and the
@@ -393,22 +396,23 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
 ## 11. Known limitations
 
 - **No hosted instance yet** until the steps in 5a are done; the links in section 2 are empty.
-- No authentication, authorisation or rate limiting: any caller of the API can see patient names and
-  phone numbers. Acceptable for the assignment, not for production.
+- No authentication or authorisation: any caller of the API can see patient names and phone numbers.
+  Acceptable for the assignment, not for production. The rate limit (default 600 requests a minute per
+  address) is in memory, so with several instances each would count on its own.
 - The free hosting plan puts the API to sleep, so the first request can take about a minute. The
   test clock is enabled on the hosted instance on purpose (it is how the rules are reviewed); it is
   off by default everywhere else.
 - Final statuses cannot be corrected (a mistaken no-show stays), and there is no audit trail beyond
   the timestamps on the row.
-- One clinic, India Standard Time only, appointments exactly one slot long, no recurring or group
-  appointments, no notifications.
+- One clinic, India Standard Time only, appointments exactly one slot long. Not built: the Stretch
+  items (waitlist with auto-offer, recurring appointments), notifications and corrections of final
+  statuses. They were left out on purpose: the assignment prefers a complete Core to a Core plus
+  half-finished extras, and each would change the verified rules.
 - The `needs_attention` list is derived from the current hours for every matching row, so on a very
-  large database it would need a stored flag or an index. The patient history shows the latest 50
-  appointments and the needs-attention list the first 100.
+  large database it would need a stored flag or an index. The patient history page loads 50
+  appointments and a button shows up to 100; the needs-attention list shows the first 100.
 - There are no browser end-to-end tests, frontend coverage is not measured, and accessibility was
   checked by hand against the basics (labels, keyboard, visible focus, text alongside colour), not audited.
-- The `Allow` header of a 405 names one method of the matched path rather than all of them (a
-  framework behaviour).
 - The seed data is relative to the date it was created on: the flags drift as days pass, which is why
   there is a "Seed day" clock preset and a re-seed command.
 - No `Idempotency-Key` header: a double click is caught by the overlap check (`same_patient: true`)

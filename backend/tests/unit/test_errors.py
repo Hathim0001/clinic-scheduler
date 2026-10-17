@@ -45,6 +45,7 @@ HTTP_STATUS = {
     "PHONE_TAKEN": 409,
     "SLOT_LENGTH_LOCKED": 409,
     "CONFLICT": 409,
+    "RATE_LIMITED": 429,
     "SERVICE_UNAVAILABLE": 503,
     "INTERNAL_ERROR": 500,
 }
@@ -56,15 +57,16 @@ EDGE_ONLY = {
     ErrorCode.PAYLOAD_TOO_LARGE,
     ErrorCode.NOT_FOUND,
     ErrorCode.METHOD_NOT_ALLOWED,
+    ErrorCode.RATE_LIMITED,
     ErrorCode.SERVICE_UNAVAILABLE,
     ErrorCode.INTERNAL_ERROR,
 }
 DOMAIN_CODES = [code for code in ErrorCode if code not in EDGE_ONLY]
 
 
-def test_the_catalogue_holds_exactly_the_thirty_codes_of_the_plan() -> None:
+def test_the_catalogue_holds_exactly_the_31_codes_of_the_catalogue() -> None:
     assert {code.value for code in ErrorCode} == set(HTTP_STATUS)
-    assert len(ErrorCode) == 30
+    assert len(ErrorCode) == 31
 
 
 def test_each_code_is_spelled_like_its_name() -> None:

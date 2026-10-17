@@ -1,33 +1,35 @@
 == Test run ==
-........................................................................ [ 95%]
-...................................                                      [100%]
-827 passed in 112.54s (0:01:52)
+........................................................................ [ 94%]
+..........................................                               [100%]
+834 passed in 123.38s (0:02:03)
 
 == Line and branch coverage of app/ ==
 Name                                   Stmts   Miss Branch BrPart  Cover   Missing
 ----------------------------------------------------------------------------------
 app\api\deps.py                           52      0      8      0   100%
-app\api\errors.py                         73      2      4      1    96%   193-194
+app\api\errors.py                         83      2     10      1    97%   207-208
+app\api\ics.py                            27      0      6      0   100%
 app\api\middleware.py                     72      0     20      2    98%   85->91, 111->114
 app\api\params.py                         19      0      0      0   100%
 app\api\parsing.py                        63      0     24      0   100%
 app\api\presenters.py                     34      0      0      0   100%
-app\api\routers\appointments.py           51      0      0      0   100%
+app\api\ratelimit.py                      39      5     14      3    81%   34, 39-40, 48-49
+app\api\routers\appointments.py           56      0      0      0   100%
 app\api\routers\availability.py           48      0      2      0   100%
 app\api\routers\clock.py                  12      0      0      0   100%
 app\api\routers\doctors.py                26      0      0      0   100%
 app\api\routers\health.py                 21      0      0      0   100%
-app\api\routers\patients.py               28      0      0      0   100%
+app\api\routers\patients.py               34      0      0      0   100%
 app\api\routers\queue.py                  14      0      0      0   100%
 app\api\schemas\requests.py               48      0      4      0   100%
 app\api\schemas\responses.py             108      0      0      0   100%
 app\api\schemas\types.py                  25      0      2      0   100%
-app\core\config.py                        27      0      2      0   100%
+app\core\config.py                        28      0      2      0   100%
 app\core\logging.py                       22      0      4      0   100%
 app\domain\availability.py                32      0     14      0   100%
 app\domain\booking_window.py              11      0      4      0   100%
 app\domain\cancellation.py                11      0      4      0   100%
-app\domain\errors.py                      58      0      6      0   100%
+app\domain\errors.py                      59      0      6      0   100%
 app\domain\model.py                       61      0      0      0   100%
 app\domain\penalties.py                   11      0      2      0   100%
 app\domain\phone.py                       15      0      6      0   100%
@@ -35,7 +37,7 @@ app\domain\slots.py                       59      0     26      0   100%
 app\domain\timeutil.py                    27      0      0      0   100%
 app\domain\transitions.py                 18      0      6      0   100%
 app\domain\violations.py                  43      0     16      0   100%
-app\main.py                               34      0      2      0   100%
+app\main.py                               36      0      2      0   100%
 app\persistence\db.py                     23      0      2      0   100%
 app\persistence\db_errors.py              35      0     14      0   100%
 app\persistence\models.py                 67      0      0      0   100%
@@ -50,7 +52,7 @@ app\services\patient_service.py           51      0      6      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    109      0      0      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   1958      3    288      5    99%
+TOTAL                                   2049      8    314      8    99%
 
 8 empty files skipped.
 
@@ -60,7 +62,7 @@ Name                                   Stmts   Miss Branch BrPart  Cover   Missi
 app\domain\availability.py                32      0     14      0   100%
 app\domain\booking_window.py              11      0      4      0   100%
 app\domain\cancellation.py                11      0      4      0   100%
-app\domain\errors.py                      58      0      6      0   100%
+app\domain\errors.py                      59      0      6      0   100%
 app\domain\model.py                       61      0      0      0   100%
 app\domain\penalties.py                   11      0      2      0   100%
 app\domain\phone.py                       15      0      6      0   100%
@@ -78,6 +80,6 @@ app\services\patient_service.py           51      0      6      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    109      0      0      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                    904      0    156      0   100%
+TOTAL                                    905      0    156      0   100%
 
 2 empty files skipped.

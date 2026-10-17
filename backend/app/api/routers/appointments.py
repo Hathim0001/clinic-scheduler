@@ -6,9 +6,10 @@ from __future__ import annotations
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Response
 
 from app.api.deps import NowDep, ServicesDep
+from app.api.ics import calendar_text
 from app.api.params import (
     AppointmentId,
     BoolQuery,
@@ -96,6 +97,22 @@ def get_appointment(
     appointment_id: AppointmentId, services: ServicesDep, now: NowDep
 ) -> AppointmentOut:
     return appointment_out(services.queries.get(appointment_id, now))
+
+
+@router.get(
+    "/{appointment_id}/calendar.ics",
+    summary="Download one appointment as a calendar event (iCalendar)",
+    response_class=Response,
+)
+def appointment_calendar(
+    appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+) -> Response:
+    view = services.queries.get(appointment_id, now)
+    return Response(
+        calendar_text([view], now),
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="appointment-{view.id}.ics"'},
+    )
 
 
 @router.post(
