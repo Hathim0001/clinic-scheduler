@@ -6,7 +6,14 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
-from app.domain.timeutil import IST, at_ist, ist_date, ist_day_bounds, ist_minute_of_day
+from app.domain.timeutil import (
+    IST,
+    at_ist,
+    format_minutes,
+    ist_date,
+    ist_day_bounds,
+    ist_minute_of_day,
+)
 from tests.helpers import ist
 
 pytestmark = pytest.mark.unit
@@ -46,3 +53,11 @@ def test_at_ist_places_a_minute_of_the_day_on_the_timeline() -> None:
     day = date(2026, 11, 2)
     assert at_ist(day, 9 * 60) == ist(2026, 11, 2, 9, 0)
     assert at_ist(day, 24 * 60) == ist(2026, 11, 3, 0, 0)  # 24:00 is the next midnight
+
+
+@pytest.mark.parametrize(
+    ("minutes", "text"),
+    [(0, "00:00"), (570, "09:30"), (1020, "17:00"), (1439, "23:59"), (1440, "24:00")],
+)
+def test_minutes_are_written_as_hh_mm(minutes: int, text: str) -> None:
+    assert format_minutes(minutes) == text

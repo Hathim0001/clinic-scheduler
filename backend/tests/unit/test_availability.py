@@ -115,7 +115,7 @@ def test_valid_windows_pass_validation() -> None:
 @pytest.mark.parametrize(
     "windows",
     [
-        [Window(540, 780), Window(700, 900)],  # partial overlap
+        [Window(540, 780), Window(720, 900)],  # partial overlap
         [Window(540, 780), Window(540, 780)],  # identical
         [Window(540, 900), Window(600, 660)],  # one inside the other
     ],
@@ -175,3 +175,15 @@ def test_only_booked_appointments_can_need_attention(status: Status) -> None:
 
 def test_a_past_booking_never_needs_attention() -> None:
     assert needs_attention(BOOKING, ist(2026, 11, 10, 8, 0), []) is False
+
+
+def test_a_window_shape_is_checked_before_the_grid_and_the_grid_before_overlap() -> None:
+    off_grid_and_overlapping = [Window(540, 780), Window(725, 900)]
+    with pytest.raises(RuleViolation) as raised:
+        validate_windows(off_grid_and_overlapping, 15)
+    assert raised.value.code is ErrorCode.WINDOW_OFF_GRID
+
+    backwards_and_off_grid = [Window(545, 540)]
+    with pytest.raises(RuleViolation) as raised:
+        validate_windows(backwards_and_off_grid, 30)
+    assert raised.value.code is ErrorCode.VALIDATION_ERROR

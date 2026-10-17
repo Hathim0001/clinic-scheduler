@@ -71,15 +71,20 @@ def scenarios(draw: st.DrawFn) -> Scenario:
         cursor += size + draw(st.integers(0, 4)) * length
 
     # Now is anywhere in 90 days, sometimes with seconds. The day under test is near it: from
-    # yesterday to just beyond the 60 day horizon.
+    # yesterday to just beyond the 60 day horizon, with the days at the boundaries favoured.
     now = datetime(2026, 10, 1, tzinfo=UTC) + timedelta(
         minutes=draw(st.integers(0, 90 * 24 * 60)), seconds=draw(st.sampled_from([0, 0, 0, 17]))
     )
     today = (now + timedelta(minutes=IST_OFFSET)).date()
-    day = today + timedelta(days=draw(st.integers(-1, 62)))
+    days_ahead = draw(st.one_of(st.sampled_from([-1, 0, 1, 59, 60, 61, 62]), st.integers(-1, 62)))
+    day = today + timedelta(days=days_ahead)
 
     def start_on(day_shift: int, minute: int) -> datetime:
         return ist_midnight(day + timedelta(days=day_shift)) + timedelta(minutes=minute)
+
+    if draw(st.booleans()):
+        # Now is exactly the start of a slot on the day under test, which is therefore already past.
+        now = start_on(0, draw(st.integers(0, 1440 // length - 1)) * length)
 
     # Appointments of the doctor with mixed statuses, on the day and its neighbours so that the day
     # boundary of the cap is exercised. Active ones never share a slot, as the database ensures.
@@ -201,25 +206,30 @@ def deposit_oracle(
     return True, recent, recent[1] + window
 
 
+THIRTY_DAYS = 30 * 24 * 3600
+# Seconds between a strike and "now": around the edges of the look-back first, then anything.
+STRIKE_AGE = st.one_of(
+    st.sampled_from(
+        [-3600, -1, 0, 1, THIRTY_DAYS - 1, THIRTY_DAYS, THIRTY_DAYS + 1, 2 * THIRTY_DAYS]
+    ),
+    st.integers(-2 * 24 * 3600, 45 * 24 * 3600),
+)
+
+
 @settings(max_examples=300, deadline=None, derandomize=True)
 @given(
     st.lists(
-        st.tuples(
-            st.integers(-2 * 24 * 3600, 45 * 24 * 3600),  # seconds before the base time
-            st.sampled_from([Status.NO_SHOW, Status.LATE_CANCELLED]),
-        ),
+        st.tuples(STRIKE_AGE, st.sampled_from([Status.NO_SHOW, Status.LATE_CANCELLED])),
         max_size=6,
-    ),
-    st.integers(0, 30 * 24 * 3600),  # how far after the base time the check happens
+    )
 )
 def test_deposit_status_matches_a_plain_count_of_recent_strikes(
-    ages: list[tuple[int, Status]], shift: int
+    strikes: list[tuple[int, Status]],
 ) -> None:
-    base = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
+    now = datetime(2026, 11, 20, 12, 0, tzinfo=UTC)
     events = [
-        PenaltyEvent(i, kind, base - timedelta(seconds=age)) for i, (age, kind) in enumerate(ages)
+        PenaltyEvent(i, kind, now - timedelta(seconds=age)) for i, (age, kind) in enumerate(strikes)
     ]
-    now = base + timedelta(seconds=shift)
 
     status: DepositStatus = deposit_status(events, now)
     required, newest_first, until = deposit_oracle(events, now)
