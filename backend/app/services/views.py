@@ -114,6 +114,28 @@ class OverrideChange:
 
 
 @dataclass(frozen=True, slots=True)
+class WaitlistView:
+    id: int
+    doctor_id: int
+    doctor_name: str
+    patient_id: int
+    patient_name: str
+    patient_phone: str
+    day: date
+    status: str  # WAITING, OFFERED, BOOKED, CANCELLED or EXPIRED
+    position: int | None  # 1 for the next patient to be offered a slot; None unless WAITING
+    offered_start_at: datetime | None
+    offer_expires_at: datetime | None
+    appointment_id: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class WaitlistAcceptance:
+    entry: WaitlistView
+    appointment: AppointmentView
+
+
+@dataclass(frozen=True, slots=True)
 class SlotsView:
     doctor_id: int
     day: date

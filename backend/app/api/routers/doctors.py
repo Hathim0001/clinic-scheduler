@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from app.api.deps import NowDep, ServicesDep
 from app.api.params import DoctorId
@@ -30,6 +30,18 @@ def create_doctor(body: DoctorCreate, services: ServicesDep) -> DoctorOut:
 @router.get("/{doctor_id}", response_model=DoctorOut, summary="Get a doctor")
 def get_doctor(doctor_id: DoctorId, services: ServicesDep) -> DoctorOut:
     return doctor_out(services.doctors.get(doctor_id))
+
+
+@router.delete(
+    "/{doctor_id}",
+    status_code=204,
+    summary="Delete a doctor who has no appointments",
+    responses={409: {"description": "DOCTOR_HAS_APPOINTMENTS"}},
+)
+def delete_doctor(doctor_id: DoctorId, services: ServicesDep) -> Response:
+    services.doctors.delete(doctor_id)
+    log.info("doctor.deleted", doctor_id=doctor_id)
+    return Response(status_code=204)
 
 
 @router.patch(

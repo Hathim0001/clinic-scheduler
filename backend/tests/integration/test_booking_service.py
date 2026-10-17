@@ -265,13 +265,12 @@ def test_a_cancelled_slot_can_be_booked_again(clinic: Clinic) -> None:
     assert book(clinic, at(12), patient=clinic.ravi).start_at == at(12)
 
 
-def test_cancelling_at_the_start_is_too_late(clinic: Clinic) -> None:
-    """T-C04"""
+def test_cancelling_at_the_start_is_a_late_cancellation(clinic: Clinic) -> None:
+    """T-C04 as the statement words it: later than 2 hours before the start is late."""
     appointment_id = seed_booked(clinic, at(12))
-    with pytest.raises(ConflictError) as raised:
-        clinic.booking.cancel(appointment_id, CancelledBy.PATIENT, at(12))
-    assert raised.value.code is ErrorCode.APPOINTMENT_ALREADY_STARTED
-    assert clinic.appointment(appointment_id).status == "BOOKED"
+    result = clinic.booking.cancel(appointment_id, CancelledBy.PATIENT, at(12))
+    assert (result.late, result.appointment.status) == (True, Status.LATE_CANCELLED)
+    assert result.deposit.reasons[0].appointment_id == appointment_id
 
 
 def test_a_clinic_cancellation_is_never_late_and_never_a_strike(clinic: Clinic) -> None:
@@ -447,3 +446,59 @@ def test_a_started_or_finished_appointment_cannot_be_rescheduled(clinic: Clinic)
     with pytest.raises(ConflictError) as raised:
         clinic.booking.reschedule(started, at(11), None, None, at(10, 6))
     assert raised.value.code is ErrorCode.INVALID_TRANSITION
+
+
+# ------------------------------------------------------------------------------ recurring
+
+
+def series(
+    clinic: Clinic,
+    start: datetime,
+    *,
+    every: int = 7,
+    count: int = 3,
+    patient: int | None = None,
+) -> list[AppointmentView]:
+    command = BookCommand(clinic.rao, patient or clinic.asha, start, "Review")
+    return clinic.booking.book_series(command, every, count, NOW)
+
+
+def test_a_weekly_series_books_every_occurrence_at_the_same_india_time(clinic: Clinic) -> None:
+    views = series(clinic, at(10), count=3)
+    assert [v.start_at for v in views] == [at(10), at(10, day=9), at(10, day=16)]
+    assert all(v.status is Status.BOOKED for v in views)
+
+
+def test_one_bad_occurrence_rolls_back_the_whole_series(clinic: Clinic) -> None:
+    with clinic.factory() as session, session.begin():
+        add_appointment(session, clinic.rao, clinic.ravi, at(10, day=16))  # the third week is taken
+    with pytest.raises(DomainError) as raised:
+        series(clinic, at(10), count=3)
+    assert raised.value.code is ErrorCode.SLOT_TAKEN
+    assert raised.value.details["occurrence"] == 3
+    assert "Occurrence 3 of 3" in raised.value.message
+    assert [a.patient_id for a in clinic.appointments()] == [clinic.ravi]  # nothing else was kept
+
+
+def test_a_series_that_leaves_the_booking_window_is_refused_as_a_whole(clinic: Clinic) -> None:
+    with pytest.raises(DomainError) as raised:
+        series(clinic, at(10), every=30, count=4)  # the fourth is 90 days ahead
+    assert raised.value.code is ErrorCode.BOOKING_TOO_FAR
+    assert raised.value.details["occurrence"] == 4
+    assert clinic.appointments() == []
+
+
+def test_a_series_counts_toward_the_daily_cap_as_it_goes(clinic: Clinic) -> None:
+    clinic.doctors.update(clinic.rao, NOW, daily_cap=1)
+    series(clinic, at(10), every=1, count=2)  # one a day on two days: fine
+    with pytest.raises(DomainError) as raised:
+        series(clinic, at(10, 30), every=7, count=2, patient=clinic.ravi)  # the first day is full
+    assert raised.value.code is ErrorCode.DAILY_CAP_REACHED
+    assert raised.value.details["occurrence"] == 1
+
+
+def test_a_flagged_patient_needs_the_deposit_for_a_series_too(clinic: Clinic) -> None:
+    flag_patient(clinic, clinic.ravi)
+    with pytest.raises(DomainError) as raised:
+        series(clinic, at(10), patient=clinic.ravi)
+    assert raised.value.code is ErrorCode.DEPOSIT_REQUIRED

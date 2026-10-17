@@ -204,9 +204,30 @@ def test_cancelling_twice_and_cancelling_after_the_start_are_409s(api: Api) -> N
     appointment_id = seed(api, at(12))
     assert api.post(f"/appointments/{appointment_id}/cancel").status_code == 200
     assert_error(api.post(f"/appointments/{appointment_id}/cancel"), 409, "INVALID_TRANSITION")
-    started = seed(api, at(9), patient=api.clinic.ravi)
+
+
+def test_cancelling_after_the_start_is_a_late_cancellation(api: Api) -> None:
+    """Rule 5 read literally: later than 2 hours before the start, even after it, is late."""
+    started = seed(api, at(9))
+    body = api.post(f"/appointments/{started}/cancel", now=at(9, 10)).json()
+    assert (body["late"], body["appointment"]["status"]) == (True, "LATE_CANCELLED")
+    clinic = seed(api, at(9, 30), patient=api.clinic.ravi)
+    by_clinic = api.post(
+        f"/appointments/{clinic}/cancel", {"cancelled_by": "CLINIC"}, now=at(9, 40)
+    )
+    assert by_clinic.json()["late"] is False
+
+
+def test_a_started_appointment_cannot_be_rescheduled(api: Api) -> None:
+    started = seed(api, at(9))
     assert_error(
-        api.post(f"/appointments/{started}/cancel", now=at(9)), 409, "APPOINTMENT_ALREADY_STARTED"
+        api.post(
+            f"/appointments/{started}/reschedule",
+            {"start_at": "2026-11-02T11:00:00+05:30"},
+            now=at(9, 5),
+        ),
+        409,
+        "APPOINTMENT_ALREADY_STARTED",
     )
 
 
@@ -254,7 +275,7 @@ def test_the_allowed_actions_change_when_the_appointment_starts(api: Api) -> Non
     before = api.get(f"/appointments/{appointment_id}", now=at(11, 59)).json()
     after = api.get(f"/appointments/{appointment_id}", now=at(12)).json()
     assert before["allowed_actions"] == ["cancel", "reschedule"]
-    assert after["allowed_actions"] == ["complete", "no-show"]
+    assert after["allowed_actions"] == ["complete", "no-show", "cancel"]
 
 
 # -------------------------------------------------------------------------------- rescheduling

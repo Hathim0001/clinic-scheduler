@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.domain.cancellation import classify_cancellation
+from app.domain.cancellation import check_can_reschedule, classify_cancellation
 from app.domain.errors import ConflictError, ErrorCode
 from app.domain.model import CancelledBy, Status
 from tests.helpers import ist
@@ -50,14 +50,18 @@ def test_a_cancellation_by_the_clinic_is_always_a_normal_cancel(now: datetime) -
     [START, START + timedelta(minutes=1), START + timedelta(days=1)],
     ids=["at the start", "1 minute after", "1 day after"],
 )
-def test_an_appointment_cannot_be_cancelled_at_or_after_its_start(now: datetime) -> None:
-    """T-C04 (A-08)"""
+def test_cancelling_at_or_after_the_start_is_a_late_cancel(now: datetime) -> None:
+    """T-C04: "later than 2 hours before" includes after the start (A-08)."""
+    assert classify_cancellation(START, now, CancelledBy.PATIENT) is Status.LATE_CANCELLED
+    assert classify_cancellation(START, now, CancelledBy.CLINIC) is Status.CANCELLED
+
+
+@pytest.mark.parametrize("now", [START, START + timedelta(days=1)])
+def test_a_started_appointment_cannot_be_rescheduled(now: datetime) -> None:
     with pytest.raises(ConflictError) as raised:
-        classify_cancellation(START, now, CancelledBy.PATIENT)
+        check_can_reschedule(START, now)
     assert raised.value.code is ErrorCode.APPOINTMENT_ALREADY_STARTED
 
 
-def test_the_clinic_cannot_cancel_after_the_start_either() -> None:
-    with pytest.raises(ConflictError) as raised:
-        classify_cancellation(START, START, CancelledBy.CLINIC)
-    assert raised.value.code is ErrorCode.APPOINTMENT_ALREADY_STARTED
+def test_an_appointment_that_has_not_started_can_be_rescheduled() -> None:
+    check_can_reschedule(START, START - timedelta(seconds=1))

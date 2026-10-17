@@ -19,6 +19,7 @@ DATA_TABLES = {
     "patients",
     "appointments",
     "app_meta",
+    "waitlist_entries",
 }
 
 

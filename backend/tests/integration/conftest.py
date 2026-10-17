@@ -15,6 +15,7 @@ from app.services.availability_service import AvailabilityService
 from app.services.booking_service import BookingService
 from app.services.doctor_service import DoctorService
 from app.services.patient_service import PatientService
+from app.services.waitlist_service import WaitlistService
 from tests.factories import add_doctor, add_patient, add_weekly
 from tests.helpers import ist
 
@@ -35,6 +36,7 @@ class Clinic:
     doctors: DoctorService
     patients: PatientService
     queries: AppointmentQueries
+    waitlist: WaitlistService
     rao: int  # 30-minute slots, cap 6, Monday to Friday 09:00-13:00
     menon: int  # 15-minute slots, cap 20, Monday to Friday 09:00-13:00
     asha: int
@@ -71,5 +73,6 @@ def clinic(session_factory: sessionmaker[Session]) -> Clinic:
         DoctorService(session_factory),
         PatientService(session_factory),
         AppointmentQueries(session_factory),
+        WaitlistService(session_factory),
         *ids,
     )

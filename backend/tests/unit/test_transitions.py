@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.domain.cancellation import classify_cancellation
+from app.domain.cancellation import check_can_reschedule
 from app.domain.errors import ConflictError, ErrorCode
-from app.domain.model import CancelledBy, Status
+from app.domain.model import Status
 from app.domain.transitions import allowed_actions, check_can_cancel, check_can_mark
 from tests.helpers import ist
 
@@ -32,10 +32,11 @@ def test_a_booked_appointment_can_be_cancelled_or_rescheduled_before_it_starts()
 
 def test_a_booked_appointment_can_be_marked_from_its_start_on() -> None:
     """T-M03, second half: complete and no-show appear at the start, never before (A-18)."""
-    assert allowed_actions(Status.BOOKED, START, START) == ["complete", "no-show"]
+    assert allowed_actions(Status.BOOKED, START, START) == ["complete", "no-show", "cancel"]
     assert allowed_actions(Status.BOOKED, START, START + timedelta(days=3)) == [
         "complete",
         "no-show",
+        "cancel",
     ]
 
 
@@ -120,11 +121,11 @@ def test_the_offered_actions_are_exactly_the_ones_the_rules_accept(
     """The UI enables a button only for an offered action, so offered and accepted must agree."""
     offered = allowed_actions(status, START, now)
 
-    def cancel() -> None:
+    def reschedule() -> None:
         check_can_cancel(status)
-        classify_cancellation(START, now, CancelledBy.PATIENT)
+        check_can_reschedule(START, now)
 
-    assert accepts(cancel) == ("cancel" in offered)
+    assert accepts(lambda: check_can_cancel(status)) == ("cancel" in offered)
     assert accepts(lambda: check_can_mark(status, START, now)) == ("complete" in offered)
     assert ("no-show" in offered) == ("complete" in offered)
-    assert ("reschedule" in offered) == ("cancel" in offered)
+    assert accepts(reschedule) == ("reschedule" in offered)

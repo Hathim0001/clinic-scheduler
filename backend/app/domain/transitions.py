@@ -20,10 +20,10 @@ _SO_FAR = {
 
 
 def allowed_actions(status: Status, start_at: datetime, now: datetime) -> list[str]:
-    """cancel and reschedule before the start, complete and no-show from the start, else nothing."""
+    """cancel and reschedule before the start; from it complete, no-show and (late) cancel."""
     if status is not Status.BOOKED:
         return []
-    return ["cancel", "reschedule"] if now < start_at else ["complete", "no-show"]
+    return ["cancel", "reschedule"] if now < start_at else ["complete", "no-show", "cancel"]
 
 
 def _require_booked(status: Status) -> None:

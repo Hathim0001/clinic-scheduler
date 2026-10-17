@@ -120,3 +120,25 @@ class Appointment(Base):
     rescheduled_to_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
+
+
+class WaitlistEntry(Base):
+    """A patient waiting for any slot with a doctor on one India date.
+
+    WAITING until a cancellation frees a slot they could take, then OFFERED that slot until
+    `offer_expires_at`; BOOKED when they accept, EXPIRED when the offer lapses and they are not
+    waiting any more, CANCELLED when removed.
+    """
+
+    __tablename__ = "waitlist_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id", ondelete="CASCADE"))
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    on_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(Text, default="WAITING")
+    offered_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    offer_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    appointment_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = _updated_at()

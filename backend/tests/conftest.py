@@ -24,7 +24,7 @@ from tests.helpers import alembic_config
 DEFAULT_TEST_URL = "postgresql+psycopg://clinic:clinic@localhost:5433/clinic_test"
 # Every data table; alembic_version is left alone.
 DATA_TABLES = (
-    "appointments, override_windows, availability_overrides, weekly_windows, "
+    "waitlist_entries, appointments, override_windows, availability_overrides, weekly_windows, "
     "patients, doctors, app_meta"
 )
 

@@ -32,7 +32,7 @@ from app.persistence.models import (
 MON, TUE, WED, FRI, SAT = 0, 1, 2, 4, 5
 
 DATA_TABLES = (
-    "appointments, override_windows, availability_overrides, weekly_windows, "
+    "waitlist_entries, appointments, override_windows, availability_overrides, weekly_windows, "
     "patients, doctors, app_meta"
 )
 

@@ -45,6 +45,7 @@ class PatientOut(BaseModel):
     phone: str
     date_of_birth: str
     created_at_utc: str
+    deposit_required: bool | None  # same as deposit.required; null in search results
     deposit: DepositOut | None
 
 
@@ -78,6 +79,32 @@ class PageOut[T](BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class SeriesOut(BaseModel):
+    appointments: list[AppointmentOut]
+
+
+class WaitlistOut(BaseModel):
+    id: int
+    doctor_id: int
+    doctor_name: str
+    patient_id: int
+    patient_name: str
+    patient_phone: str
+    date: str
+    status: Literal["WAITING", "OFFERED", "BOOKED", "CANCELLED", "EXPIRED"]
+    position: int | None
+    offered_start_at_utc: str | None
+    offered_start_at_ist: str | None
+    offer_expires_at_utc: str | None
+    offer_expires_at_ist: str | None
+    appointment_id: int | None
+
+
+class WaitlistAcceptOut(BaseModel):
+    entry: WaitlistOut
+    appointment: AppointmentOut
 
 
 class CancelOut(BaseModel):

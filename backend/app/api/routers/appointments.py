@@ -19,8 +19,19 @@ from app.api.params import (
     OptionalId,
 )
 from app.api.presenters import appointment_out, deposit_out
-from app.api.schemas.requests import BookRequest, CancelRequest, RescheduleRequest
-from app.api.schemas.responses import AppointmentOut, CancelOut, PageOut, RescheduleOut
+from app.api.schemas.requests import (
+    BookRequest,
+    CancelRequest,
+    RecurringBookRequest,
+    RescheduleRequest,
+)
+from app.api.schemas.responses import (
+    AppointmentOut,
+    CancelOut,
+    PageOut,
+    RescheduleOut,
+    SeriesOut,
+)
 from app.domain.model import CancelledBy, Status
 from app.services.views import BookCommand
 
@@ -90,6 +101,37 @@ def book(request: Request, body: BookRequest, services: ServicesDep, now: NowDep
         deposit_required=view.deposit_required_at_booking,
     )
     return appointment_out(view)
+
+
+@router.post(
+    "/recurring",
+    response_model=SeriesOut,
+    status_code=201,
+    summary="Book a series (every N days, 2 to 12 appointments), all or none",
+    responses={
+        409: {"description": "A slot in the series is taken; details.occurrence says which"}
+    },
+)
+def book_series(
+    request: Request, body: RecurringBookRequest, services: ServicesDep, now: NowDep
+) -> SeriesOut:
+    request.state.log_fields.update(doctor_id=body.doctor_id, patient_id=body.patient_id)
+    views = services.booking.book_series(
+        BookCommand(
+            body.doctor_id, body.patient_id, body.start_at, body.reason, body.deposit_confirmed
+        ),
+        body.every_days,
+        body.count,
+        now,
+    )
+    log.info(
+        "appointment.series_booked",
+        doctor_id=body.doctor_id,
+        patient_id=body.patient_id,
+        count=len(views),
+        first_appointment_id=views[0].id,
+    )
+    return SeriesOut(appointments=[appointment_out(v) for v in views])
 
 
 @router.get("/{appointment_id}", response_model=AppointmentOut, summary="Get an appointment")

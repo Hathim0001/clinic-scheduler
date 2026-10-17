@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, StrictBool, model_validator
 
@@ -11,6 +11,7 @@ from app.api.schemas.types import (
     DailyCap,
     EntityId,
     Instant,
+    IsoDate,
     Note,
     PersonName,
     PhoneText,
@@ -75,6 +76,21 @@ class BookRequest(StrictModel):
     doctor_id: EntityId
     patient_id: EntityId
     start_at: Instant
+    reason: Reason
+    deposit_confirmed: StrictBool = False
+
+
+class RecurringBookRequest(BookRequest):
+    every_days: Annotated[int, Field(strict=True, ge=1, le=60)]
+    count: Annotated[int, Field(strict=True, ge=2, le=12)]
+
+
+class WaitlistJoinRequest(StrictModel):
+    patient_id: EntityId
+    date: IsoDate
+
+
+class WaitlistAcceptRequest(StrictModel):
     reason: Reason
     deposit_confirmed: StrictBool = False
 

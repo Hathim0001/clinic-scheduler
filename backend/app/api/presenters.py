@@ -15,6 +15,7 @@ from app.api.schemas.responses import (
     SlotOut,
     SlotsOut,
     StrikeOut,
+    WaitlistOut,
     WeeklyOut,
     WeeklyWindowOut,
     WindowOut,
@@ -29,6 +30,7 @@ from app.services.views import (
     PatientView,
     ScheduleView,
     SlotsView,
+    WaitlistView,
     WeeklyView,
 )
 
@@ -87,6 +89,7 @@ def patient_out(view: PatientView) -> PatientOut:
         phone=view.phone,
         date_of_birth=view.date_of_birth.isoformat(),
         created_at_utc=utc_iso(view.created_at),
+        deposit_required=view.deposit.required if view.deposit is not None else None,
         deposit=deposit_out(view.deposit) if view.deposit is not None else None,
     )
 
@@ -157,6 +160,25 @@ def schedule_out(view: ScheduleView) -> ScheduleOut:
         ],
         outside_availability=[appointment_out(a) for a in view.outside_availability],
         unavailable_reason=view.unavailable_reason.value if view.unavailable_reason else None,
+    )
+
+
+def waitlist_out(view: WaitlistView) -> WaitlistOut:
+    return WaitlistOut(
+        id=view.id,
+        doctor_id=view.doctor_id,
+        doctor_name=view.doctor_name,
+        patient_id=view.patient_id,
+        patient_name=view.patient_name,
+        patient_phone=view.patient_phone,
+        date=view.day.isoformat(),
+        status=view.status,  # type: ignore[arg-type]
+        position=view.position,
+        offered_start_at_utc=_utc(view.offered_start_at),
+        offered_start_at_ist=_ist(view.offered_start_at),
+        offer_expires_at_utc=_utc(view.offer_expires_at),
+        offer_expires_at_ist=_ist(view.offer_expires_at),
+        appointment_id=view.appointment_id,
     )
 
 

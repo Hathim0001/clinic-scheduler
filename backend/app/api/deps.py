@@ -18,6 +18,7 @@ from app.services.booking_service import BookingService
 from app.services.doctor_service import DoctorService
 from app.services.meta_service import MetaService
 from app.services.patient_service import PatientService
+from app.services.waitlist_service import WaitlistService
 
 TEST_CLOCK_HEADER = "x-test-clock"
 
@@ -30,6 +31,7 @@ class Services:
     patients: PatientService
     queries: AppointmentQueries
     meta: MetaService
+    waitlist: WaitlistService
 
     @classmethod
     def build(cls, factory: sessionmaker[Session]) -> Services:
@@ -40,6 +42,7 @@ class Services:
             patients=PatientService(factory),
             queries=AppointmentQueries(factory),
             meta=MetaService(factory),
+            waitlist=WaitlistService(factory),
         )
 
 

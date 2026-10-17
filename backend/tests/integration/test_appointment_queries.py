@@ -60,7 +60,7 @@ def test_one_appointment_carries_names_and_derived_fields(clinic: Clinic) -> Non
     assert view.allowed_actions == ("cancel", "reschedule")
     assert view.needs_attention is False
     started = clinic.queries.get(2, at(10, 5))
-    assert started.allowed_actions == ("complete", "no-show")
+    assert started.allowed_actions == ("complete", "no-show", "cancel")
 
 
 def test_an_unknown_appointment_is_not_found(clinic: Clinic) -> None:

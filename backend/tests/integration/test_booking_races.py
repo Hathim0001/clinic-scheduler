@@ -123,7 +123,7 @@ def test_only_one_of_several_cancellations_of_an_appointment_wins(clinic: Clinic
 def test_a_cancel_racing_a_complete_has_one_winner(clinic: Clinic) -> None:
     with clinic.factory() as session, session.begin():
         appointment_id = add_appointment(session, clinic.rao, clinic.asha, at(9)).id
-    now = at(9, 5)  # already started, so completing is allowed and cancelling is not
+    now = at(9, 5)  # already started: all three are allowed, but only the first one can win
     results = burst(
         [
             lambda: clinic.booking.complete(appointment_id, now),
@@ -132,7 +132,7 @@ def test_a_cancel_racing_a_complete_has_one_winner(clinic: Clinic) -> None:
         ]
     )
     assert outcomes(results)["OK"] == 1
-    assert clinic.appointment(appointment_id).status in {"COMPLETED", "NO_SHOW"}
+    assert clinic.appointment(appointment_id).status in {"COMPLETED", "NO_SHOW", "LATE_CANCELLED"}
 
 
 def test_reschedules_into_one_slot_let_one_through_and_roll_the_rest_back(clinic: Clinic) -> None:

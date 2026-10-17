@@ -17,7 +17,16 @@ from app.api.deps import Services
 from app.api.errors import register_exception_handlers
 from app.api.middleware import RequestContextMiddleware
 from app.api.ratelimit import RateLimitMiddleware
-from app.api.routers import appointments, availability, clock, doctors, health, patients, queue
+from app.api.routers import (
+    appointments,
+    availability,
+    clock,
+    doctors,
+    health,
+    patients,
+    queue,
+    waitlist,
+)
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.persistence.db import create_db_engine, create_session_factory
@@ -63,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         patients.router,
         appointments.router,
         queue.router,
+        waitlist.router,
     ):
         app.include_router(router, prefix=API_PREFIX)
 

@@ -18,26 +18,27 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.domain.cancellation import classify_cancellation
-from app.domain.errors import ErrorCode, RuleViolation
+from app.domain.cancellation import check_can_reschedule, classify_cancellation
+from app.domain.errors import DomainError, ErrorCode, RuleViolation
 from app.domain.model import CancelledBy, DepositStatus, Status
 from app.domain.penalties import deposit_status
 from app.domain.slots import first_violation
-from app.domain.timeutil import ist_date
+from app.domain.timeutil import ist_date, ist_iso
 from app.domain.transitions import check_can_cancel, check_can_mark
-from app.domain.violations import deposit_required_error, violation_error
+from app.domain.violations import deposit_required_error, ist_text, violation_error
 from app.persistence import repositories as repo
 from app.persistence.models import Appointment, Doctor, Patient
 from app.services.appointment_views import view_of
 from app.services.support import run
 from app.services.views import AppointmentView, BookCommand, CancelResult, RescheduleResult
+from app.services.waitlist_offers import offer_freed_slot
 
 
-def _deposit_of(session: Session, patient_id: int, now: datetime) -> DepositStatus:
+def deposit_of(session: Session, patient_id: int, now: datetime) -> DepositStatus:
     return deposit_status(repo.penalty_events(session, patient_id, now), now)
 
 
-def _place(
+def place_booking(
     session: Session,
     doctor: Doctor,
     patient: Patient,
@@ -78,8 +79,8 @@ class BookingService:
         def work(session: Session) -> AppointmentView:
             doctor = repo.get_doctor(session, command.doctor_id, lock=True)
             patient = repo.get_patient(session, command.patient_id, lock=True)
-            deposit = _deposit_of(session, patient.id, now)
-            appointment = _place(
+            deposit = deposit_of(session, patient.id, now)
+            appointment = place_booking(
                 session,
                 doctor,
                 patient,
@@ -93,6 +94,46 @@ class BookingService:
 
         return run(self._factory, work)
 
+    def book_series(
+        self, command: BookCommand, every_days: int, count: int, now: datetime
+    ) -> list[AppointmentView]:
+        """Book `count` appointments, `every_days` apart at the same India time, all or none.
+
+        Every occurrence goes through the same checks as a single booking. If one fails (a leave
+        day, a taken slot, the cap) the whole series is rolled back and the error says which
+        occurrence it was.
+        """
+
+        def work(session: Session) -> list[AppointmentView]:
+            doctor = repo.get_doctor(session, command.doctor_id, lock=True)
+            patient = repo.get_patient(session, command.patient_id, lock=True)
+            deposit = deposit_of(session, patient.id, now)
+            ids = []
+            for index in range(count):
+                start = command.start_at + timedelta(days=every_days * index)
+                try:
+                    placed = place_booking(
+                        session,
+                        doctor,
+                        patient,
+                        start,
+                        command.reason,
+                        command.deposit_confirmed,
+                        deposit,
+                        now,
+                    )
+                except DomainError as error:
+                    error.message = (
+                        f"Occurrence {index + 1} of {count} ({ist_text(start)}): {error.message}"
+                    )
+                    error.args = (error.message,)
+                    error.details.update(occurrence=index + 1, start_at=ist_iso(start))
+                    raise
+                ids.append(placed.id)
+            return [view_of(session, appointment_id, now) for appointment_id in ids]
+
+        return run(self._factory, work)
+
     def cancel(self, appointment_id: int, cancelled_by: CancelledBy, now: datetime) -> CancelResult:
         def work(session: Session) -> CancelResult:
             appointment = repo.get_appointment(session, appointment_id, lock=True)
@@ -103,10 +144,12 @@ class BookingService:
             appointment.cancelled_by = cancelled_by.value
             appointment.status_changed_at = now
             session.flush()
+            doctor = repo.get_doctor(session, appointment.doctor_id, lock=True)
+            offer_freed_slot(session, doctor, appointment.start_at, now)  # waiting patients first
             return CancelResult(
                 appointment=view_of(session, appointment.id, now),
                 late=outcome is Status.LATE_CANCELLED,
-                deposit=_deposit_of(session, appointment.patient_id, now),
+                deposit=deposit_of(session, appointment.patient_id, now),
             )
 
         return run(self._factory, work)
@@ -129,6 +172,7 @@ class BookingService:
         def work(session: Session) -> RescheduleResult:
             old = repo.get_appointment(session, appointment_id, lock=True)
             check_can_cancel(Status(old.status))
+            check_can_reschedule(old.start_at, now)
             target_doctor_id = doctor_id if doctor_id is not None else old.doctor_id
             doctors = repo.lock_doctors(session, {old.doctor_id, target_doctor_id})
             patient = repo.get_patient(session, old.patient_id, lock=True)
@@ -141,7 +185,7 @@ class BookingService:
 
             # The deposit check uses the patient's status before this move's own cancellation, so
             # moving a late appointment does not flag the patient for the booking they asked for.
-            deposit = _deposit_of(session, patient.id, now)
+            deposit = deposit_of(session, patient.id, now)
             confirmed = old.deposit_confirmed if deposit_confirmed is None else deposit_confirmed
 
             outcome = classify_cancellation(old.start_at, now, CancelledBy.PATIENT)
@@ -151,7 +195,7 @@ class BookingService:
             old.status_changed_at = now
             session.flush()
 
-            new = _place(
+            new = place_booking(
                 session,
                 doctors[target_doctor_id],
                 patient,
@@ -163,6 +207,7 @@ class BookingService:
             )
             old.rescheduled_to_id = new.id
             session.flush()
+            offer_freed_slot(session, doctors[old.doctor_id], old.start_at, now)
             return RescheduleResult(
                 old=view_of(session, old.id, now), new=view_of(session, new.id, now)
             )

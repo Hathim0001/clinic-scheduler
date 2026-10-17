@@ -10,13 +10,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.errors import ConflictError, ErrorCode, RuleViolation
 from app.domain.timeutil import MAX_DATE, ist_date
 from app.persistence import repositories as repo
-from app.persistence.models import Doctor
+from app.persistence.models import Appointment, Doctor
 from app.services.support import run
 from app.services.views import DoctorView
 
@@ -82,6 +82,27 @@ class DoctorService:
             return _view(doctor)
 
         return run(self._factory, work)
+
+    def delete(self, doctor_id: int) -> None:
+        """Remove a doctor with no appointments on record; their hours and overrides go too."""
+
+        def work(session: Session) -> None:
+            doctor = repo.get_doctor(session, doctor_id, lock=True)
+            booked = session.scalar(
+                select(func.count())
+                .select_from(Appointment)
+                .where(Appointment.doctor_id == doctor.id)
+            )
+            if booked:
+                raise ConflictError(
+                    ErrorCode.DOCTOR_HAS_APPOINTMENTS,
+                    f"{doctor.name} has {booked} appointment(s) on record, so cannot be deleted.",
+                    appointments=booked,
+                )
+            session.delete(doctor)
+            session.flush()
+
+        run(self._factory, work)
 
     def update(
         self,
