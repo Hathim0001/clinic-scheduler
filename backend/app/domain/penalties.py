@@ -23,4 +23,13 @@ def deposit_status(events: Iterable[PenaltyEvent], now: datetime) -> DepositStat
     on from the second strike and lasts through the instant the second-most-recent strike turns 30
     days old: `required_until`. One second later the patient is no longer flagged.
     """
-    raise NotImplementedError
+    recent = sorted(
+        (event for event in events if now - LOOKBACK <= event.at <= now),
+        key=lambda event: (event.at, event.appointment_id),
+        reverse=True,
+    )
+    if len(recent) < STRIKES:
+        return DepositStatus(required=False, reasons=tuple(recent), required_until=None)
+    return DepositStatus(
+        required=True, reasons=tuple(recent), required_until=recent[STRIKES - 1].at + LOOKBACK
+    )
