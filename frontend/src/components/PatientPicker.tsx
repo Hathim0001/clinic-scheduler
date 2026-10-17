@@ -1,0 +1,148 @@
+import { useState, type FormEvent } from "react";
+import { usePatientSearch, useCreatePatient } from "../api/hooks";
+import type { Patient } from "../api/types";
+import { ErrorBanner, Skeleton } from "./common";
+
+interface Props {
+  onSelect: (patient: Patient) => void;
+  selectedId?: number | null;
+}
+
+const LOOKS_LIKE_PHONE = /^[\d\s()+.-]{3,}$/;
+
+/** Find a patient by phone or by the start of the name, or register a new one on the spot. */
+export function PatientPicker({ onSelect, selectedId = null }: Props) {
+  const [text, setText] = useState("");
+  const [term, setTerm] = useState("");
+  const [registering, setRegistering] = useState(false);
+
+  const trimmed = term.trim();
+  const isPhone = LOOKS_LIKE_PHONE.test(trimmed);
+  const search = usePatientSearch(
+    isPhone ? { phone: trimmed } : trimmed ? { q: trimmed } : {},
+  );
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setTerm(text);
+    setRegistering(false);
+  };
+
+  return (
+    <div>
+      <form className="row" onSubmit={submit} role="search">
+        <label>
+          Find a patient by phone or name
+          <input value={text} onChange={(event) => setText(event.target.value)} maxLength={100} />
+        </label>
+        <button type="submit" disabled={!text.trim()}>
+          Search
+        </button>
+        <button type="button" onClick={() => setRegistering(true)}>
+          New patient
+        </button>
+      </form>
+
+      {search.isPending && trimmed && <Skeleton rows={2} />}
+      {search.error && <ErrorBanner error={search.error} onRetry={() => void search.refetch()} />}
+      {search.data && (
+        <ul aria-label="Matching patients">
+          {search.data.items.map((patient) => (
+            <li key={patient.id}>
+              <button
+                type="button"
+                className="link"
+                aria-pressed={patient.id === selectedId}
+                onClick={() => onSelect(patient)}
+              >
+                {patient.name}
+              </button>{" "}
+              <span className="muted">{patient.phone}</span>
+            </li>
+          ))}
+          {search.data.items.length === 0 && (
+            <li className="muted">
+              No patient found.{" "}
+              <button type="button" className="link" onClick={() => setRegistering(true)}>
+                Register a new patient
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+
+      {registering && (
+        <NewPatientForm
+          initial={isPhone ? { phone: trimmed } : { name: trimmed }}
+          onCreated={(patient) => {
+            setRegistering(false);
+            onSelect(patient);
+          }}
+          onCancel={() => setRegistering(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewPatientForm({
+  initial,
+  onCreated,
+  onCancel,
+}: {
+  initial: { name?: string; phone?: string };
+  onCreated: (patient: Patient) => void;
+  onCancel: () => void;
+}) {
+  const create = useCreatePatient();
+  const [name, setName] = useState(initial.name ?? "");
+  const [phone, setPhone] = useState(initial.phone ?? "");
+  const [birth, setBirth] = useState("");
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    create.mutate({ name, phone, date_of_birth: birth }, { onSuccess: onCreated });
+  };
+
+  return (
+    <form className="card" onSubmit={submit} aria-label="New patient">
+      <h2>New patient</h2>
+      <div className="row">
+        <label>
+          Name
+          <input value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} />
+        </label>
+        <label>
+          Phone
+          <input
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            required
+            inputMode="tel"
+            placeholder="98765 43210"
+            maxLength={40}
+          />
+        </label>
+        <label>
+          Date of birth
+          <input
+            type="date"
+            value={birth}
+            onChange={(event) => setBirth(event.target.value)}
+            required
+            min="1900-01-01"
+          />
+        </label>
+      </div>
+      {create.error && <ErrorBanner error={create.error} />}
+      <div className="actions">
+        <button type="submit" className="primary" disabled={create.isPending}>
+          Register patient
+        </button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
