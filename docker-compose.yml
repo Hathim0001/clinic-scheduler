@@ -1,7 +1,8 @@
 name: clinic-scheduler
 
-# M0: the database only. The API and UI services are added in M5 once their Dockerfiles exist.
-# Host port 5433 (not 5432) avoids clashing with a PostgreSQL installed on the host.
+# The whole stack:  docker compose up --build
+#   UI   http://localhost:8080      API  http://localhost:8000/docs      database  localhost:5433
+# For development only the database is needed:  docker compose up -d db
 services:
   db:
     image: postgres:16-alpine
@@ -9,6 +10,7 @@ services:
       POSTGRES_USER: clinic
       POSTGRES_PASSWORD: clinic
       POSTGRES_DB: clinic
+    # Host port 5433 (not 5432) avoids clashing with a PostgreSQL installed on the host.
     ports: ["5433:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
@@ -16,6 +18,35 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://clinic:clinic@db:5432/clinic
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+      TEST_CLOCK_ENABLED: "true"
+      LOG_LEVEL: INFO
+    depends_on:
+      db:
+        condition: service_healthy
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser, not the container, calls the API, so this is the address of the host port.
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports: ["8080:80"]
 
 volumes:
   pgdata:

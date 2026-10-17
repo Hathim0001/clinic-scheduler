@@ -1,0 +1,21 @@
+# Render blueprint for the API. The database is Neon (free) and the UI is on Vercel (free).
+services:
+  - type: web
+    name: clinic-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # Secrets and per-environment values are entered in the Render dashboard (sync: false).
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: TEST_CLOCK_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
