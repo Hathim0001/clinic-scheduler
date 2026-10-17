@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import threading
+from collections import Counter
+from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from alembic.config import Config
+from sqlalchemy.exc import DBAPIError, IntegrityError
 
+from app.domain.errors import DomainError
 from app.domain.model import AppointmentFacts, DoctorFacts, SlotContext, Status, Window
 from app.domain.timeutil import IST
 
@@ -74,3 +79,54 @@ def alembic_config(database_url: str) -> Config:
     config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
     return config
+
+
+def burst[T](jobs: Sequence[Callable[[], T]]) -> list[T | Exception]:
+    """Run the jobs at the same instant on separate threads; exceptions are returned, not raised."""
+    barrier = threading.Barrier(len(jobs))
+
+    def run(job: Callable[[], T]) -> T | Exception:
+        barrier.wait(timeout=10)
+        try:
+            return job()
+        except Exception as exc:  # the test inspects every failure
+            return exc
+
+    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+        return list(pool.map(run, jobs))
+
+
+def outcomes(results: Sequence[object]) -> Counter[str]:
+    """OK for a success, the error code for a domain error, the class name for anything else."""
+    return Counter(
+        r.code.value
+        if isinstance(r, DomainError)
+        else type(r).__name__
+        if isinstance(r, Exception)
+        else "OK"
+        for r in results
+    )
+
+
+class FakeDiag:
+    def __init__(self, constraint: str | None) -> None:
+        self.constraint_name = constraint
+
+
+class FakeDriverError(Exception):
+    """What psycopg raises: a `sqlstate` and a `diag.constraint_name`."""
+
+    def __init__(self, state: str | None, constraint: str | None = None, text: str = "") -> None:
+        super().__init__(text or f"driver error {state}")
+        self.sqlstate = state
+        self.diag = FakeDiag(constraint)
+
+
+def db_error(
+    state: str | None,
+    constraint: str | None = None,
+    cls: type[DBAPIError] = IntegrityError,
+    params: dict[str, object] | None = None,
+) -> DBAPIError:
+    """A SQLAlchemy error wrapping a stand-in driver error with the given SQLSTATE."""
+    return cls("INSERT INTO patients ...", params or {}, FakeDriverError(state, constraint))

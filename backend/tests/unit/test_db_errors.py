@@ -30,30 +30,17 @@ from app.persistence.db_errors import (
     sqlstate,
     translate_db_error,
 )
+from tests.helpers import db_error
 
 pytestmark = pytest.mark.unit
 
 SECRET = "+919876543210"  # a value that must never be echoed to a client
 
 
-class FakeDiag:
-    def __init__(self, constraint: str | None) -> None:
-        self.constraint_name = constraint
-
-
-class FakeDriverError(Exception):
-    """What psycopg raises: a `sqlstate` and a `diag.constraint_name`."""
-
-    def __init__(self, state: str | None, constraint: str | None = None) -> None:
-        super().__init__(f"duplicate key value violates unique constraint ({SECRET})")
-        self.sqlstate = state
-        self.diag = FakeDiag(constraint)
-
-
 def wrap(
     state: str | None, constraint: str | None = None, cls: type[DBAPIError] = IntegrityError
 ) -> DBAPIError:
-    return cls("INSERT INTO patients ...", {"phone": SECRET}, FakeDriverError(state, constraint))
+    return db_error(state, constraint, cls, {"phone": SECRET})
 
 
 @pytest.mark.parametrize(

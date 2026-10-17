@@ -7,10 +7,7 @@ such as a deadlock, and the database invariants must hold afterwards.
 
 from __future__ import annotations
 
-import threading
-from collections import Counter
-from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 
 import pytest
@@ -20,39 +17,12 @@ from app.domain.errors import DomainError, ErrorCode
 from app.domain.model import CancelledBy, Status
 from app.services.views import BookCommand
 from tests.factories import add_appointment, add_doctor, add_patient, add_weekly
-from tests.helpers import ist
+from tests.helpers import burst, ist, outcomes
 from tests.integration.conftest import NOW, Clinic, at
 
 pytestmark = [pytest.mark.integration, pytest.mark.concurrency]
 
 THREADS = 10  # the connection pool holds 5 + 5 overflow
-
-
-def burst[T](jobs: Sequence[Callable[[], T]]) -> list[T | Exception]:
-    """Run the jobs at the same instant on separate threads; exceptions are returned, not raised."""
-    barrier = threading.Barrier(len(jobs))
-
-    def run(job: Callable[[], T]) -> T | Exception:
-        barrier.wait(timeout=10)
-        try:
-            return job()
-        except Exception as exc:  # the test inspects every failure
-            return exc
-
-    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
-        return list(pool.map(run, jobs))
-
-
-def outcomes(results: Sequence[object]) -> Counter[str]:
-    """OK for a success, the error code for a domain error, the class name for anything else."""
-    return Counter(
-        r.code.value
-        if isinstance(r, DomainError)
-        else type(r).__name__
-        if isinstance(r, Exception)
-        else "OK"
-        for r in results
-    )
 
 
 def add_patients(clinic: Clinic, count: int) -> list[int]:
@@ -232,3 +202,16 @@ def test_a_booking_racing_a_leave_day_never_leaves_an_unflagged_orphan(clinic: C
             clinic.availability.day_schedule(clinic.rao, day, None, NOW).outside_availability == ()
         )
     assert_invariants(clinic)
+
+
+def register_job(clinic: Clinic, name: str, phone: str) -> Callable[[], object]:
+    return lambda: clinic.patients.create(name, phone, date(1990, 1, 1), NOW)
+
+
+def test_ten_simultaneous_registrations_of_one_phone_give_one_patient(clinic: Clinic) -> None:
+    """T-X14: the losers get PHONE_TAKEN whether they lose at the check or at the constraint."""
+    formats = ["98765 43210", "+91-98765-43210", "09876543210", "919876543210", "9876543210"]
+    results = burst(
+        [register_job(clinic, f"Patient {n}", formats[n % len(formats)]) for n in range(THREADS)]
+    )
+    assert outcomes(results) == {"OK": 1, "PHONE_TAKEN": THREADS - 1}
