@@ -11,15 +11,16 @@ import threading
 from collections import Counter
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
 
-from app.domain.errors import DomainError
+from app.domain.errors import DomainError, ErrorCode
 from app.domain.model import CancelledBy, Status
 from app.services.views import BookCommand
 from tests.factories import add_appointment, add_doctor, add_patient, add_weekly
+from tests.helpers import ist
 from tests.integration.conftest import NOW, Clinic, at
 
 pytestmark = [pytest.mark.integration, pytest.mark.concurrency]
@@ -91,6 +92,10 @@ def assert_invariants(clinic: Clinic) -> None:
 def book_job(clinic: Clinic, doctor: int, patient: int, start: datetime) -> Callable[[], object]:
     command = BookCommand(doctor, patient, start, "Check-up")
     return lambda: clinic.booking.book(command, NOW)
+
+
+def leave_job(clinic: Clinic, day: date) -> Callable[[], object]:
+    return lambda: clinic.availability.put_override(clinic.rao, day, [], None, False, NOW)
 
 
 def reschedule_job(clinic: Clinic, appointment_id: int, start: datetime) -> Callable[[], object]:
@@ -202,4 +207,28 @@ def test_booking_a_slot_while_it_is_being_cancelled_is_consistent(clinic: Clinic
     # Either the booking ran after the cancellation commit (both succeed) or before it (it is
     # told the slot is taken); both are correct. Anything else would be a bug.
     assert counts in ({"OK": 2}, {"OK": 1, "SLOT_TAKEN": 1})
+    assert_invariants(clinic)
+
+
+def test_a_booking_racing_a_leave_day_never_leaves_an_unflagged_orphan(clinic: Clinic) -> None:
+    """T-O05: both change Dr. Rao's day, so they queue on the doctor row. Exactly one wins: either
+    the booking commits and the leave day is refused with the list, or the leave day commits and
+    the booking is told the doctor is not available."""
+    mondays_to_fridays = [date(2026, 11, 9) + timedelta(days=n) for n in range(28)]
+    days = [day for day in mondays_to_fridays if day.weekday() < 5][:20]
+    for day in days:
+        start = ist(day.year, day.month, day.day, 10)
+        booked, left = burst(
+            [book_job(clinic, clinic.rao, clinic.asha, start), leave_job(clinic, day)]
+        )
+        assert isinstance(booked, Exception) != isinstance(left, Exception), (day, booked, left)
+        if isinstance(left, DomainError):
+            assert left.code is ErrorCode.AVAILABILITY_CONFLICTS
+        else:
+            assert isinstance(booked, DomainError)
+            assert booked.code is ErrorCode.OUTSIDE_AVAILABILITY
+    for day in days:  # nothing was left outside the doctor's hours
+        assert (
+            clinic.availability.day_schedule(clinic.rao, day, None, NOW).outside_availability == ()
+        )
     assert_invariants(clinic)

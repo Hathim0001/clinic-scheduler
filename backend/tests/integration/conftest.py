@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.persistence.models import Appointment
+from app.services.availability_service import AvailabilityService
 from app.services.booking_service import BookingService
 from tests.factories import add_doctor, add_patient, add_weekly
 from tests.helpers import ist
@@ -27,6 +28,7 @@ def at(hour: int, minute: int = 0, *, day: int = 2) -> datetime:
 class Clinic:
     factory: sessionmaker[Session]
     booking: BookingService
+    availability: AvailabilityService
     rao: int  # 30-minute slots, cap 6, Monday to Friday 09:00-13:00
     menon: int  # 15-minute slots, cap 20, Monday to Friday 09:00-13:00
     asha: int
@@ -56,4 +58,9 @@ def clinic(session_factory: sessionmaker[Session]) -> Clinic:
         ravi = add_patient(session, 2, name="Ravi Kumar")
         meena = add_patient(session, 3, name="Meena Das")
         ids = (rao.id, menon.id, asha.id, ravi.id, meena.id)
-    return Clinic(session_factory, BookingService(session_factory), *ids)
+    return Clinic(
+        session_factory,
+        BookingService(session_factory),
+        AvailabilityService(session_factory),
+        *ids,
+    )
