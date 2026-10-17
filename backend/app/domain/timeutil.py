@@ -49,3 +49,13 @@ def at_ist(day: date, minute_of_day: int) -> datetime:
 def format_minutes(minute_of_day: int) -> str:
     """Minutes since midnight as HH:MM: 570 is "09:30" and 1440 is "24:00"."""
     return f"{minute_of_day // 60:02d}:{minute_of_day % 60:02d}"
+
+
+def utc_iso(instant: datetime) -> str:
+    """An instant as UTC ISO text: 2026-11-02T05:30:00Z."""
+    return instant.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def ist_iso(instant: datetime) -> str:
+    """An instant as ISO text with the India offset: 2026-11-02T11:00:00+05:30."""
+    return instant.astimezone(IST).isoformat(timespec="seconds")

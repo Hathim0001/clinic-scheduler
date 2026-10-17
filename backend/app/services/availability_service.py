@@ -33,8 +33,7 @@ from app.domain.slots import (
     first_violation,
     unavailable_reason,
 )
-from app.domain.timeutil import ist_date
-from app.domain.violations import ist_iso
+from app.domain.timeutil import ist_date, ist_iso
 from app.persistence import repositories as repo
 from app.persistence.models import (
     Appointment,

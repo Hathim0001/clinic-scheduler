@@ -14,7 +14,7 @@ from app.domain.errors import ConflictError, DomainError, ErrorCode, RuleViolati
 from app.domain.model import DepositStatus, SlotContext
 from app.domain.penalties import LOOKBACK, STRIKES
 from app.domain.slots import conflicting_appointment, overlapping_patient_appointment
-from app.domain.timeutil import IST, format_minutes, ist_date
+from app.domain.timeutil import IST, format_minutes, ist_date, ist_iso
 
 _DAYS = LOOKBACK.days
 
@@ -22,11 +22,6 @@ _DAYS = LOOKBACK.days
 def ist_text(instant: datetime) -> str:
     """An instant as India wall-clock text for a sentence: 02 Nov 2026, 11:00."""
     return instant.astimezone(IST).strftime("%d %b %Y, %H:%M")
-
-
-def ist_iso(instant: datetime) -> str:
-    """An instant as ISO text with the India offset: 2026-11-02T11:00:00+05:30."""
-    return instant.astimezone(IST).isoformat(timespec="seconds")
 
 
 def violation_error(
