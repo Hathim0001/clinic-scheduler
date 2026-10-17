@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# Secrets and local configuration (the *.example files ARE committed)
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+*.local
+
+# Local databases and editor/OS files
+*.sqlite3
+*.db
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
