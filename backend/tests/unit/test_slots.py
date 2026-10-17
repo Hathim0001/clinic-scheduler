@@ -177,34 +177,33 @@ def test_a_cancelled_appointment_of_the_patient_is_ignored() -> None:
 
 
 @pytest.mark.parametrize(
-    ("description", "start", "ctx", "expected"),
+    ("start", "ctx", "expected"),
     [
-        (
-            "past beats off-grid",
+        pytest.param(
             at(9, 15),
             slot_ctx(now=at(10)),
             ErrorCode.BOOKING_IN_PAST,
+            id="past beats off-grid",
         ),
-        (
-            "off-grid beats outside availability",
+        pytest.param(
             at(13, 15),
             slot_ctx(now=NOW),
             ErrorCode.OFF_GRID,
+            id="off-grid beats outside availability",
         ),
-        (
-            "outside availability beats the cap",
+        pytest.param(
             at(13),
             slot_ctx(now=NOW, doctor=doctor_facts(cap=1), doctor_appts=[appt_facts(at(9))]),
             ErrorCode.OUTSIDE_AVAILABILITY,
+            id="outside availability beats the cap",
         ),
-        (
-            "the cap beats a taken slot",
+        pytest.param(
             at(9),
             slot_ctx(now=NOW, doctor=doctor_facts(cap=1), doctor_appts=[appt_facts(at(9))]),
             ErrorCode.DAILY_CAP_REACHED,
+            id="the cap beats a taken slot",
         ),
-        (
-            "a taken slot beats the patient's own overlap",
+        pytest.param(
             at(9),
             slot_ctx(
                 now=NOW,
@@ -212,15 +211,15 @@ def test_a_cancelled_appointment_of_the_patient_is_ignored() -> None:
                 patient_appts=[appt_facts(at(9), doctor=2, patient=7)],
             ),
             ErrorCode.SLOT_TAKEN,
+            id="a taken slot beats the patient's own overlap",
         ),
     ],
-    ids=lambda value: value if isinstance(value, str) and " " in value else "",
 )
 def test_rules_are_checked_in_a_fixed_order(
-    description: str, start: datetime, ctx: SlotContext, expected: ErrorCode
+    start: datetime, ctx: SlotContext, expected: ErrorCode
 ) -> None:
     """The order is documented in the plan (section 21.7), so errors are predictable."""
-    assert first_violation(start, ctx) is expected, description
+    assert first_violation(start, ctx) is expected
 
 
 def test_override_beats_the_weekly_pattern_on_both_sides() -> None:

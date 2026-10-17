@@ -20,7 +20,7 @@ select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "C4", "PT", "RUF"]
 
 [tool.mypy]
 python_version = "3.13"
-files = ["app", "scripts"]
+files = ["app", "scripts", "tests"]
 disallow_untyped_defs = true
 check_untyped_defs = true
 no_implicit_optional = true
