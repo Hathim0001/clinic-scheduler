@@ -87,6 +87,14 @@ enforces them inside transactions and locks, and the database constraints guaran
 concurrency could otherwise break. The UI never decides anything: it shows the slots, the reasons and
 the allowed actions the API sends.
 
+**What it looks like** (seeded demo data; the day view and the queue, the booking form for a patient
+who is flagged for a deposit, and the queue on a 375 px phone screen):
+
+| | |
+|---|---|
+| ![Day view](docs/screenshots/day-view.png) | ![Queue](docs/screenshots/queue.png) |
+| ![Booking a flagged patient](docs/screenshots/booking-flagged-patient.png) | ![Queue at 375 px](docs/screenshots/phone-375px.png) |
+
 ## 5. Running locally
 
 **Prerequisites:** Docker Desktop with Compose v2, Python 3.13, Node 22 (22.13 or later), git.
