@@ -44,3 +44,8 @@ def at_ist(day: date, minute_of_day: int) -> datetime:
     """The UTC instant at `minute_of_day` minutes after IST midnight on `day` (may reach 24:00)."""
     midnight = datetime.combine(day, time(0), IST)
     return (midnight + timedelta(minutes=minute_of_day)).astimezone(UTC)
+
+
+def format_minutes(minute_of_day: int) -> str:
+    """Minutes since midnight as HH:MM: 570 is "09:30" and 1440 is "24:00"."""
+    return f"{minute_of_day // 60:02d}:{minute_of_day % 60:02d}"
