@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { usePatientSearch, useCreatePatient } from "../api/hooks";
 import type { Patient } from "../api/types";
-import { ErrorBanner, Skeleton } from "./common";
+import { ApiError } from "../api/client";
+import { Banner, ErrorBanner, Skeleton } from "./common";
 
 interface Props {
   onSelect: (patient: Patient) => void;
@@ -99,10 +100,21 @@ function NewPatientForm({
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [birth, setBirth] = useState("");
 
+  const register = (allowDuplicate: boolean) =>
+    create.mutate(
+      { name, phone, date_of_birth: birth, ...(allowDuplicate ? { allow_duplicate: true } : {}) },
+      { onSuccess: onCreated },
+    );
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    create.mutate({ name, phone, date_of_birth: birth }, { onSuccess: onCreated });
+    register(false);
   };
+
+  const duplicates =
+    create.error instanceof ApiError && create.error.code === "POSSIBLE_DUPLICATE"
+      ? ((create.error.details.candidates as { patient_id: number; name: string; phone: string }[]) ?? [])
+      : null;
 
   return (
     <form className="card" onSubmit={submit} aria-label="New patient">
@@ -134,11 +146,39 @@ function NewPatientForm({
           />
         </label>
       </div>
-      {create.error && <ErrorBanner error={create.error} />}
+      {duplicates ? (
+        <Banner kind="warn">
+          Someone with the same name and date of birth is already registered:
+          <ul>
+            {duplicates.map((match) => (
+              <li key={match.patient_id}>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() =>
+                    onCreated({ id: match.patient_id, name: match.name, phone: match.phone } as Patient)
+                  }
+                >
+                  Use {match.name}
+                </button>{" "}
+                <span className="muted">{match.phone}</span>
+              </li>
+            ))}
+          </ul>
+          If this really is a different person, register them anyway.
+        </Banner>
+      ) : (
+        create.error && <ErrorBanner error={create.error} />
+      )}
       <div className="actions">
         <button type="submit" className="primary" disabled={create.isPending}>
           Register patient
         </button>
+        {duplicates && (
+          <button type="button" disabled={create.isPending} onClick={() => register(true)}>
+            Register anyway
+          </button>
+        )}
         <button type="button" onClick={onCancel}>
           Cancel
         </button>

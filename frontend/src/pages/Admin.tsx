@@ -79,7 +79,7 @@ export default function Admin() {
       {doctor && (
         <>
           <DoctorDetails
-            key={`${doctor.id}-${doctor.name}-${doctor.speciality}-${doctor.daily_cap}-${doctor.slot_length_min}`}
+            key={`${doctor.id}-${doctor.name}-${doctor.speciality}-${doctor.daily_cap}-${doctor.slot_length_min}-${doctor.accepting_bookings}`}
             doctor={doctor}
           />
           <WeeklyHours doctor={doctor} />
@@ -212,6 +212,7 @@ function DoctorDetails({ doctor }: { doctor: Doctor }) {
   const [speciality, setSpeciality] = useState(doctor.speciality);
   const [cap, setCap] = useState(String(doctor.daily_cap));
   const [slot, setSlot] = useState(String(doctor.slot_length_min));
+  const [accepting, setAccepting] = useState(doctor.accepting_bookings);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -222,6 +223,7 @@ function DoctorDetails({ doctor }: { doctor: Doctor }) {
         speciality,
         daily_cap: Number(cap),
         slot_length_min: Number(slot),
+        accepting_bookings: accepting,
       },
     });
   };
@@ -259,13 +261,22 @@ function DoctorDetails({ doctor }: { doctor: Doctor }) {
             <option value="30">30 minutes</option>
           </select>
         </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={accepting}
+            onChange={(event) => setAccepting(event.target.checked)}
+          />
+          Taking new bookings
+        </label>
         <button type="submit" className="primary" disabled={update.isPending}>
           Save details
         </button>
       </div>
       <p className="muted">
         The slot length cannot change while future bookings exist. Lowering the daily limit never
-        cancels anything.
+        cancels anything. Switching off \u201cTaking new bookings\u201d (leave, suspension) leaves existing
+        appointments exactly as they are.
       </p>
       {update.error && <ErrorBanner error={update.error} />}
       {update.isSuccess && <Banner kind="success">Saved.</Banner>}

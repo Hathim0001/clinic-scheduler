@@ -74,11 +74,27 @@ export function describeError(error: unknown, context: Context = {}): FriendlyEr
         message: "This appointment has already started, so it can no longer be cancelled or moved.",
       };
     case "TOO_EARLY_TO_MARK":
-      return { ...base, message: "An appointment can only be marked once it has started." };
+      return {
+        ...base,
+        message: error.message.startsWith("Check-in")
+          ? error.message
+          : "An appointment can only be marked once it has started.",
+      };
     case "RESCHEDULE_NO_CHANGE":
       return { ...base, message: "Pick a different time or doctor to move this appointment." };
     case "PHONE_TAKEN":
       return { ...base, message: "A patient with this phone number is already registered." };
+    case "DOCTOR_NOT_ACCEPTING":
+      return { ...base, message: `${doctor} is not taking new bookings at the moment.` };
+    case "ALREADY_CHECKED_IN":
+      return {
+        ...base,
+        message: "The patient has already checked in. Only the clinic can cancel from here.",
+      };
+    case "INVALID_CORRECTION":
+      return { ...base, message: "That outcome cannot be changed to the one chosen." };
+    case "IDEMPOTENCY_KEY_REUSED":
+      return { ...base, message: "This request was already sent with different details. Reload and try again." };
     case "SERVICE_UNAVAILABLE":
       return {
         ...base,
@@ -109,6 +125,7 @@ export const REASON_TEXT: Record<string, string> = {
   FULLY_BOOKED: "Every slot on this date is taken.",
   DATE_IN_PAST: "This date, or the rest of it, has passed.",
   DATE_TOO_FAR: "Bookings open up to 60 days ahead.",
+  NOT_ACCEPTING: "The doctor is not taking new bookings at the moment.",
 };
 
 const SPOKEN_STATUS: Record<string, string> = {

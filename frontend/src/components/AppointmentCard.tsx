@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import type { Appointment } from "../api/types";
 import { formatDayIST, formatIST, formatTimeIST } from "../lib/formatIST";
 import { ActionButtons } from "./ActionButtons";
+import { CorrectionForm, History, UrgentBadge } from "./AppointmentExtras";
 import { CalendarLink } from "./CalendarLink";
 import { StatusBadge } from "./common";
 
@@ -12,6 +13,7 @@ export function AppointmentCard({ appointment }: { appointment: Appointment }) {
       <h3>
         <Link to={`/patients/${appointment.patient_id}`}>{appointment.patient_name}</Link>{" "}
         <StatusBadge status={appointment.status} />
+        <UrgentBadge appointment={appointment} />
         {appointment.needs_attention && (
           <span className="status LATE_CANCELLED"> Needs attention</span>
         )}
@@ -28,6 +30,12 @@ export function AppointmentCard({ appointment }: { appointment: Appointment }) {
         <dd>{appointment.patient_phone}</dd>
         <dt>Reason</dt>
         <dd>{appointment.reason}</dd>
+        {appointment.checked_in_at_ist && (
+          <>
+            <dt>Arrived</dt>
+            <dd>{formatTimeIST(appointment.checked_in_at_ist)} IST</dd>
+          </>
+        )}
         {appointment.deposit_required_at_booking && (
           <>
             <dt>Deposit</dt>
@@ -50,6 +58,8 @@ export function AppointmentCard({ appointment }: { appointment: Appointment }) {
         </p>
       )}
       <ActionButtons appointment={appointment} />
+      <CorrectionForm appointment={appointment} />
+      <History appointmentId={appointment.id} />
       <p>
         <CalendarLink path={`/appointments/${appointment.id}/calendar.ics`} />
       </p>

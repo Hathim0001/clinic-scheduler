@@ -26,6 +26,7 @@ export const doctor = (overrides: Partial<Doctor> = {}): Doctor => ({
   speciality: "General",
   slot_length_min: 30,
   daily_cap: 6,
+  accepting_bookings: true,
   ...overrides,
 });
 
@@ -90,6 +91,9 @@ export const appointment = (overrides: Partial<Appointment> = {}): Appointment =
   rescheduled_to_id: null,
   needs_attention: false,
   allowed_actions: ["cancel", "reschedule"],
+  checked_in_at_utc: null,
+  checked_in_at_ist: null,
+  urgent_symptoms: false,
   ...overrides,
 });
 

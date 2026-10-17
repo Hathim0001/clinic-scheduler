@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   useAcceptOffer,
+  useDeclineOffer,
   useDoctorWaitlist,
   useJoinWaitlist,
   useLeaveWaitlist,
@@ -71,6 +72,7 @@ export function DayWaitlist({ doctorId, date }: { doctorId: number; date: string
 
 function Offer({ entry, deposit }: { entry: WaitlistEntry; deposit: Deposit | null }) {
   const accept = useAcceptOffer();
+  const decline = useDeclineOffer();
   const leave = useLeaveWaitlist();
   const [reason, setReason] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -107,8 +109,11 @@ function Offer({ entry, deposit }: { entry: WaitlistEntry; deposit: Deposit | nu
         >
           Accept and book
         </button>
+        <button type="button" disabled={decline.isPending} onClick={() => decline.mutate(entry.id)}>
+          Not this one (keep my place)
+        </button>
         <button type="button" disabled={leave.isPending} onClick={() => leave.mutate(entry.id)}>
-          Decline
+          Leave the waitlist
         </button>
       </div>
       {accept.error && <ErrorBanner error={accept.error} />}

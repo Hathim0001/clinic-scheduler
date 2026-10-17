@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { useCancel, useComplete, useNoShow } from "../api/hooks";
+import { useCancel, useCheckIn, useComplete, useNoShow } from "../api/hooks";
 import type { Action, Appointment, CancelledBy } from "../api/types";
 import { whyDisabled } from "../lib/errors";
 import { Banner, ErrorBanner } from "./common";
@@ -14,18 +14,24 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
   const cancel = useCancel();
   const complete = useComplete();
   const noShow = useNoShow();
+  const checkIn = useCheckIn();
   const [confirming, setConfirming] = useState(false);
   const [by, setBy] = useState<CancelledBy>("PATIENT");
 
   const allowed = new Set<Action>(appointment.allowed_actions);
   const hint = (action: Action) =>
     allowed.has(action) ? undefined : whyDisabled(action, appointment.status);
-  const error = cancel.error ?? complete.error ?? noShow.error;
-  const busy = cancel.isPending || complete.isPending || noShow.isPending;
+  const error = cancel.error ?? complete.error ?? noShow.error ?? checkIn.error;
+  const busy = cancel.isPending || complete.isPending || noShow.isPending || checkIn.isPending;
 
   return (
     <div>
       <div className="actions">
+        {allowed.has("check-in") && (
+          <button type="button" disabled={busy} onClick={() => checkIn.mutate(appointment.id)}>
+            Check in
+          </button>
+        )}
         <button
           type="button"
           disabled={!allowed.has("complete") || busy}

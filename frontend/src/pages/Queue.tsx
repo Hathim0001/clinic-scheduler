@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router";
 import { useClockInfo, useDoctors, useQueue } from "../api/hooks";
 import { ActionButtons } from "../components/ActionButtons";
+import { UrgentBadge } from "../components/AppointmentExtras";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
 import { useTestClock } from "../lib/clock";
 import { formatDayIST, formatTimeIST } from "../lib/formatIST";
@@ -113,6 +114,10 @@ export default function Queue() {
                 <td data-label="Reason">{appointment.reason}</td>
                 <td data-label="Status">
                   <StatusBadge status={appointment.status} />
+                  <UrgentBadge appointment={appointment} />
+                  {appointment.checked_in_at_ist && appointment.status === "BOOKED" && (
+                    <div>Arrived {formatTimeIST(appointment.checked_in_at_ist)}</div>
+                  )}
                   {appointment.needs_attention && <div className="attention-heading">Needs attention</div>}
                 </td>
                 <td data-label="Actions">

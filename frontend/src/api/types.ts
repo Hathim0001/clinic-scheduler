@@ -2,7 +2,7 @@
 // as `..._utc` and `..._ist`; the UI shows the IST one and never converts times itself.
 
 export type Status = "BOOKED" | "COMPLETED" | "CANCELLED" | "LATE_CANCELLED" | "NO_SHOW";
-export type Action = "cancel" | "reschedule" | "complete" | "no-show";
+export type Action = "cancel" | "reschedule" | "complete" | "no-show" | "check-in" | "correct";
 export type CancelledBy = "PATIENT" | "CLINIC";
 
 export interface Doctor {
@@ -11,6 +11,7 @@ export interface Doctor {
   speciality: string;
   slot_length_min: number;
   daily_cap: number;
+  accepting_bookings: boolean;
 }
 
 export interface TimeWindow {
@@ -95,6 +96,9 @@ export interface Appointment {
   rescheduled_to_id: number | null;
   needs_attention: boolean;
   allowed_actions: Action[];
+  checked_in_at_utc: string | null;
+  checked_in_at_ist: string | null;
+  urgent_symptoms: boolean;
 }
 
 export interface Page<T> {
@@ -184,4 +188,43 @@ export interface ApiErrorBody {
     details: Record<string, unknown>;
     request_id: string;
   };
+}
+
+export interface AppointmentEvent {
+  id: number;
+  appointment_id: number;
+  patient_id: number;
+  kind: string;
+  at_utc: string;
+  at_ist: string;
+  detail: Record<string, unknown>;
+}
+
+export interface Triage {
+  urgent: boolean;
+  message: string | null;
+}
+
+export interface DoctorReport {
+  doctor_id: number;
+  doctor_name: string;
+  capacity_slots: number;
+  appointments: number;
+  new_bookings: number;
+  booked: number;
+  completed: number;
+  no_show: number;
+  cancelled: number;
+  late_cancelled: number;
+  rescheduled: number;
+  checked_in: number;
+  utilisation: number | null;
+  no_show_rate: number | null;
+}
+
+export interface Report {
+  start: string;
+  end: string;
+  doctors: DoctorReport[];
+  total: DoctorReport;
 }

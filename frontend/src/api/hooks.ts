@@ -5,10 +5,11 @@ import type {
   DoctorChanges,
   NewDoctor,
   NewPatient,
+  PatientChanges,
   RescheduleBody,
   SeriesBody,
 } from "./endpoints";
-import type { CancelledBy, TimeWindow, WeeklyWindow } from "./types";
+import type { CancelledBy, Status, TimeWindow, WeeklyWindow } from "./types";
 
 // Query hooks. The keys start with the resource name so a mutation can refresh what shows it.
 
@@ -113,6 +114,30 @@ export const usePatientWaitlist = (patientId: number | null) =>
     refetchInterval: 30_000, // offers expire, so keep the countdown honest
   });
 
+export const useAppointmentHistory = (id: number | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ["appointmentHistory", id],
+    queryFn: () => api.history(id as number),
+    enabled: enabled && id !== null,
+  });
+
+export const useReport = (from: string, to: string) =>
+  useQuery({
+    queryKey: ["report", from, to],
+    queryFn: () => api.report(from, to),
+    enabled: from !== "" && to !== "",
+  });
+
+/** Does the reason describe symptoms that may need emergency care? A hint, never a block. */
+export const useTriage = (text: string) =>
+  useQuery({
+    queryKey: ["triage", text],
+    queryFn: () => api.triage(text),
+    enabled: text.trim().length >= 4,
+    staleTime: Infinity,
+    retry: false,
+  });
+
 // Mutations. Anything that changes a booking or the hours can change every list on screen, and the
 // server decides what is now offered, so the simple and safe choice is to refresh all queries.
 function useRefreshingMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
@@ -185,3 +210,17 @@ export const useAcceptOffer = () =>
   useRefreshingMutation((args: { id: number; reason: string; depositConfirmed: boolean }) =>
     api.acceptOffer(args.id, args.reason, args.depositConfirmed),
   );
+
+export const useCheckIn = () => useRefreshingMutation((id: number) => api.checkIn(id));
+
+export const useCorrect = () =>
+  useRefreshingMutation((args: { id: number; status: Status; note: string }) =>
+    api.correct(args.id, args.status, args.note),
+  );
+
+export const useUpdatePatient = () =>
+  useRefreshingMutation((args: { id: number; changes: PatientChanges }) =>
+    api.updatePatient(args.id, args.changes),
+  );
+
+export const useDeclineOffer = () => useRefreshingMutation((id: number) => api.declineOffer(id));

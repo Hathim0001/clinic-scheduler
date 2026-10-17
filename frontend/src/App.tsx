@@ -7,6 +7,7 @@ import Book from "./pages/Book";
 import DayView from "./pages/DayView";
 import { PatientDetail, PatientSearch } from "./pages/Patients";
 import Queue from "./pages/Queue";
+import Reports from "./pages/Reports";
 
 function Header() {
   const attention = useNeedsAttention();
@@ -21,6 +22,7 @@ function Header() {
         <NavLink to="/book">Book</NavLink>
         <NavLink to="/queue">Queue</NavLink>
         <NavLink to="/patients">Patients</NavLink>
+        <NavLink to="/reports">Report</NavLink>
         <NavLink to="/admin">
           Doctors
           {count > 0 && (
@@ -59,6 +61,7 @@ export default function App() {
           <Route path="/queue" element={<Queue />} />
           <Route path="/patients" element={<PatientSearch />} />
           <Route path="/patients/:id" element={<PatientDetail />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/doctors" element={<Admin />} />
           <Route path="*" element={<NotFound />} />

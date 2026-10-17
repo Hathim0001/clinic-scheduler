@@ -1,6 +1,7 @@
 import { request } from "./client";
 import type {
   Appointment,
+  AppointmentEvent,
   CancelledBy,
   CancelResponse,
   ClockInfo,
@@ -11,11 +12,13 @@ import type {
   OverrideResponse,
   Page,
   Patient,
+  Report,
   RescheduleResponse,
   ScheduleResponse,
   SlotsResponse,
   Status,
   TimeWindow,
+  Triage,
   WeeklyResponse,
   WeeklyWindow,
 } from "./types";
@@ -26,6 +29,8 @@ export interface BookBody {
   start_at: string;
   reason: string;
   deposit_confirmed?: boolean;
+  /** Sent as the Idempotency-Key header, so a retry cannot book twice. */
+  idempotencyKey?: string;
 }
 
 export interface NewDoctor {
@@ -50,6 +55,14 @@ export interface NewPatient {
   name: string;
   phone: string;
   date_of_birth: string;
+  allow_duplicate?: boolean;
+}
+
+export interface PatientChanges {
+  name?: string;
+  phone?: string;
+  date_of_birth?: string;
+  allow_duplicate?: boolean;
 }
 
 export interface DoctorChanges {
@@ -57,6 +70,7 @@ export interface DoctorChanges {
   speciality?: string;
   daily_cap?: number;
   slot_length_min?: number;
+  accepting_bookings?: boolean;
 }
 
 // One function per endpoint. The components never build URLs or read response headers.
@@ -107,6 +121,8 @@ export const api = {
     request<Page<Patient>>("GET", "/patients", { query }),
   patient: (id: number) => request<Patient>("GET", `/patients/${id}`),
   createPatient: (body: NewPatient) => request<Patient>("POST", "/patients", { body }),
+  updatePatient: (id: number, changes: PatientChanges) =>
+    request<Patient>("PATCH", `/patients/${id}`, { body: changes }),
   patientAppointments: (id: number, limit = 50) =>
     request<Page<Appointment>>("GET", `/patients/${id}/appointments`, {
       query: { limit },
@@ -121,7 +137,15 @@ export const api = {
     limit?: number;
     offset?: number;
   }) => request<Page<Appointment>>("GET", "/appointments", { query }),
-  book: (body: BookBody) => request<Appointment>("POST", "/appointments", { body }),
+  book: ({ idempotencyKey, ...body }: BookBody) =>
+    request<Appointment>("POST", "/appointments", {
+      body,
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    }),
+  checkIn: (id: number) => request<Appointment>("POST", `/appointments/${id}/check-in`),
+  correct: (id: number, status: Status, note: string) =>
+    request<Appointment>("POST", `/appointments/${id}/correct`, { body: { status, note } }),
+  history: (id: number) => request<AppointmentEvent[]>("GET", `/appointments/${id}/history`),
   bookSeries: (body: SeriesBody) =>
     request<SeriesResponse>("POST", "/appointments/recurring", { body }),
   cancel: (id: number, cancelledBy: CancelledBy) =>
@@ -145,11 +169,16 @@ export const api = {
     }),
   patientWaitlist: (patientId: number) =>
     request<WaitlistEntry[]>("GET", `/patients/${patientId}/waitlist`),
+  declineOffer: (id: number) => request<WaitlistEntry>("POST", `/waitlist/${id}/decline`),
   leaveWaitlist: (id: number) => request<WaitlistEntry>("DELETE", `/waitlist/${id}`),
   acceptOffer: (id: number, reason: string, depositConfirmed: boolean) =>
     request<WaitlistAcceptResponse>("POST", `/waitlist/${id}/accept`, {
       body: { reason, deposit_confirmed: depositConfirmed },
     }),
+
+  report: (from: string, to: string) =>
+    request<Report>("GET", "/reports/summary", { query: { from, to } }),
+  triage: (text: string) => request<Triage>("POST", "/triage", { body: { text } }),
 
   queue: (query: { date?: string; doctor_id?: number; include_cancelled?: boolean }) =>
     request<Appointment[]>("GET", "/queue", { query }),

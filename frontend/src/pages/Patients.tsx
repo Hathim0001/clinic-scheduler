@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { usePatient, usePatientAppointments } from "../api/hooks";
+import { ApiError, API_BASE } from "../api/client";
+import { usePatient, usePatientAppointments, useUpdatePatient } from "../api/hooks";
+import type { Patient } from "../api/types";
 import { ActionButtons } from "../components/ActionButtons";
-import { ErrorBanner, Skeleton, StatusBadge } from "../components/common";
+import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
 import { CalendarLink } from "../components/CalendarLink";
 import { DepositExplanation } from "../components/DepositNotice";
 import { PatientPicker } from "../components/PatientPicker";
@@ -48,9 +50,14 @@ export function PatientDetail() {
         <p>
           <Link className="primary" to={`/book?patient=${p.id}`}>
             Book an appointment for this patient
-          </Link>
+          </Link>{" "}
+          <a href={`${API_BASE}/patients/${p.id}/export`} download={`patient-${p.id}.json`}>
+            Download all their records
+          </a>
         </p>
       </div>
+
+      <EditPatient key={`${p.id}-${p.name}-${p.phone}-${p.date_of_birth}`} patient={p} />
 
       <section className="card" aria-label="Deposit status">
         <h2>Deposit status</h2>
@@ -109,5 +116,84 @@ export function PatientDetail() {
         )}
       </section>
     </div>
+  );
+}
+
+/** Correct a name, a phone number or a date of birth. Appointments follow the patient. */
+function EditPatient({ patient }: { patient: Patient }) {
+  const update = useUpdatePatient();
+  const [name, setName] = useState(patient.name);
+  const [phone, setPhone] = useState(patient.phone);
+  const [birth, setBirth] = useState(patient.date_of_birth);
+
+  const changes = {
+    ...(name.trim() !== patient.name ? { name } : {}),
+    ...(phone.trim() !== patient.phone ? { phone } : {}),
+    ...(birth !== patient.date_of_birth ? { date_of_birth: birth } : {}),
+  };
+  const dirty = Object.keys(changes).length > 0;
+  const duplicates =
+    update.error instanceof ApiError && update.error.code === "POSSIBLE_DUPLICATE"
+      ? ((update.error.details.candidates as { patient_id: number; name: string }[]) ?? [])
+      : null;
+
+  return (
+    <form
+      className="card"
+      aria-label="Edit patient"
+      onSubmit={(event) => {
+        event.preventDefault();
+        update.mutate({ id: patient.id, changes });
+      }}
+    >
+      <h2>Correct details</h2>
+      <div className="row">
+        <label>
+          Name
+          <input value={name} onChange={(event) => setName(event.target.value)} maxLength={100} />
+        </label>
+        <label>
+          Phone
+          <input
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            inputMode="tel"
+            maxLength={40}
+          />
+        </label>
+        <label>
+          Date of birth
+          <input
+            type="date"
+            value={birth}
+            onChange={(event) => setBirth(event.target.value)}
+            min="1900-01-01"
+          />
+        </label>
+        <button type="submit" className="primary" disabled={!dirty || update.isPending}>
+          Save changes
+        </button>
+      </div>
+      {duplicates ? (
+        <Banner kind="warn">
+          Another patient has this name and date of birth (
+          {duplicates.map((match) => `#${match.patient_id}`).join(", ")}). If this is a different
+          person,{" "}
+          <button
+            type="button"
+            className="link"
+            onClick={() =>
+              update.mutate({ id: patient.id, changes: { ...changes, allow_duplicate: true } })
+            }
+          >
+            save anyway
+          </button>
+          .
+        </Banner>
+      ) : (
+        update.error && <ErrorBanner error={update.error} />
+      )}
+      {update.isSuccess && !dirty && <Banner kind="success">Saved.</Banner>}
+    </form>
   );
 }

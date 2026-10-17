@@ -43,6 +43,7 @@ interface RequestOptions {
   body?: unknown;
   query?: Query;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 }
 
 function buildUrl(path: string, query?: Query): string {
@@ -58,9 +59,9 @@ function buildUrl(path: string, query?: Query): string {
 export async function request<T>(
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
-  { body, query, signal }: RequestOptions = {},
+  { body, query, signal, headers: extra }: RequestOptions = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: "application/json", ...extra };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (testClock) headers["X-Test-Clock"] = testClock;
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import {
   useAppointment,
@@ -8,6 +8,7 @@ import {
   usePatient,
   useReschedule,
   useSlots,
+  useTriage,
 } from "../api/hooks";
 import { Banner, ErrorBanner, Skeleton } from "../components/common";
 import { DepositCheckbox } from "../components/DepositNotice";
@@ -15,6 +16,7 @@ import { PatientPicker } from "../components/PatientPicker";
 import { JoinWaitlist } from "../components/Waitlist";
 import { REASON_TEXT } from "../lib/errors";
 import { formatDayIST, formatIST, formatTimeIST, istDate } from "../lib/formatIST";
+import { useDebounced } from "../lib/useDebounced";
 import { useToday } from "../lib/useToday";
 
 /**
@@ -56,6 +58,10 @@ export default function Book() {
   const book = useBook();
   const reschedule = useReschedule();
   const series = useBookSeries();
+  const triage = useTriage(useDebounced(reason));
+  // One key per distinct booking attempt: pressing the button again after a lost answer sends the
+  // same key, so the server returns the first appointment instead of booking twice.
+  const attempt = useRef<{ signature: string; key: string } | null>(null);
 
   const offered = slots.data?.slots ?? [];
   const start =
@@ -97,12 +103,17 @@ export default function Book() {
         count,
       });
     } else {
+      const signature = JSON.stringify([doctorId, patientId, start, reason, depositAcknowledged]);
+      if (attempt.current?.signature !== signature) {
+        attempt.current = { signature, key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}` };
+      }
       book.mutate({
         doctor_id: doctorId,
         patient_id: patientId,
         start_at: start,
         reason,
         deposit_confirmed: depositRequired && depositAcknowledged,
+        idempotencyKey: attempt.current.key,
       });
     }
   };
@@ -230,6 +241,7 @@ export default function Book() {
                 maxLength={500}
               />
             </label>
+            {triage.data?.urgent && <Banner kind="error">{triage.data.message}</Banner>}
             <label className="check">
               <input
                 type="checkbox"
