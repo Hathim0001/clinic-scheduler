@@ -16,6 +16,7 @@ from app.domain.availability import needs_attention
 from app.domain.model import CancelledBy, Status
 from app.domain.timeutil import ist_date
 from app.domain.transitions import allowed_actions
+from app.domain.triage import looks_urgent
 from app.persistence import repositories as repo
 from app.services.views import AppointmentView
 
@@ -57,7 +58,11 @@ def build_views(
                 status_changed_at=appt.status_changed_at,
                 rescheduled_to_id=appt.rescheduled_to_id,
                 needs_attention=needs_attention(repo.appointment_facts(appt), now, windows),
-                allowed_actions=tuple(allowed_actions(status, appt.start_at, now)),
+                allowed_actions=tuple(
+                    allowed_actions(status, appt.start_at, now, appt.checked_in_at is not None)
+                ),
+                checked_in_at=appt.checked_in_at,
+                urgent_symptoms=looks_urgent(appt.reason),
             )
         )
     return views

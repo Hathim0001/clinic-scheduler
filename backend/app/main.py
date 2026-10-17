@@ -25,6 +25,7 @@ from app.api.routers import (
     health,
     patients,
     queue,
+    reports,
     waitlist,
 )
 from app.core.config import Settings, get_settings
@@ -73,6 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         appointments.router,
         queue.router,
         waitlist.router,
+        reports.router,
     ):
         app.include_router(router, prefix=API_PREFIX)
 
@@ -84,8 +86,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "X-Test-Clock", "X-Request-ID"],
-        expose_headers=["X-Request-ID", "X-Effective-Now", "Retry-After"],
+        allow_headers=["Content-Type", "X-Test-Clock", "X-Request-ID", "Idempotency-Key"],
+        expose_headers=["X-Request-ID", "X-Effective-Now", "Retry-After", "Idempotent-Replay"],
         allow_credentials=False,
         max_age=600,
     )

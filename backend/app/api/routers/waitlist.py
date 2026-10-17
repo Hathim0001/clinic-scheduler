@@ -59,8 +59,8 @@ def patient_waitlist(
     response_model=WaitlistOut,
     summary="Leave the waitlist",
 )
-def leave_waitlist(entry_id: EntityPath, services: ServicesDep) -> WaitlistOut:
-    return waitlist_out(services.waitlist.leave(entry_id))
+def leave_waitlist(entry_id: EntityPath, services: ServicesDep, now: NowDep) -> WaitlistOut:
+    return waitlist_out(services.waitlist.leave(entry_id, now))
 
 
 @router.post(
@@ -76,3 +76,12 @@ def accept_offer(
     return WaitlistAcceptOut(
         entry=waitlist_out(result.entry), appointment=appointment_out(result.appointment)
     )
+
+
+@router.post(
+    "/waitlist/{entry_id}/decline",
+    response_model=WaitlistOut,
+    summary="Say no to an offer but keep the place in the queue; the slot goes to the next patient",
+)
+def decline_offer(entry_id: EntityPath, services: ServicesDep, now: NowDep) -> WaitlistOut:
+    return waitlist_out(services.waitlist.decline(entry_id, now))

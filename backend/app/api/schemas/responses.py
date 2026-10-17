@@ -23,6 +23,7 @@ class DoctorOut(BaseModel):
     speciality: str
     slot_length_min: int
     daily_cap: int
+    accepting_bookings: bool
 
 
 class StrikeOut(BaseModel):
@@ -72,6 +73,9 @@ class AppointmentOut(BaseModel):
     rescheduled_to_id: int | None
     needs_attention: bool
     allowed_actions: list[str]
+    checked_in_at_utc: str | None
+    checked_in_at_ist: str | None
+    urgent_symptoms: bool  # the reason mentions symptoms that may need emergency care
 
 
 class PageOut[T](BaseModel):
@@ -174,3 +178,48 @@ class ClockOut(BaseModel):
 
 class HealthOut(BaseModel):
     status: str
+
+
+class EventOut(BaseModel):
+    id: int
+    appointment_id: int
+    patient_id: int
+    kind: str
+    at_utc: str
+    at_ist: str
+    detail: dict[str, object]
+
+
+class PatientExportOut(BaseModel):
+    patient: PatientOut
+    appointments: list[AppointmentOut]
+    events: list[EventOut]
+
+
+class TriageOut(BaseModel):
+    urgent: bool
+    message: str | None
+
+
+class DoctorReportOut(BaseModel):
+    doctor_id: int
+    doctor_name: str
+    capacity_slots: int
+    appointments: int
+    new_bookings: int
+    booked: int
+    completed: int
+    no_show: int
+    cancelled: int
+    late_cancelled: int
+    rescheduled: int
+    checked_in: int
+    utilisation: float | None
+    no_show_rate: float | None
+
+
+class ReportOut(BaseModel):
+    start: str
+    end: str
+    doctors: list[DoctorReportOut]
+    total: DoctorReportOut

@@ -1,5 +1,8 @@
 """Doctors: create, list, and change a doctor's details.
 
+A doctor can stop taking new bookings (leave, suspension, a closed list) without touching the
+appointments already made: those stay as they are and can still be cancelled or marked.
+
 Changing the slot length is the one risky edit. Existing appointments and availability windows were
 built on the old grid, so the change is refused while future bookings exist or while a window edge
 would fall off the new grid (A-06). Lowering the daily cap never cancels anything (A-24): it only
@@ -26,7 +29,12 @@ MAX_DAILY_CAP = 96  # 24 hours of 15-minute slots: more could never be booked
 
 def _view(doctor: Doctor) -> DoctorView:
     return DoctorView(
-        doctor.id, doctor.name, doctor.speciality, doctor.slot_length_min, doctor.daily_cap
+        doctor.id,
+        doctor.name,
+        doctor.speciality,
+        doctor.slot_length_min,
+        doctor.daily_cap,
+        doctor.accepting_bookings,
     )
 
 
@@ -113,6 +121,7 @@ class DoctorService:
         speciality: str | None = None,
         daily_cap: int | None = None,
         slot_length_min: int | None = None,
+        accepting_bookings: bool | None = None,
     ) -> DoctorView:
         """Change the given fields; None leaves a field as it is."""
 
@@ -124,6 +133,8 @@ class DoctorService:
                 doctor.speciality = _check_text(speciality, "speciality")
             if daily_cap is not None:
                 doctor.daily_cap = _check_cap(daily_cap)
+            if accepting_bookings is not None:
+                doctor.accepting_bookings = accepting_bookings
             if slot_length_min is not None and slot_length_min != doctor.slot_length_min:
                 _check_slot_length(slot_length_min)
                 _require_slot_length_change_is_safe(session, doctor, slot_length_min, now)

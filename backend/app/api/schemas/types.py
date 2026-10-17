@@ -82,6 +82,7 @@ def _text(minimum: int, maximum: int) -> WithJsonSchema:
 PersonName = Annotated[str, BeforeValidator(clean_text(1, 100)), _text(1, 100)]
 Reason = Annotated[str, BeforeValidator(clean_text(1, 500, multiline=True)), _text(1, 500)]
 Note = Annotated[str, BeforeValidator(clean_text(0, 200, multiline=True)), _text(0, 200)]
+CorrectionNote = Annotated[str, BeforeValidator(clean_text(1, 200, multiline=True)), _text(1, 200)]
 PhoneText = Annotated[
     str,
     Field(strict=True, max_length=40),

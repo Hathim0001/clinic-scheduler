@@ -32,6 +32,7 @@ class UnavailableReason(StrEnum):
     FULLY_BOOKED = "FULLY_BOOKED"
     DATE_IN_PAST = "DATE_IN_PAST"
     DATE_TOO_FAR = "DATE_TOO_FAR"
+    NOT_ACCEPTING = "NOT_ACCEPTING"  # the doctor is not taking new bookings
 
 
 # Statuses that occupy a slot and count toward a doctor's daily cap. A cancelled or late-cancelled
@@ -63,6 +64,7 @@ class DoctorFacts:
     name: str
     slot_length_min: int
     daily_cap: int
+    accepting_bookings: bool = True
 
 
 @dataclass(frozen=True, slots=True)

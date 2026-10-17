@@ -23,7 +23,11 @@ TERMINAL = [Status.COMPLETED, Status.CANCELLED, Status.LATE_CANCELLED, Status.NO
 def test_a_booked_appointment_can_be_cancelled_or_rescheduled_before_it_starts() -> None:
     """T-M03, first half."""
     one_minute_before = START - timedelta(minutes=1)
-    assert allowed_actions(Status.BOOKED, START, one_minute_before) == ["cancel", "reschedule"]
+    assert allowed_actions(Status.BOOKED, START, one_minute_before) == [
+        "check-in",
+        "cancel",
+        "reschedule",
+    ]
     assert allowed_actions(Status.BOOKED, START, START - timedelta(days=30)) == [
         "cancel",
         "reschedule",
@@ -32,7 +36,12 @@ def test_a_booked_appointment_can_be_cancelled_or_rescheduled_before_it_starts()
 
 def test_a_booked_appointment_can_be_marked_from_its_start_on() -> None:
     """T-M03, second half: complete and no-show appear at the start, never before (A-18)."""
-    assert allowed_actions(Status.BOOKED, START, START) == ["complete", "no-show", "cancel"]
+    assert allowed_actions(Status.BOOKED, START, START) == [
+        "check-in",
+        "complete",
+        "no-show",
+        "cancel",
+    ]
     assert allowed_actions(Status.BOOKED, START, START + timedelta(days=3)) == [
         "complete",
         "no-show",
@@ -46,9 +55,18 @@ def test_a_booked_appointment_can_be_marked_from_its_start_on() -> None:
     [timedelta(days=-1), timedelta(0), timedelta(days=1)],
     ids=["a day before", "at the start", "a day after"],
 )
-def test_a_finished_appointment_offers_no_actions(status: Status, offset: timedelta) -> None:
-    """A-19: the four other statuses are terminal."""
-    assert allowed_actions(status, START, START + offset) == []
+def test_a_finished_appointment_offers_only_a_correction(status: Status, offset: timedelta) -> None:
+    """A-19, A-48: a final status cannot change, except a recorded outcome can be corrected."""
+    expected = [] if status is Status.CANCELLED else ["correct"]
+    assert allowed_actions(status, START, START + offset) == expected
+
+
+def test_a_checked_in_patient_is_not_offered_check_in_again() -> None:
+    assert allowed_actions(Status.BOOKED, START, START, checked_in=True) == [
+        "complete",
+        "no-show",
+        "cancel",
+    ]
 
 
 def test_a_booked_appointment_can_be_cancelled() -> None:

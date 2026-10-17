@@ -63,6 +63,7 @@ _STATE_OF_VIOLATION = {
     ErrorCode.BOOKING_IN_PAST: SlotState.PAST,
     ErrorCode.DAILY_CAP_REACHED: SlotState.CAPPED,
     ErrorCode.BOOKING_TOO_FAR: SlotState.CLOSED,
+    ErrorCode.DOCTOR_NOT_ACCEPTING: SlotState.CLOSED,
     ErrorCode.PATIENT_OVERLAP: SlotState.BUSY,
 }
 

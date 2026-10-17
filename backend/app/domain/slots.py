@@ -43,13 +43,15 @@ def first_violation(start_at: datetime, ctx: SlotContext) -> ErrorCode | None:
     """The first rule the slot breaks, or None when it is bookable (before the deposit check).
 
     Checked in a fixed order, cheapest and most basic first:
-    BOOKING_IN_PAST / BOOKING_TOO_FAR, OFF_GRID, OUTSIDE_AVAILABILITY, DAILY_CAP_REACHED,
-    SLOT_TAKEN, PATIENT_OVERLAP. The cap comes before the overlap checks because a full day makes
-    every slot unavailable and "fully booked" is the most useful message.
+    DOCTOR_NOT_ACCEPTING, BOOKING_IN_PAST / BOOKING_TOO_FAR, OFF_GRID, OUTSIDE_AVAILABILITY,
+    DAILY_CAP_REACHED, SLOT_TAKEN, PATIENT_OVERLAP. The cap comes before the overlap checks because
+    a full day makes every slot unavailable and "fully booked" is the most useful message.
     """
     length = ctx.doctor.slot_length_min
     end_at = start_at + timedelta(minutes=length)
 
+    if not ctx.doctor.accepting_bookings:
+        return ErrorCode.DOCTOR_NOT_ACCEPTING
     window_problem = check_booking_window(start_at, ctx.now)
     if window_problem is not None:
         return window_problem
@@ -131,6 +133,8 @@ def unavailable_reason(violations: Sequence[ErrorCode | None]) -> UnavailableRea
         return None
     if not violations:
         return UnavailableReason.NO_AVAILABILITY
+    if all(violation is ErrorCode.DOCTOR_NOT_ACCEPTING for violation in violations):
+        return UnavailableReason.NOT_ACCEPTING
     if all(violation is ErrorCode.BOOKING_IN_PAST for violation in violations):
         return UnavailableReason.DATE_IN_PAST
     if all(violation is ErrorCode.BOOKING_TOO_FAR for violation in violations):

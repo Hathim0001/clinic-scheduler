@@ -32,8 +32,16 @@ def hm(text: str) -> int:
     return int(hours) * 60 + int(minutes)
 
 
-def doctor_facts(*, doctor_id: int = 1, slot: int = 30, cap: int = 10) -> DoctorFacts:
-    return DoctorFacts(id=doctor_id, name="Dr. Test", slot_length_min=slot, daily_cap=cap)
+def doctor_facts(
+    *, doctor_id: int = 1, slot: int = 30, cap: int = 10, accepting: bool = True
+) -> DoctorFacts:
+    return DoctorFacts(
+        id=doctor_id,
+        name="Dr. Test",
+        slot_length_min=slot,
+        daily_cap=cap,
+        accepting_bookings=accepting,
+    )
 
 
 def appt_facts(

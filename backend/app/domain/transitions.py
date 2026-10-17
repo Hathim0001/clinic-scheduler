@@ -1,7 +1,9 @@
 """Which status changes are allowed, and which buttons the UI may offer.
 
 Only a BOOKED appointment can change. Before its start it can be cancelled or rescheduled; from its
-start on it can be marked completed or no-show. The four other statuses are terminal (A-19).
+start on it can be marked completed or no-show. The four other statuses are final, except that a
+wrongly recorded outcome can be corrected (A-19, A-48): a no-show and a completion swap, and a late
+cancellation can be waived to an ordinary one. Reception can check a booked patient in on the day.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from datetime import datetime
 
 from app.domain.errors import ConflictError, ErrorCode
 from app.domain.model import Status
+from app.domain.timeutil import ist_date
 
 _SO_FAR = {
     Status.COMPLETED: "completed",
@@ -19,11 +22,28 @@ _SO_FAR = {
 }
 
 
-def allowed_actions(status: Status, start_at: datetime, now: datetime) -> list[str]:
-    """cancel and reschedule before the start; from it complete, no-show and (late) cancel."""
+# Outcome corrections: what a final status may be changed to.
+CORRECTIONS: dict[Status, frozenset[Status]] = {
+    Status.COMPLETED: frozenset({Status.NO_SHOW}),
+    Status.NO_SHOW: frozenset({Status.COMPLETED}),
+    Status.LATE_CANCELLED: frozenset({Status.CANCELLED}),
+}
+
+
+def allowed_actions(
+    status: Status, start_at: datetime, now: datetime, checked_in: bool = False
+) -> list[str]:
+    """cancel and reschedule before the start; from it complete, no-show and (late) cancel.
+
+    A booked patient can also be checked in on the day, once. A final status offers `correct` when
+    a correction exists for it.
+    """
     if status is not Status.BOOKED:
-        return []
-    return ["cancel", "reschedule"] if now < start_at else ["complete", "no-show", "cancel"]
+        return ["correct"] if status in CORRECTIONS else []
+    actions = ["cancel", "reschedule"] if now < start_at else ["complete", "no-show", "cancel"]
+    if not checked_in and ist_date(now) == ist_date(start_at):
+        actions.insert(0, "check-in")
+    return actions
 
 
 def _require_booked(status: Status) -> None:
@@ -47,4 +67,28 @@ def check_can_mark(status: Status, start_at: datetime, now: datetime) -> None:
         raise ConflictError(
             ErrorCode.TOO_EARLY_TO_MARK,
             "An appointment can only be marked completed or no-show once it has started.",
+        )
+
+
+def check_can_check_in(status: Status, start_at: datetime, now: datetime) -> None:
+    """Raise unless the appointment is BOOKED and today (India date) is the day of the visit."""
+    _require_booked(status)
+    if ist_date(now) != ist_date(start_at):
+        raise ConflictError(
+            ErrorCode.TOO_EARLY_TO_MARK,
+            "Check-in opens on the day of the appointment.",
+        )
+
+
+def check_correction(current: Status, target: Status) -> None:
+    """Raise INVALID_CORRECTION unless `current` may be corrected to `target`."""
+    if target not in CORRECTIONS.get(current, frozenset()):
+        allowed = sorted(s.value for s in CORRECTIONS.get(current, frozenset()))
+        raise ConflictError(
+            ErrorCode.INVALID_CORRECTION,
+            f"A {current.value} appointment cannot be corrected to {target.value}."
+            + (f" It can be corrected to {', '.join(allowed)}." if allowed else ""),
+            status=current.value,
+            target=target.value,
+            allowed=allowed,
         )

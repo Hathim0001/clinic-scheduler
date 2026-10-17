@@ -32,8 +32,8 @@ from app.persistence.models import (
 MON, TUE, WED, FRI, SAT = 0, 1, 2, 4, 5
 
 DATA_TABLES = (
-    "waitlist_entries, appointments, override_windows, availability_overrides, weekly_windows, "
-    "patients, doctors, app_meta"
+    "idempotency_keys, appointment_events, waitlist_entries, appointments, override_windows, "
+    "availability_overrides, weekly_windows, patients, doctors, app_meta"
 )
 
 # (name, date of birth). Patient n has id n and phone +9190000000nn on a fresh database.

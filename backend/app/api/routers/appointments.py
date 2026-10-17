@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Header, Query, Request, Response
 
 from app.api.deps import NowDep, ServicesDep
 from app.api.ics import calendar_text
@@ -18,16 +18,18 @@ from app.api.params import (
     OptionalDayQuery,
     OptionalId,
 )
-from app.api.presenters import appointment_out, deposit_out
+from app.api.presenters import appointment_out, deposit_out, event_out
 from app.api.schemas.requests import (
     BookRequest,
     CancelRequest,
+    CorrectRequest,
     RecurringBookRequest,
     RescheduleRequest,
 )
 from app.api.schemas.responses import (
     AppointmentOut,
     CancelOut,
+    EventOut,
     PageOut,
     RescheduleOut,
     SeriesOut,
@@ -80,19 +82,43 @@ def list_appointments(
         422: {"description": "The slot or the request breaks a rule (see the error code)"},
     },
 )
-def book(request: Request, body: BookRequest, services: ServicesDep, now: NowDep) -> AppointmentOut:
+def book(
+    request: Request,
+    response: Response,
+    body: BookRequest,
+    services: ServicesDep,
+    now: NowDep,
+    idempotency_key: Annotated[
+        str | None,
+        Header(
+            min_length=1,
+            max_length=100,
+            description=(
+                "Optional. Send the same key when retrying a booking whose answer was lost: the "
+                "retry returns the original appointment (200, Idempotent-Replay: true) instead of "
+                "booking twice. Reusing a key for a different request is a 409."
+            ),
+        ),
+    ] = None,
+) -> AppointmentOut:
     """The server computes the end time from the doctor's slot length; `end_at` is not accepted."""
     request.state.log_fields.update(doctor_id=body.doctor_id, patient_id=body.patient_id)
-    view = services.booking.book(
-        BookCommand(
-            doctor_id=body.doctor_id,
-            patient_id=body.patient_id,
-            start_at=body.start_at,
-            reason=body.reason,
-            deposit_confirmed=body.deposit_confirmed,
-        ),
-        now,
+    command = BookCommand(
+        doctor_id=body.doctor_id,
+        patient_id=body.patient_id,
+        start_at=body.start_at,
+        reason=body.reason,
+        deposit_confirmed=body.deposit_confirmed,
     )
+    if idempotency_key is not None:
+        view, replayed = services.booking.book_idempotent(command, idempotency_key, now)
+        if replayed:
+            response.status_code = 200
+            response.headers["Idempotent-Replay"] = "true"
+            log.info("appointment.replayed", appointment_id=view.id)
+            return appointment_out(view)
+    else:
+        view = services.booking.book(command, now)
     log.info(
         "appointment.booked",
         appointment_id=view.id,
@@ -228,3 +254,46 @@ def no_show(
     view = services.booking.no_show(appointment_id, now)
     log.info("appointment.no_show", appointment_id=appointment_id)
     return appointment_out(view)
+
+
+@router.post(
+    "/{appointment_id}/check-in",
+    response_model=AppointmentOut,
+    summary="Record the patient arriving (on the day of the visit; repeating it is harmless)",
+)
+def check_in(
+    request: Request, appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+) -> AppointmentOut:
+    request.state.log_fields.update(appointment_id=appointment_id)
+    view = services.booking.check_in(appointment_id, now)
+    log.info("appointment.checked_in", appointment_id=appointment_id)
+    return appointment_out(view)
+
+
+@router.post(
+    "/{appointment_id}/correct",
+    response_model=AppointmentOut,
+    summary="Correct a wrongly recorded outcome (completed and no-show swap; late cancel waived)",
+    responses={409: {"description": "INVALID_CORRECTION"}},
+)
+def correct(
+    request: Request,
+    appointment_id: AppointmentId,
+    body: CorrectRequest,
+    services: ServicesDep,
+    now: NowDep,
+) -> AppointmentOut:
+    """The original outcome and the note stay in `GET /appointments/{id}/history`."""
+    request.state.log_fields.update(appointment_id=appointment_id)
+    view = services.booking.correct(appointment_id, Status(body.status), body.note, now)
+    log.info("appointment.corrected", appointment_id=appointment_id, status=body.status)
+    return appointment_out(view)
+
+
+@router.get(
+    "/{appointment_id}/history",
+    response_model=list[EventOut],
+    summary="Everything that happened to an appointment, oldest first",
+)
+def history(appointment_id: AppointmentId, services: ServicesDep) -> list[EventOut]:
+    return [event_out(e) for e in services.records.history(appointment_id)]

@@ -35,6 +35,12 @@ def violation_error(
     doctor = ctx.doctor
     when = ist_text(start_at)
     match code:
+        case ErrorCode.DOCTOR_NOT_ACCEPTING:
+            return domain_error(
+                code,
+                f"{doctor.name} is not taking new bookings at the moment. Existing appointments "
+                "are unaffected.",
+            )
         case ErrorCode.BOOKING_IN_PAST:
             return domain_error(code, f"{when} has already passed.")
         case ErrorCode.BOOKING_TOO_FAR:

@@ -59,7 +59,7 @@ def test_unknown_doctors_patients_and_entries_are_not_found(clinic: Clinic) -> N
     with pytest.raises(NotFoundError):
         clinic.waitlist.join(clinic.rao, 999, MONDAY, NOW)
     with pytest.raises(NotFoundError) as raised:
-        clinic.waitlist.leave(999)
+        clinic.waitlist.leave(999, NOW)
     assert raised.value.code is ErrorCode.WAITLIST_ENTRY_NOT_FOUND
     with pytest.raises(NotFoundError):
         clinic.waitlist.for_doctor_day(999, MONDAY, NOW)
@@ -173,9 +173,9 @@ def test_a_flagged_patient_must_confirm_the_deposit_and_keeps_the_offer(clinic: 
 
 def test_leaving_removes_the_entry_and_a_second_leave_is_refused(clinic: Clinic) -> None:
     entry = clinic.waitlist.join(clinic.rao, clinic.asha, MONDAY, NOW)
-    assert clinic.waitlist.leave(entry.id).status == "CANCELLED"
+    assert clinic.waitlist.leave(entry.id, NOW).status == "CANCELLED"
     with pytest.raises(ConflictError):
-        clinic.waitlist.leave(entry.id)
+        clinic.waitlist.leave(entry.id, NOW)
     clinic.waitlist.join(clinic.rao, clinic.asha, MONDAY, NOW)  # can join again
 
 

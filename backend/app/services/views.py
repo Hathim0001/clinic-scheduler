@@ -47,6 +47,8 @@ class AppointmentView:
     rescheduled_to_id: int | None
     needs_attention: bool
     allowed_actions: tuple[str, ...]
+    checked_in_at: datetime | None = None
+    urgent_symptoms: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +58,16 @@ class BookCommand:
     start_at: datetime
     reason: str
     deposit_confirmed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class EventView:
+    id: int
+    appointment_id: int
+    patient_id: int
+    kind: str
+    at: datetime
+    detail: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +90,7 @@ class DoctorView:
     speciality: str
     slot_length_min: int
     daily_cap: int
+    accepting_bookings: bool = True
 
 
 @dataclass(frozen=True, slots=True)

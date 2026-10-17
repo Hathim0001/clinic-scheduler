@@ -30,6 +30,7 @@ def test_a_doctor_is_created_read_and_changed(api: Api) -> None:
         "speciality": "ENT",
         "slot_length_min": 15,
         "daily_cap": 12,
+        "accepting_bookings": True,
     }
     assert api.get("/doctors/3").json() == doctor
     changed = api.patch("/doctors/3", {"daily_cap": 8, "name": "Dr. R. Iyer"}).json()

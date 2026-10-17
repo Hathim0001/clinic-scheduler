@@ -27,7 +27,7 @@ def test_the_app_answers_and_books_an_appointment(api: Api) -> None:
     data = created.json()
     assert data["start_at_utc"] == "2026-11-02T04:30:00Z"
     assert data["end_at_ist"] == "2026-11-02T10:30:00+05:30"
-    assert data["allowed_actions"] == ["cancel", "reschedule"]
+    assert data["allowed_actions"] == ["check-in", "cancel", "reschedule"]
     assert created.headers["x-effective-now"] == "2026-11-02T02:30:00Z"
     assert created.headers["x-request-id"]
 

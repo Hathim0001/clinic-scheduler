@@ -49,7 +49,7 @@ def test_a_booking_returns_201_with_both_time_zones_and_the_allowed_actions(api:
         "2026-11-02T10:30:00+05:30",
     )
     assert (body["doctor_name"], body["patient_name"]) == ("Dr. Rao", "Asha Iyer")
-    assert body["allowed_actions"] == ["cancel", "reschedule"]
+    assert body["allowed_actions"] == ["check-in", "cancel", "reschedule"]
     assert body["needs_attention"] is False
     assert body["cancelled_at_utc"] is None
     assert response.headers["x-effective-now"] == "2026-11-02T02:30:00Z"
@@ -252,7 +252,7 @@ def test_marking_follows_the_clock(api: Api) -> None:
     )
     done = api.post(f"/appointments/{appointment_id}/complete", now=at(12))
     assert done.status_code == 200
-    assert (done.json()["status"], done.json()["allowed_actions"]) == ("COMPLETED", [])
+    assert (done.json()["status"], done.json()["allowed_actions"]) == ("COMPLETED", ["correct"])
     assert_error(
         api.post(f"/appointments/{appointment_id}/no-show", now=at(12, 5)),
         409,
@@ -264,7 +264,7 @@ def test_a_no_show_is_marked_and_counts_as_a_strike_from_the_start_time(api: Api
     appointment_id = seed(api, at(9))
     marked = api.post(f"/appointments/{appointment_id}/no-show", now=at(9, 20))
     assert marked.status_code == 200
-    assert (marked.json()["status"], marked.json()["allowed_actions"]) == ("NO_SHOW", [])
+    assert (marked.json()["status"], marked.json()["allowed_actions"]) == ("NO_SHOW", ["correct"])
     patient = api.get(f"/patients/{api.clinic.asha}", now=at(9, 30)).json()
     assert [r["type"] for r in patient["deposit"]["reasons"]] == ["NO_SHOW"]
     assert patient["deposit"]["reasons"][0]["at_ist"] == "2026-11-02T09:00:00+05:30"
@@ -274,8 +274,8 @@ def test_the_allowed_actions_change_when_the_appointment_starts(api: Api) -> Non
     appointment_id = seed(api, at(12))
     before = api.get(f"/appointments/{appointment_id}", now=at(11, 59)).json()
     after = api.get(f"/appointments/{appointment_id}", now=at(12)).json()
-    assert before["allowed_actions"] == ["cancel", "reschedule"]
-    assert after["allowed_actions"] == ["complete", "no-show", "cancel"]
+    assert before["allowed_actions"] == ["check-in", "cancel", "reschedule"]
+    assert after["allowed_actions"] == ["check-in", "complete", "no-show", "cancel"]
 
 
 # -------------------------------------------------------------------------------- rescheduling

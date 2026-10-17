@@ -71,7 +71,7 @@ def test_a_booking_gets_its_end_from_the_doctors_slot_length(clinic: Clinic) -> 
     view = book(clinic, at(10))
     assert view.status is Status.BOOKED
     assert (view.start_at, view.end_at) == (at(10), at(10, 30))
-    assert view.allowed_actions == ("cancel", "reschedule")
+    assert view.allowed_actions == ("check-in", "cancel", "reschedule")
     assert view.needs_attention is False
     assert (view.doctor_name, view.patient_name) == ("Dr. Rao", "Asha Iyer")
     assert (view.deposit_required_at_booking, view.deposit_confirmed) == (False, False)
@@ -256,7 +256,8 @@ def test_cancelling_around_the_two_hour_line(clinic: Clinic, now: datetime, stat
     stored = clinic.appointment(appointment_id)
     assert (stored.cancelled_at, stored.status_changed_at) == (now, now)
     assert stored.cancelled_by == "PATIENT"
-    assert result.appointment.allowed_actions == ()
+    expected = () if status is Status.CANCELLED else ("correct",)
+    assert result.appointment.allowed_actions == expected
 
 
 def test_a_cancelled_slot_can_be_booked_again(clinic: Clinic) -> None:
@@ -325,7 +326,7 @@ def test_completing_and_no_show_at_or_after_the_start(clinic: Clinic) -> None:
     done, missed = seed_booked(clinic, at(10)), seed_booked(clinic, at(10, 30))
     completed = clinic.booking.complete(done, at(10))
     assert completed.status is Status.COMPLETED
-    assert completed.allowed_actions == ()
+    assert completed.allowed_actions == ("correct",)
     assert clinic.appointment(done).status_changed_at == at(10)
     assert clinic.booking.no_show(missed, at(11)).status is Status.NO_SHOW
 

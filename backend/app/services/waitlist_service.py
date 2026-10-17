@@ -28,7 +28,7 @@ from app.services.appointment_views import view_of
 from app.services.booking_service import deposit_of, place_booking
 from app.services.support import run
 from app.services.views import WaitlistAcceptance, WaitlistView
-from app.services.waitlist_offers import ACTIVE, expire_stale_offers
+from app.services.waitlist_offers import ACTIVE, offer_slot, settle_offers
 
 log = structlog.get_logger()
 
@@ -97,7 +97,7 @@ class WaitlistService:
                     ErrorCode.BOOKING_TOO_FAR,
                     f"The waitlist opens only {HORIZON_DAYS} days ahead.",
                 )
-            expire_stale_offers(session, doctor.id, now)
+            settle_offers(session, doctor, now)
             existing = session.scalar(
                 select(WaitlistEntry.id).where(
                     WaitlistEntry.doctor_id == doctor.id,
@@ -125,8 +125,8 @@ class WaitlistService:
         """Everyone still waiting or holding an offer for that doctor and date, oldest first."""
 
         def work(session: Session) -> list[WaitlistView]:
-            repo.get_doctor(session, doctor_id)
-            expire_stale_offers(session, doctor_id, now)
+            doctor = repo.get_doctor(session, doctor_id, lock=True)
+            settle_offers(session, doctor, now)
             entries = list(
                 session.scalars(
                     select(WaitlistEntry)
@@ -152,8 +152,8 @@ class WaitlistService:
                     select(WaitlistEntry.doctor_id).where(WaitlistEntry.patient_id == patient_id)
                 )
             )
-            for doctor_id in doctor_ids:
-                expire_stale_offers(session, doctor_id, now)
+            for doctor in repo.lock_doctors(session, doctor_ids).values():
+                settle_offers(session, doctor, now)
             entries = list(
                 session.scalars(
                     select(WaitlistEntry)
@@ -168,8 +168,12 @@ class WaitlistService:
 
         return run(self._factory, work)
 
-    def leave(self, entry_id: int) -> WaitlistView:
+    def leave(self, entry_id: int, now: datetime) -> WaitlistView:
+        """Leave the queue. Leaving while holding an offer passes the slot to the next patient."""
+
         def work(session: Session) -> WaitlistView:
+            doctor_id = _entry(session, entry_id).doctor_id
+            doctor = repo.get_doctor(session, doctor_id, lock=True)
             entry = _entry(session, entry_id, lock=True)
             if entry.status not in ACTIVE:
                 raise ConflictError(
@@ -177,12 +181,48 @@ class WaitlistService:
                     f"This waitlist entry is already {entry.status.lower()}.",
                     status=entry.status,
                 )
+            held = entry.offered_start_at if entry.status == "OFFERED" else None
             entry.status = "CANCELLED"
             session.flush()
+            if held is not None:
+                offer_slot(session, doctor, held, now)
             return _views(session, [entry])[0]
 
         view = run(self._factory, work)
         log.info("waitlist.left", waitlist_id=entry_id)
+        return view
+
+    def decline(self, entry_id: int, now: datetime) -> WaitlistView:
+        """Say no to an offer but keep the place in the queue; the slot goes to the next patient.
+
+        The same slot is never offered to this patient again, so declining cannot loop.
+        """
+
+        def work(session: Session) -> WaitlistView:
+            doctor_id = _entry(session, entry_id).doctor_id
+            doctor = repo.get_doctor(session, doctor_id, lock=True)
+            entry = _entry(session, entry_id, lock=True)
+            if entry.status != "OFFERED" or entry.offered_start_at is None:
+                raise ConflictError(
+                    ErrorCode.INVALID_TRANSITION,
+                    "There is no open offer to decline.",
+                    status=entry.status,
+                )
+            held = entry.offered_start_at
+            lapsed = entry.offer_expires_at is not None and entry.offer_expires_at < now
+            if lapsed:
+                entry.status = "EXPIRED"
+            else:
+                entry.status = "WAITING"
+                entry.declined_start_at = held
+            entry.offered_start_at = None
+            entry.offer_expires_at = None
+            session.flush()
+            offer_slot(session, doctor, held, now)
+            return _views(session, [entry])[0]
+
+        view = run(self._factory, work)
+        log.info("waitlist.declined", waitlist_id=entry_id)
         return view
 
     def accept(
@@ -202,8 +242,10 @@ class WaitlistService:
                     status=entry.status,
                 )
             if entry.offer_expires_at is not None and entry.offer_expires_at < now:
+                held = entry.offered_start_at
                 entry.status = "EXPIRED"
                 session.flush()
+                offer_slot(session, doctor, held, now)  # the slot goes to the next patient
                 return ConflictError(ErrorCode.OFFER_EXPIRED, "The offer has expired.")
             try:
                 deposit = deposit_of(session, patient.id, now)
@@ -223,6 +265,7 @@ class WaitlistService:
                 # The slot is no longer bookable: the offer is dead and the patient waits again.
                 # The change is committed, so the error is returned and raised after the commit.
                 entry.status = "WAITING"
+                entry.declined_start_at = entry.offered_start_at
                 entry.offered_start_at = None
                 entry.offer_expires_at = None
                 session.flush()

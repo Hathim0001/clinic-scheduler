@@ -6,6 +6,7 @@ that backs a booking rule (see plan section 23).
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -17,6 +18,7 @@ from sqlalchemy import (
     Text,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -49,6 +51,7 @@ class Doctor(Base):
     speciality: Mapped[str] = mapped_column(Text)
     slot_length_min: Mapped[int] = mapped_column(SmallInteger)
     daily_cap: Mapped[int] = mapped_column(SmallInteger)
+    accepting_bookings: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -118,6 +121,7 @@ class Appointment(Base):
     cancelled_by: Mapped[str | None] = mapped_column(Text)
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rescheduled_to_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
+    checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -140,5 +144,32 @@ class WaitlistEntry(Base):
     offered_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     offer_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     appointment_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
+    declined_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
+
+
+class AppointmentEvent(Base):
+    """An append-only record of what happened to an appointment, written in the same transaction as
+    the change itself, so the history cannot disagree with the data (and an event cannot exist for a
+    change that was rolled back)."""
+
+    __tablename__ = "appointment_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    appointment_id: Mapped[int] = mapped_column(ForeignKey("appointments.id"))
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    kind: Mapped[str] = mapped_column(Text)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class IdempotencyKey(Base):
+    """A booking request already carried out, so a retry returns the same appointment."""
+
+    __tablename__ = "idempotency_keys"
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    request_hash: Mapped[str] = mapped_column(Text)
+    appointment_id: Mapped[int] = mapped_column(ForeignKey("appointments.id"))
+    created_at: Mapped[datetime] = _created_at()

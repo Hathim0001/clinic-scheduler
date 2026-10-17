@@ -20,6 +20,8 @@ DATA_TABLES = {
     "appointments",
     "app_meta",
     "waitlist_entries",
+    "appointment_events",
+    "idempotency_keys",
 }
 
 

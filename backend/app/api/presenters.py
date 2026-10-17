@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import datetime, timedelta
 
 from app.api.schemas.responses import (
     AppointmentOut,
     DepositOut,
     DoctorOut,
+    DoctorReportOut,
+    EventOut,
     OverrideOut,
+    PatientExportOut,
     PatientOut,
+    ReportOut,
     ScheduleOut,
     ScheduleSlotOut,
     SlotOut,
@@ -22,9 +27,11 @@ from app.api.schemas.responses import (
 )
 from app.domain.model import DepositStatus, WeeklyWindow, Window
 from app.domain.timeutil import format_minutes, ist_iso, utc_iso
+from app.services.record_service import PatientExport, ReportView
 from app.services.views import (
     AppointmentView,
     DoctorView,
+    EventView,
     OverrideChange,
     OverrideView,
     PatientView,
@@ -62,6 +69,7 @@ def doctor_out(view: DoctorView) -> DoctorOut:
         speciality=view.speciality,
         slot_length_min=view.slot_length_min,
         daily_cap=view.daily_cap,
+        accepting_bookings=view.accepting_bookings,
     )
 
 
@@ -118,6 +126,9 @@ def appointment_out(view: AppointmentView) -> AppointmentOut:
         rescheduled_to_id=view.rescheduled_to_id,
         needs_attention=view.needs_attention,
         allowed_actions=list(view.allowed_actions),
+        checked_in_at_utc=_utc(view.checked_in_at),
+        checked_in_at_ist=_ist(view.checked_in_at),
+        urgent_symptoms=view.urgent_symptoms,
     )
 
 
@@ -196,4 +207,33 @@ def override_out(view: OverrideView | OverrideChange) -> OverrideOut:
         note=view.note,
         windows=[window_out(w) for w in view.windows],
         needs_attention=[appointment_out(a) for a in needs_attention],
+    )
+
+
+def event_out(view: EventView) -> EventOut:
+    return EventOut(
+        id=view.id,
+        appointment_id=view.appointment_id,
+        patient_id=view.patient_id,
+        kind=view.kind,
+        at_utc=utc_iso(view.at),
+        at_ist=ist_iso(view.at),
+        detail=view.detail,
+    )
+
+
+def export_out(export: PatientExport) -> PatientExportOut:
+    return PatientExportOut(
+        patient=patient_out(export.patient),
+        appointments=[appointment_out(a) for a in export.appointments],
+        events=[event_out(e) for e in export.events],
+    )
+
+
+def report_out(report: ReportView) -> ReportOut:
+    return ReportOut(
+        start=report.start.isoformat(),
+        end=report.end.isoformat(),
+        doctors=[DoctorReportOut(**asdict(d)) for d in report.doctors],
+        total=DoctorReportOut(**asdict(report.total)),
     )

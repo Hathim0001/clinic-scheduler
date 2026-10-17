@@ -28,6 +28,11 @@ HTTP_STATUS = {
     "APPOINTMENT_NOT_FOUND": 404,
     "REFERENCE_NOT_FOUND": 404,
     "WAITLIST_ENTRY_NOT_FOUND": 404,
+    "DOCTOR_NOT_ACCEPTING": 409,
+    "POSSIBLE_DUPLICATE": 409,
+    "ALREADY_CHECKED_IN": 409,
+    "IDEMPOTENCY_KEY_REUSED": 409,
+    "INVALID_CORRECTION": 409,
     "BOOKING_IN_PAST": 422,
     "BOOKING_TOO_FAR": 422,
     "OFF_GRID": 422,
@@ -70,7 +75,7 @@ DOMAIN_CODES = [code for code in ErrorCode if code not in EDGE_ONLY]
 
 def test_the_catalogue_holds_exactly_the_31_codes_of_the_catalogue() -> None:
     assert {code.value for code in ErrorCode} == set(HTTP_STATUS)
-    assert len(ErrorCode) == 35
+    assert len(ErrorCode) == 40
 
 
 def test_each_code_is_spelled_like_its_name() -> None:

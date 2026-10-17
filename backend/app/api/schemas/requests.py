@@ -8,6 +8,7 @@ from pydantic import Field, StrictBool, model_validator
 
 from app.api.schemas.types import (
     BirthDate,
+    CorrectionNote,
     DailyCap,
     EntityId,
     Instant,
@@ -37,6 +38,7 @@ class DoctorPatch(StrictModel):
     speciality: PersonName | None = None
     slot_length_min: SlotLength | None = None
     daily_cap: DailyCap | None = None
+    accepting_bookings: StrictBool | None = None
 
     @model_validator(mode="after")
     def _no_nulls(self) -> DoctorPatch:
@@ -70,6 +72,35 @@ class PatientCreate(StrictModel):
     name: PersonName
     phone: PhoneText
     date_of_birth: BirthDate
+    allow_duplicate: StrictBool = False  # register even if the same name and birth date exist
+
+
+class PatientPatch(StrictModel):
+    """Only the fields that are sent change. A field sent as null is refused, not ignored."""
+
+    name: PersonName | None = None
+    phone: PhoneText | None = None
+    date_of_birth: BirthDate | None = None
+    allow_duplicate: StrictBool = False
+
+    @model_validator(mode="after")
+    def _something_to_change(self) -> PatientPatch:
+        sent = self.model_fields_set - {"allow_duplicate"}
+        if not sent:
+            raise ValueError("send at least one of name, phone, date_of_birth")
+        for field in sent:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} must not be null")
+        return self
+
+
+class CorrectRequest(StrictModel):
+    status: Literal["COMPLETED", "NO_SHOW", "CANCELLED"]
+    note: CorrectionNote  # why: kept in the appointment's history
+
+
+class TriageRequest(StrictModel):
+    text: Annotated[str, Field(strict=True, max_length=1000)]
 
 
 class BookRequest(StrictModel):
