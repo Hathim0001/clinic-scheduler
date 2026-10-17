@@ -24,6 +24,16 @@ class CancelledBy(StrEnum):
     CLINIC = "CLINIC"
 
 
+class UnavailableReason(StrEnum):
+    """Why a day offers no free slot, for the sentence the UI shows instead of guessing."""
+
+    NO_AVAILABILITY = "NO_AVAILABILITY"  # leave day, non-working day or windows too short
+    DAILY_CAP_REACHED = "DAILY_CAP_REACHED"
+    FULLY_BOOKED = "FULLY_BOOKED"
+    DATE_IN_PAST = "DATE_IN_PAST"
+    DATE_TOO_FAR = "DATE_TOO_FAR"
+
+
 # Statuses that occupy a slot and count toward a doctor's daily cap. A cancelled or late-cancelled
 # appointment frees its slot (assumption A-16); a no-show still occupied the slot.
 ACTIVE_STATUSES: frozenset[Status] = frozenset({Status.BOOKED, Status.COMPLETED, Status.NO_SHOW})

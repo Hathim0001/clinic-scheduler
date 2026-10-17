@@ -13,7 +13,13 @@ from datetime import date, datetime, timedelta
 from app.domain.availability import fits_in_windows
 from app.domain.booking_window import check_booking_window
 from app.domain.errors import ErrorCode
-from app.domain.model import ACTIVE_STATUSES, SlotContext, Window
+from app.domain.model import (
+    ACTIVE_STATUSES,
+    AppointmentFacts,
+    SlotContext,
+    UnavailableReason,
+    Window,
+)
 from app.domain.timeutil import IST, at_ist, ist_date
 
 
@@ -85,3 +91,50 @@ def free_slots(day: date, ctx: SlotContext) -> list[datetime]:
         for start in candidate_starts(day, ctx.windows, ctx.doctor.slot_length_min)
         if first_violation(start, ctx) is None
     ]
+
+
+def conflicting_appointment(start_at: datetime, ctx: SlotContext) -> AppointmentFacts | None:
+    """The doctor's active appointment that overlaps the slot starting at `start_at`, if any."""
+    end_at = start_at + timedelta(minutes=ctx.doctor.slot_length_min)
+    return next(
+        (
+            a
+            for a in ctx.doctor_appts
+            if a.status in ACTIVE_STATUSES and overlaps(start_at, end_at, a.start_at, a.end_at)
+        ),
+        None,
+    )
+
+
+def overlapping_patient_appointment(
+    start_at: datetime, ctx: SlotContext
+) -> AppointmentFacts | None:
+    """The patient's active appointment (with any doctor) that overlaps the slot, if any."""
+    end_at = start_at + timedelta(minutes=ctx.doctor.slot_length_min)
+    return next(
+        (
+            a
+            for a in ctx.patient_appts
+            if a.status in ACTIVE_STATUSES and overlaps(start_at, end_at, a.start_at, a.end_at)
+        ),
+        None,
+    )
+
+
+def unavailable_reason(violations: Sequence[ErrorCode | None]) -> UnavailableReason | None:
+    """Why a day has no free slot, from the first violation of each of its grid starts.
+
+    None means at least one start is free. Otherwise: no grid starts at all is NO_AVAILABILITY;
+    all in the past or all beyond the horizon name the date; a reached cap beats "fully booked".
+    """
+    if any(violation is None for violation in violations):
+        return None
+    if not violations:
+        return UnavailableReason.NO_AVAILABILITY
+    if all(violation is ErrorCode.BOOKING_IN_PAST for violation in violations):
+        return UnavailableReason.DATE_IN_PAST
+    if all(violation is ErrorCode.BOOKING_TOO_FAR for violation in violations):
+        return UnavailableReason.DATE_TOO_FAR
+    if ErrorCode.DAILY_CAP_REACHED in violations:
+        return UnavailableReason.DAILY_CAP_REACHED
+    return UnavailableReason.FULLY_BOOKED
