@@ -193,10 +193,19 @@ class WindowsLookup:
 
 
 def slot_context(
-    session: Session, doctor: Doctor, patient_id: int | None, day: date, now: datetime
+    session: Session,
+    doctor: Doctor,
+    patient_id: int | None,
+    day: date,
+    now: datetime,
+    windows: tuple[Window, ...] | None = None,
 ) -> SlotContext:
-    """Everything `first_violation` needs to judge slots of `doctor` on the IST date `day`."""
-    windows, _ = effective_windows(session, doctor.id, day)
+    """Everything `first_violation` needs to judge slots of `doctor` on the IST date `day`.
+
+    Pass `windows` when the caller has already resolved them, to skip the lookup.
+    """
+    if windows is None:
+        windows, _ = effective_windows(session, doctor.id, day)
     return SlotContext(
         doctor=doctor_facts(doctor),
         windows=windows,
