@@ -3,8 +3,10 @@ import { Link, useNavigate, useParams } from "react-router";
 import { usePatient, usePatientAppointments } from "../api/hooks";
 import { ActionButtons } from "../components/ActionButtons";
 import { ErrorBanner, Skeleton, StatusBadge } from "../components/common";
+import { CalendarLink } from "../components/CalendarLink";
 import { DepositExplanation } from "../components/DepositNotice";
 import { PatientPicker } from "../components/PatientPicker";
+import { PatientWaitlist } from "../components/Waitlist";
 import { formatDayIST, formatTimeIST } from "../lib/formatIST";
 
 export function PatientSearch() {
@@ -40,6 +42,8 @@ export function PatientDetail() {
           <dd>{p.phone}</dd>
           <dt>Date of birth</dt>
           <dd>{p.date_of_birth}</dd>
+          <dt>Deposit required</dt>
+          <dd>{p.deposit_required === null ? "Unknown" : p.deposit_required ? "Yes" : "No"}</dd>
         </dl>
         <p>
           <Link className="primary" to={`/book?patient=${p.id}`}>
@@ -56,6 +60,8 @@ export function PatientDetail() {
           booking.
         </p>
       </section>
+
+      <PatientWaitlist patientId={p.id} deposit={p.deposit} />
 
       <section aria-label="Appointments">
         <h2>Appointments</h2>
@@ -87,6 +93,7 @@ export function PatientDetail() {
                   </td>
                   <td data-label="Actions">
                     <ActionButtons appointment={a} />
+                    <CalendarLink path={`/appointments/${a.id}/calendar.ics`} label="Calendar" />
                   </td>
                 </tr>
               ))}

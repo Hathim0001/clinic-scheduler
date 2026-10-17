@@ -5,6 +5,9 @@ import type {
   CancelResponse,
   ClockInfo,
   Doctor,
+  SeriesResponse,
+  WaitlistAcceptResponse,
+  WaitlistEntry,
   OverrideResponse,
   Page,
   Patient,
@@ -23,6 +26,18 @@ export interface BookBody {
   start_at: string;
   reason: string;
   deposit_confirmed?: boolean;
+}
+
+export interface NewDoctor {
+  name: string;
+  speciality: string;
+  slot_length_min: number;
+  daily_cap: number;
+}
+
+export interface SeriesBody extends BookBody {
+  every_days: number;
+  count: number;
 }
 
 export interface RescheduleBody {
@@ -49,6 +64,8 @@ export const api = {
   clock: () => request<ClockInfo>("GET", "/clock"),
 
   doctors: () => request<Doctor[]>("GET", "/doctors"),
+  createDoctor: (body: NewDoctor) => request<Doctor>("POST", "/doctors", { body }),
+  deleteDoctor: (id: number) => request<void>("DELETE", `/doctors/${id}`),
   updateDoctor: (id: number, changes: DoctorChanges) =>
     request<Doctor>("PATCH", `/doctors/${id}`, { body: changes }),
 
@@ -59,7 +76,9 @@ export const api = {
       body: { windows, acknowledge_conflicts: acknowledge },
     }),
   overrides: (doctorId: number, from: string, to: string) =>
-    request<OverrideResponse[]>("GET", `/doctors/${doctorId}/overrides`, { query: { from, to } }),
+    request<OverrideResponse[]>("GET", `/doctors/${doctorId}/overrides`, {
+      query: { from, to },
+    }),
   saveOverride: (
     doctorId: number,
     date: string,
@@ -80,14 +99,18 @@ export const api = {
       query: { date, patient_id: patientId },
     }),
   schedule: (doctorId: number, date: string) =>
-    request<ScheduleResponse>("GET", `/doctors/${doctorId}/schedule`, { query: { date } }),
+    request<ScheduleResponse>("GET", `/doctors/${doctorId}/schedule`, {
+      query: { date },
+    }),
 
   searchPatients: (query: { phone?: string; q?: string; limit?: number; offset?: number }) =>
     request<Page<Patient>>("GET", "/patients", { query }),
   patient: (id: number) => request<Patient>("GET", `/patients/${id}`),
   createPatient: (body: NewPatient) => request<Patient>("POST", "/patients", { body }),
   patientAppointments: (id: number, limit = 50) =>
-    request<Page<Appointment>>("GET", `/patients/${id}/appointments`, { query: { limit } }),
+    request<Page<Appointment>>("GET", `/patients/${id}/appointments`, {
+      query: { limit },
+    }),
 
   appointment: (id: number) => request<Appointment>("GET", `/appointments/${id}`),
   appointments: (query: {
@@ -99,14 +122,34 @@ export const api = {
     offset?: number;
   }) => request<Page<Appointment>>("GET", "/appointments", { query }),
   book: (body: BookBody) => request<Appointment>("POST", "/appointments", { body }),
+  bookSeries: (body: SeriesBody) =>
+    request<SeriesResponse>("POST", "/appointments/recurring", { body }),
   cancel: (id: number, cancelledBy: CancelledBy) =>
     request<CancelResponse>("POST", `/appointments/${id}/cancel`, {
       body: { cancelled_by: cancelledBy },
     }),
   reschedule: (id: number, body: RescheduleBody) =>
-    request<RescheduleResponse>("POST", `/appointments/${id}/reschedule`, { body }),
+    request<RescheduleResponse>("POST", `/appointments/${id}/reschedule`, {
+      body,
+    }),
   complete: (id: number) => request<Appointment>("POST", `/appointments/${id}/complete`),
   noShow: (id: number) => request<Appointment>("POST", `/appointments/${id}/no-show`),
+
+  joinWaitlist: (doctorId: number, patientId: number, date: string) =>
+    request<WaitlistEntry>("POST", `/doctors/${doctorId}/waitlist`, {
+      body: { patient_id: patientId, date },
+    }),
+  doctorWaitlist: (doctorId: number, date: string) =>
+    request<WaitlistEntry[]>("GET", `/doctors/${doctorId}/waitlist`, {
+      query: { date },
+    }),
+  patientWaitlist: (patientId: number) =>
+    request<WaitlistEntry[]>("GET", `/patients/${patientId}/waitlist`),
+  leaveWaitlist: (id: number) => request<WaitlistEntry>("DELETE", `/waitlist/${id}`),
+  acceptOffer: (id: number, reason: string, depositConfirmed: boolean) =>
+    request<WaitlistAcceptResponse>("POST", `/waitlist/${id}/accept`, {
+      body: { reason, deposit_confirmed: depositConfirmed },
+    }),
 
   queue: (query: { date?: string; doctor_id?: number; include_cancelled?: boolean }) =>
     request<Appointment[]>("GET", "/queue", { query }),

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { ApiError } from "../api/client";
 import {
+  useCreateDoctor,
+  useDeleteDoctor,
   useDeleteOverride,
   useDoctors,
   useNeedsAttention,
@@ -38,7 +40,10 @@ function useConflictFlow() {
   const [conflict, setConflict] = useState<Conflict | null>(null);
   const intercept = (error: unknown) => {
     if (error instanceof ApiError && error.code === "AVAILABILITY_CONFLICTS") {
-      setConflict({ message: error.message, appointments: conflictedAppointments(error.details) });
+      setConflict({
+        message: error.message,
+        appointments: conflictedAppointments(error.details),
+      });
     }
   };
   return { conflict, intercept, clear: () => setConflict(null) };
@@ -79,10 +84,123 @@ export default function Admin() {
           />
           <WeeklyHours doctor={doctor} />
           <Overrides doctor={doctor} />
+          <RemoveDoctor doctor={doctor} onRemoved={() => setPickedDoctor(null)} />
         </>
       )}
+      <NewDoctor onCreated={setPickedDoctor} />
       <NeedsAttention />
     </div>
+  );
+}
+
+// ------------------------------------------------------------------------ add and remove
+
+function NewDoctor({ onCreated }: { onCreated: (id: number) => void }) {
+  const create = useCreateDoctor();
+  const [name, setName] = useState("");
+  const [speciality, setSpeciality] = useState("");
+  const [cap, setCap] = useState("10");
+  const [slot, setSlot] = useState("30");
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    create.mutate(
+      {
+        name,
+        speciality,
+        daily_cap: Number(cap),
+        slot_length_min: Number(slot),
+      },
+      {
+        onSuccess: (created) => {
+          setName("");
+          setSpeciality("");
+          onCreated(created.id);
+        },
+      },
+    );
+  };
+
+  return (
+    <form className="card" onSubmit={submit} aria-label="Add a doctor">
+      <h2>Add a doctor</h2>
+      <div className="row">
+        <label>
+          New doctor name
+          <input value={name} onChange={(event) => setName(event.target.value)} maxLength={100} />
+        </label>
+        <label>
+          New doctor speciality
+          <input
+            value={speciality}
+            onChange={(event) => setSpeciality(event.target.value)}
+            maxLength={100}
+          />
+        </label>
+        <label>
+          New doctor appointments per day
+          <input
+            type="number"
+            min={1}
+            max={96}
+            value={cap}
+            onChange={(event) => setCap(event.target.value)}
+          />
+        </label>
+        <label>
+          New doctor slot length
+          <select value={slot} onChange={(event) => setSlot(event.target.value)}>
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+          </select>
+        </label>
+        <button
+          type="submit"
+          className="primary"
+          disabled={create.isPending || name.trim() === "" || speciality.trim() === ""}
+        >
+          Add doctor
+        </button>
+      </div>
+      <p className="muted">
+        Set the weekly hours afterwards: a new doctor has no bookable times yet.
+      </p>
+      {create.error && <ErrorBanner error={create.error} />}
+    </form>
+  );
+}
+
+function RemoveDoctor({ doctor, onRemoved }: { doctor: Doctor; onRemoved: () => void }) {
+  const remove = useDeleteDoctor();
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <section className="card" aria-label="Remove doctor">
+      <h2>Remove this doctor</h2>
+      <p className="muted">
+        Only possible while the doctor has no appointments on record, past or future. Their hours
+        and leave are deleted with them.
+      </p>
+      {!confirming ? (
+        <button type="button" onClick={() => setConfirming(true)}>
+          Remove {doctor.name}
+        </button>
+      ) : (
+        <div className="actions">
+          <button
+            type="button"
+            className="danger"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(doctor.id, { onSuccess: onRemoved })}
+          >
+            Yes, remove {doctor.name}
+          </button>
+          <button type="button" onClick={() => setConfirming(false)}>
+            Keep
+          </button>
+        </div>
+      )}
+      {remove.error && <ErrorBanner error={remove.error} />}
+    </section>
   );
 }
 
@@ -231,12 +349,15 @@ function WeeklyEditor({ doctor, initial }: { doctor: Doctor; initial: WeeklyWind
     <section className="card" aria-label="Weekly hours">
       <h2>Weekly hours (IST)</h2>
       <p className="muted">
-        Times are written HH:MM and must fall on the {doctor.slot_length_min}-minute grid.
+        Times are written HH:MM and must fall on the {doctor.slot_length_min}
+        -minute grid.
       </p>
       {WEEKDAYS.map((dayName, weekday) => (
         <fieldset key={dayName}>
           <legend>{dayName}</legend>
-          {rows.every((row) => row.weekday !== weekday) && <span className="muted">Not working</span>}
+          {rows.every((row) => row.weekday !== weekday) && (
+            <span className="muted">Not working</span>
+          )}
           {rows.map((row, index) =>
             row.weekday !== weekday ? null : (
               <WindowFields
@@ -250,14 +371,21 @@ function WeeklyEditor({ doctor, initial }: { doctor: Doctor; initial: WeeklyWind
           )}
           <button
             type="button"
-            onClick={() => setRows((current) => [...current, { weekday, start: "09:00", end: "13:00" }])}
+            onClick={() =>
+              setRows((current) => [...current, { weekday, start: "09:00", end: "13:00" }])
+            }
           >
             Add a window on {dayName}
           </button>
         </fieldset>
       ))}
       <div className="actions">
-        <button type="button" className="primary" disabled={save.isPending} onClick={() => run(false)}>
+        <button
+          type="button"
+          className="primary"
+          disabled={save.isPending}
+          onClick={() => run(false)}
+        >
           Save weekly hours
         </button>
       </div>
@@ -322,21 +450,36 @@ function Overrides({ doctor }: { doctor: Doctor }) {
     <section className="card" aria-label="Date overrides">
       <h2>Leave and special hours</h2>
       <p className="muted">
-        A date override replaces the weekly hours for that one date. Leave means not working. Hours on a
-        day the doctor does not normally work add an extra working day.
+        A date override replaces the weekly hours for that one date. Leave means not working. Hours
+        on a day the doctor does not normally work add an extra working day.
       </p>
       <form onSubmit={submit}>
         <div className="row">
           <label>
             Date
-            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
           </label>
           <label className="check">
-            <input type="radio" name="mode" checked={mode === "leave"} onChange={() => setMode("leave")} />
+            <input
+              type="radio"
+              name="mode"
+              checked={mode === "leave"}
+              onChange={() => setMode("leave")}
+            />
             Leave (not working)
           </label>
           <label className="check">
-            <input type="radio" name="mode" checked={mode === "hours"} onChange={() => setMode("hours")} />
+            <input
+              type="radio"
+              name="mode"
+              checked={mode === "hours"}
+              onChange={() => setMode("hours")}
+            />
             Special hours
           </label>
           <label>
@@ -357,7 +500,10 @@ function Overrides({ doctor }: { doctor: Doctor }) {
                 onRemove={() => setWindows((current) => current.filter((_, i) => i !== index))}
               />
             ))}
-            <button type="button" onClick={() => setWindows((c) => [...c, { start: "09:00", end: "13:00" }])}>
+            <button
+              type="button"
+              onClick={() => setWindows((c) => [...c, { start: "09:00", end: "13:00" }])}
+            >
               Add a window
             </button>
           </div>
@@ -368,7 +514,9 @@ function Overrides({ doctor }: { doctor: Doctor }) {
           </button>
         </div>
       </form>
-      {save.error && !saveFlow.conflict && <ErrorBanner error={save.error} doctorName={doctor.name} />}
+      {save.error && !saveFlow.conflict && (
+        <ErrorBanner error={save.error} doctorName={doctor.name} />
+      )}
       {save.isSuccess && !saveFlow.conflict && <Banner kind="success">Override saved.</Banner>}
       {saveFlow.conflict && (
         <ConflictDialog

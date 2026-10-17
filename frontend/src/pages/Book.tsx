@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import {
   useAppointment,
   useBook,
+  useBookSeries,
   useDoctors,
   usePatient,
   useReschedule,
@@ -11,6 +12,7 @@ import {
 import { Banner, ErrorBanner, Skeleton } from "../components/common";
 import { DepositCheckbox } from "../components/DepositNotice";
 import { PatientPicker } from "../components/PatientPicker";
+import { JoinWaitlist } from "../components/Waitlist";
 import { REASON_TEXT } from "../lib/errors";
 import { formatDayIST, formatIST, formatTimeIST, istDate } from "../lib/formatIST";
 import { useToday } from "../lib/useToday";
@@ -35,6 +37,9 @@ export default function Book() {
   const [pickedStart, setPickedStart] = useState<string | null>(params.get("start"));
   const [reason, setReason] = useState("");
   const [depositAcknowledged, setDepositAcknowledged] = useState(false);
+  const [repeat, setRepeat] = useState(false);
+  const [everyDays, setEveryDays] = useState(7);
+  const [count, setCount] = useState(4);
 
   const doctorId =
     pickedDoctor ??
@@ -50,14 +55,17 @@ export default function Book() {
   const doctor = doctors.data?.find((d) => d.id === doctorId);
   const book = useBook();
   const reschedule = useReschedule();
+  const series = useBookSeries();
 
   const offered = slots.data?.slots ?? [];
-  const start = pickedStart && offered.some((slot) => slot.start_at_ist === pickedStart) ? pickedStart : null;
+  const start =
+    pickedStart && offered.some((slot) => slot.start_at_ist === pickedStart) ? pickedStart : null;
   const deposit = patient.data?.deposit ?? null;
   const depositRequired = deposit?.required === true;
-  const result = book.data ?? reschedule.data?.new ?? null;
-  const error = book.error ?? reschedule.error;
-  const pending = book.isPending || reschedule.isPending;
+  const result = book.data ?? series.data?.appointments[0] ?? reschedule.data?.new ?? null;
+  const seriesLength = series.data?.appointments.length ?? 0;
+  const error = book.error ?? series.error ?? reschedule.error;
+  const pending = book.isPending || series.isPending || reschedule.isPending;
 
   const ready =
     doctorId !== null &&
@@ -78,6 +86,16 @@ export default function Book() {
           ...(depositRequired ? { deposit_confirmed: depositAcknowledged } : {}),
         },
       });
+    } else if (repeat) {
+      series.mutate({
+        doctor_id: doctorId,
+        patient_id: patientId,
+        start_at: start,
+        reason,
+        deposit_confirmed: depositRequired && depositAcknowledged,
+        every_days: everyDays,
+        count,
+      });
     } else {
       book.mutate({
         doctor_id: doctorId,
@@ -95,9 +113,9 @@ export default function Book() {
 
       {rescheduleId && original.data && (
         <Banner kind="info">
-          Moving {original.data.patient_name}&apos;s appointment from {formatIST(original.data.start_at_ist)}{" "}
-          with {original.data.doctor_name}. The current appointment is cancelled and the new one booked
-          together, or neither happens.
+          Moving {original.data.patient_name}&apos;s appointment from{" "}
+          {formatIST(original.data.start_at_ist)} with {original.data.doctor_name}. The current
+          appointment is cancelled and the new one booked together, or neither happens.
         </Banner>
       )}
       {original.error && <ErrorBanner error={original.error} />}
@@ -171,11 +189,14 @@ export default function Book() {
               Try another date or doctor.
             </Banner>
           )}
+          {slots.data && offered.length === 0 && !rescheduleId && doctorId !== null && (
+            <JoinWaitlist doctorId={doctorId} patientId={patientId} date={date} />
+          )}
           {slots.data && offered.length > 0 && (
             <>
               <p className="muted">
-                {formatDayIST(`${slots.data.date}T12:00:00+05:30`)}, {slots.data.slot_length_min}-minute
-                slots. Only bookable times are listed
+                {formatDayIST(`${slots.data.date}T12:00:00+05:30`)}, {slots.data.slot_length_min}
+                -minute slots. Only bookable times are listed
                 {patientId !== null ? " for this patient" : ""}.
               </p>
               <ul className="slot-list">
@@ -209,13 +230,50 @@ export default function Book() {
                 maxLength={500}
               />
             </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={repeat}
+                onChange={(event) => setRepeat(event.target.checked)}
+              />
+              Repeat this appointment
+            </label>
+            {repeat && (
+              <div className="row">
+                <label>
+                  Every (days)
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={everyDays}
+                    onChange={(event) => setEveryDays(Number(event.target.value))}
+                  />
+                </label>
+                <label>
+                  Number of appointments
+                  <input
+                    type="number"
+                    min={2}
+                    max={12}
+                    value={count}
+                    onChange={(event) => setCount(Number(event.target.value))}
+                  />
+                </label>
+                <p className="muted">
+                  Same time of day. Every date must be free, or none of them is booked.
+                </p>
+              </div>
+            )}
           </section>
         )}
 
         {error && <ErrorBanner error={error} doctorName={doctor?.name} />}
         {result && (
           <Banner kind="success">
-            Booked: {result.patient_name} with {result.doctor_name} on {formatIST(result.start_at_ist)}.{" "}
+            Booked: {result.patient_name} with {result.doctor_name} on{" "}
+            {formatIST(result.start_at_ist)}
+            {seriesLength > 1 ? ` and ${seriesLength - 1} more` : ""}.{" "}
             <Link to={`/day?doctor=${result.doctor_id}&date=${istDate(result.start_at_ist)}`}>
               See the day
             </Link>

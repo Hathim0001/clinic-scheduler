@@ -1,12 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./endpoints";
-import type { BookBody, DoctorChanges, NewPatient, RescheduleBody } from "./endpoints";
+import type {
+  BookBody,
+  DoctorChanges,
+  NewDoctor,
+  NewPatient,
+  RescheduleBody,
+  SeriesBody,
+} from "./endpoints";
 import type { CancelledBy, TimeWindow, WeeklyWindow } from "./types";
 
 // Query hooks. The keys start with the resource name so a mutation can refresh what shows it.
 
 export const useClockInfo = () =>
-  useQuery({ queryKey: ["clock"], queryFn: api.clock, refetchInterval: 30_000 });
+  useQuery({
+    queryKey: ["clock"],
+    queryFn: api.clock,
+    refetchInterval: 30_000,
+  });
 
 export const useDoctors = () => useQuery({ queryKey: ["doctors"], queryFn: api.doctors });
 
@@ -86,6 +97,22 @@ export const useOverrides = (doctorId: number | null, from: string, to: string) 
     enabled: doctorId !== null && from !== "" && to !== "",
   });
 
+export const useDoctorWaitlist = (doctorId: number | null, date: string) =>
+  useQuery({
+    queryKey: ["waitlist", "doctor", doctorId, date],
+    queryFn: () => api.doctorWaitlist(doctorId as number, date),
+    enabled: doctorId !== null && date !== "",
+    refetchInterval: 60_000,
+  });
+
+export const usePatientWaitlist = (patientId: number | null) =>
+  useQuery({
+    queryKey: ["waitlist", "patient", patientId],
+    queryFn: () => api.patientWaitlist(patientId as number),
+    enabled: patientId !== null,
+    refetchInterval: 30_000, // offers expire, so keep the countdown honest
+  });
+
 // Mutations. Anything that changes a booking or the hours can change every list on screen, and the
 // server decides what is now offered, so the simple and safe choice is to refresh all queries.
 function useRefreshingMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
@@ -137,4 +164,24 @@ export const useSaveOverride = () =>
 export const useDeleteOverride = () =>
   useRefreshingMutation((args: { doctorId: number; date: string; acknowledge: boolean }) =>
     api.deleteOverride(args.doctorId, args.date, args.acknowledge),
+  );
+
+export const useBookSeries = () =>
+  useRefreshingMutation((body: SeriesBody) => api.bookSeries(body));
+
+export const useCreateDoctor = () =>
+  useRefreshingMutation((body: NewDoctor) => api.createDoctor(body));
+
+export const useDeleteDoctor = () => useRefreshingMutation((id: number) => api.deleteDoctor(id));
+
+export const useJoinWaitlist = () =>
+  useRefreshingMutation((args: { doctorId: number; patientId: number; date: string }) =>
+    api.joinWaitlist(args.doctorId, args.patientId, args.date),
+  );
+
+export const useLeaveWaitlist = () => useRefreshingMutation((id: number) => api.leaveWaitlist(id));
+
+export const useAcceptOffer = () =>
+  useRefreshingMutation((args: { id: number; reason: string; depositConfirmed: boolean }) =>
+    api.acceptOffer(args.id, args.reason, args.depositConfirmed),
   );

@@ -4,6 +4,7 @@ import { useAppointment, useDoctors, useSchedule } from "../api/hooks";
 import type { SlotState } from "../api/types";
 import { AppointmentCard } from "../components/AppointmentCard";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
+import { DayWaitlist } from "../components/Waitlist";
 import { addDays, formatDayIST, formatTimeIST } from "../lib/formatIST";
 import { REASON_TEXT } from "../lib/errors";
 import { useToday } from "../lib/useToday";
@@ -60,7 +61,11 @@ export default function DayView() {
         </label>
         <label>
           Date (India)
-          <input type="date" value={date} onChange={(event) => update({ date: event.target.value })} />
+          <input
+            type="date"
+            value={date}
+            onChange={(event) => update({ date: event.target.value })}
+          />
         </label>
         <button type="button" onClick={() => date && update({ date: addDays(date, -1) })}>
           Previous day
@@ -73,7 +78,9 @@ export default function DayView() {
         </button>
       </div>
 
-      {doctors.error && <ErrorBanner error={doctors.error} onRetry={() => void doctors.refetch()} />}
+      {doctors.error && (
+        <ErrorBanner error={doctors.error} onRetry={() => void doctors.refetch()} />
+      )}
       {schedule.error && (
         <ErrorBanner
           error={schedule.error}
@@ -113,7 +120,9 @@ export default function DayView() {
                         type="button"
                         className="slot slot-free"
                         onClick={() =>
-                          navigate(`/book?doctor=${doctorId}&date=${schedule.data.date}&start=${start}`)
+                          navigate(
+                            `/book?doctor=${doctorId}&date=${schedule.data.date}&start=${start}`,
+                          )
                         }
                       >
                         <span className="time">{time}</span>
@@ -153,6 +162,8 @@ export default function DayView() {
               })}
             </ul>
 
+            {doctorId !== null && <DayWaitlist doctorId={doctorId} date={date} />}
+
             {schedule.data.outside_availability.length > 0 && (
               <section aria-label="Booked outside the doctor's hours">
                 <h2 className="attention-heading">Booked outside the doctor&apos;s hours</h2>
@@ -165,7 +176,9 @@ export default function DayView() {
 
           <aside aria-label="Appointment details">
             <h2>Details</h2>
-            {selectedId === null && <p className="muted">Select a booked slot to see the details.</p>}
+            {selectedId === null && (
+              <p className="muted">Select a booked slot to see the details.</p>
+            )}
             {selected.isPending && selectedId !== null && <Skeleton rows={3} />}
             {selected.error && <ErrorBanner error={selected.error} />}
             {selected.data && <AppointmentCard appointment={selected.data} />}

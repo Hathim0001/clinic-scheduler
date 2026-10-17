@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import type { Appointment } from "../api/types";
 import { formatDayIST, formatIST, formatTimeIST } from "../lib/formatIST";
 import { ActionButtons } from "./ActionButtons";
+import { CalendarLink } from "./CalendarLink";
 import { StatusBadge } from "./common";
 
 /** Everything about one appointment, with the buttons the server allows. */
@@ -49,6 +50,9 @@ export function AppointmentCard({ appointment }: { appointment: Appointment }) {
         </p>
       )}
       <ActionButtons appointment={appointment} />
+      <p>
+        <CalendarLink path={`/appointments/${appointment.id}/calendar.ics`} />
+      </p>
     </article>
   );
 }

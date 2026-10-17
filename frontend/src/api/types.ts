@@ -42,7 +42,34 @@ export interface Patient {
   phone: string;
   date_of_birth: string;
   created_at_utc: string;
+  deposit_required: boolean | null; // null in search results
   deposit: Deposit | null; // null in search results
+}
+
+export interface WaitlistEntry {
+  id: number;
+  doctor_id: number;
+  doctor_name: string;
+  patient_id: number;
+  patient_name: string;
+  patient_phone: string;
+  date: string;
+  status: "WAITING" | "OFFERED" | "BOOKED" | "CANCELLED" | "EXPIRED";
+  position: number | null;
+  offered_start_at_utc: string | null;
+  offered_start_at_ist: string | null;
+  offer_expires_at_utc: string | null;
+  offer_expires_at_ist: string | null;
+  appointment_id: number | null;
+}
+
+export interface WaitlistAcceptResponse {
+  entry: WaitlistEntry;
+  appointment: Appointment;
+}
+
+export interface SeriesResponse {
+  appointments: Appointment[];
 }
 
 export interface Appointment {
@@ -85,11 +112,7 @@ export interface Slot {
 }
 
 export type UnavailableReason =
-  | "NO_AVAILABILITY"
-  | "DAILY_CAP_REACHED"
-  | "FULLY_BOOKED"
-  | "DATE_IN_PAST"
-  | "DATE_TOO_FAR";
+  "NO_AVAILABILITY" | "DAILY_CAP_REACHED" | "FULLY_BOOKED" | "DATE_IN_PAST" | "DATE_TOO_FAR";
 
 export type HoursSource = "WEEKLY" | "OVERRIDE";
 
