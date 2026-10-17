@@ -343,3 +343,40 @@ def appointment_rows_by_id(session: Session, ids: Sequence[int]) -> list[Appoint
     )
     by_id = {row[0].id: AppointmentRow(*row) for row in session.execute(statement)}
     return [by_id[id_] for id_ in ids if id_ in by_id]
+
+
+# ---------------------------------------------------------------------------------- patients
+
+
+def patient_by_phone(session: Session, phone: str) -> Patient | None:
+    return session.scalars(select(Patient).where(Patient.phone == phone)).one_or_none()
+
+
+LIKE_ESCAPE = "\\"
+
+
+def _like_escaped(prefix: str) -> str:
+    """Escape LIKE wildcards so a typed `%` or `_` matches itself."""
+    for special in (LIKE_ESCAPE, "%", "_"):  # the escape character itself first
+        prefix = prefix.replace(special, LIKE_ESCAPE + special)
+    return prefix
+
+
+def find_patients(
+    session: Session, *, phone: str | None, name_prefix: str | None, limit: int, offset: int
+) -> tuple[list[Patient], int]:
+    """Patients by exact (normalised) phone and/or case-insensitive name prefix, with the total."""
+    conditions = []
+    if phone is not None:
+        conditions.append(Patient.phone == phone)
+    if name_prefix is not None:
+        conditions.append(Patient.name.ilike(_like_escaped(name_prefix) + "%", escape=LIKE_ESCAPE))
+    total = session.scalar(select(func.count()).select_from(Patient).where(*conditions)) or 0
+    rows = session.scalars(
+        select(Patient)
+        .where(*conditions)
+        .order_by(func.lower(Patient.name), Patient.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(rows), total
