@@ -1,7 +1,7 @@
 == Test run ==
-........................................................................ [ 92%]
-........................................................................ [100%]
-1008 passed in 259.37s (0:04:19)
+........................................................................ [ 99%]
+.                                                                        [100%]
+1009 passed in 258.04s (0:04:18)
 
 == Line and branch coverage of app/ ==
 Name                                   Stmts   Miss Branch BrPart  Cover   Missing
@@ -56,9 +56,9 @@ app\services\record_service.py            85      0      6      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    138      0      0      0   100%
 app\services\waitlist_offers.py           40      0     10      0   100%
-app\services\waitlist_service.py         142      1     28      1    99%   214
+app\services\waitlist_service.py         142      0     28      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   2741      9    412      9    99%
+TOTAL                                   2741      8    412      8    99%
 
 8 empty files skipped.
 
@@ -88,8 +88,8 @@ app\services\record_service.py            85      0      6      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    138      0      0      0   100%
 app\services\waitlist_offers.py           40      0     10      0   100%
-app\services\waitlist_service.py         142      1     28      1    99%   214
+app\services\waitlist_service.py         142      0     28      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   1359      1    242      1    99%
+TOTAL                                   1359      0    242      0   100%
 
 2 empty files skipped.

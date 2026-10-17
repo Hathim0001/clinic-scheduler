@@ -184,10 +184,10 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 879 passing in about 3 minutes: 369 unit (no database), 252 integration and race tests (real PostgreSQL), 258 through HTTP |
-| Backend line and branch coverage, all of `app/` | 99 % (2,332 statements, 8 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 100 % (1,104 statements, none missed); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 89 passing |
+| Backend tests | 1,009 passing in about 4 minutes: 428 unit (no database), 302 integration and race tests (real PostgreSQL), 279 through HTTP |
+| Backend line and branch coverage, all of `app/` | 99 % (2,741 statements, 8 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 100 % (1,359 statements, none missed); the gate is 80 % |
+| Frontend tests (Vitest, network faked at `fetch`) | 103 passing |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one
@@ -223,28 +223,35 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/clock` | Effective "now", test-clock status, seed dates | 400 `INVALID_TEST_CLOCK` |
 | GET, POST | `/doctors` | List, create | 422 |
 | DELETE | `/doctors/{id}` | Remove a doctor with no appointments on record | 404, 409 `DOCTOR_HAS_APPOINTMENTS` |
-| GET, PATCH | `/doctors/{id}` | Read; change name, speciality, cap, slot length | 404, 409 `SLOT_LENGTH_LOCKED` |
+| GET, PATCH | `/doctors/{id}` | Read; change name, speciality, cap, slot length, `accepting_bookings` | 404, 409 `SLOT_LENGTH_LOCKED` |
 | GET, PUT | `/doctors/{id}/weekly-windows` | Weekly pattern (replace) | 409 `AVAILABILITY_CONFLICTS`, 422 `WINDOW_OVERLAP`, `WINDOW_OFF_GRID` |
 | GET | `/doctors/{id}/overrides?from&to` | Date overrides in a range (at most 90 days) | 422 |
 | PUT, DELETE | `/doctors/{id}/overrides/{date}` | Leave, special hours or an extra day; remove | 409 `AVAILABILITY_CONFLICTS`, 422 |
 | GET | `/doctors/{id}/slots?date&patient_id?` | Free slots, with `unavailable_reason` | 404, 422 |
 | GET | `/doctors/{id}/schedule?date&patient_id?` | Every grid slot of a day with its state | 404, 422 |
-| GET, POST | `/patients` | Search by phone or name prefix; register | 409 `PHONE_TAKEN`, 422 |
-| GET | `/patients/{id}` | Patient with the deposit status and a literal `deposit_required` flag | 404 |
+| GET, POST | `/patients` | Search by phone or name prefix; register (`allow_duplicate` to register despite a likely duplicate) | 409 `PHONE_TAKEN`, `POSSIBLE_DUPLICATE`, 422 |
+| GET, PATCH | `/patients/{id}` | Patient with the deposit status and a literal `deposit_required` flag; correct name, phone or date of birth | 404, 409 `PHONE_TAKEN`, `POSSIBLE_DUPLICATE` |
+| GET | `/patients/{id}/export` | Everything held about a patient: details, every appointment and its history | 404 |
 | GET | `/patients/{id}/appointments` | History, newest first | 404 |
 | GET | `/appointments` | List with filters, including `needs_attention` | 422 |
-| POST | `/appointments` | Book | 404, 409 `SLOT_TAKEN`, `PATIENT_OVERLAP`, `DAILY_CAP_REACHED`; 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR`, `OFF_GRID`, `OUTSIDE_AVAILABILITY`, `DEPOSIT_REQUIRED` |
+| POST | `/appointments` | Book. Send `Idempotency-Key` when retrying: the retry returns the original (200, `Idempotent-Replay: true`) | 404, 409 `IDEMPOTENCY_KEY_REUSED`, `DOCTOR_NOT_ACCEPTING`, 409 `SLOT_TAKEN`, `PATIENT_OVERLAP`, `DAILY_CAP_REACHED`; 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR`, `OFF_GRID`, `OUTSIDE_AVAILABILITY`, `DEPOSIT_REQUIRED` |
 | GET | `/appointments/{id}` | One appointment, with `allowed_actions` and `needs_attention` | 404 |
 | GET | `/appointments/{id}/calendar.ics`, `/patients/{id}/calendar.ics` | Download an appointment, or a patient's upcoming ones, as an iCalendar file | 404 |
 | POST | `/appointments/recurring` | Book a series (every 1 to 60 days, 2 to 12 appointments), all or none; `details.occurrence` says which one failed | 409 `SLOT_TAKEN`, 422 as for a booking |
 | POST | `/appointments/{id}/cancel` | Cancel (patient or clinic); after the start a patient cancel is a late cancel | 409 `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/reschedule` | Cancel and rebook atomically (before the start only) | 409 `APPOINTMENT_ALREADY_STARTED`, 422 `RESCHEDULE_NO_CHANGE`, `DEPOSIT_REQUIRED` |
 | POST | `/appointments/{id}/complete`, `/no-show` | Mark after the start | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
+| POST | `/appointments/{id}/check-in` | Patient arrived (on the day; repeating it changes nothing) | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
+| POST | `/appointments/{id}/correct` | Fix a wrong outcome: completed and no-show swap, a late cancel is waived; a note is required | 409 `INVALID_CORRECTION` |
+| GET | `/appointments/{id}/history` | Audit trail, oldest first | 404 |
 | GET | `/queue?date&doctor_id&include_cancelled` | One day's queue in time order | 422 |
 | POST, GET | `/doctors/{id}/waitlist` | Join the waitlist for a doctor and India date; list who is waiting or holds an offer (`?date`) | 409 `ALREADY_WAITING`, 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR` |
 | GET | `/patients/{id}/waitlist` | A patient's live waitlist entries, with any open offer | 404 |
 | DELETE | `/waitlist/{id}` | Leave the waitlist | 404 `WAITLIST_ENTRY_NOT_FOUND`, 409 |
+| POST | `/waitlist/{id}/decline` | Say no to an offer but keep the place; the slot goes to the next patient | 404, 409 `INVALID_TRANSITION` |
 | POST | `/waitlist/{id}/accept` | Turn an offer into a booking, with every rule checked | 409 `OFFER_EXPIRED`, `SLOT_TAKEN`, 422 `DEPOSIT_REQUIRED` |
+| GET | `/reports/summary?from&to` | Per doctor: appointments, outcomes, rates, utilisation (at most 92 days) | 422 |
+| POST | `/triage` | Does a text describe symptoms that may need emergency care? (a hint for the form, never a block) | 422 |
 
 Lists are paginated (`limit` 1 to 100, default 20; `offset` 0 to 100,000) and return
 `{items, total, limit, offset}`. The only unpaginated lists are bounded by construction.
@@ -299,7 +306,7 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-16 | The daily cap counts booked, completed and no-show appointments; cancelled and late-cancelled ones do not |
 | A-17 | The API returns UTC and India time, accepts any explicit offset and refuses a time without one |
 | A-18 | Completed and no-show can only be marked at or after the start |
-| A-19 | Completed, cancelled, late-cancelled and no-show are final; there is no correction in this version |
+| A-19 | Completed, cancelled, late-cancelled and no-show are final, with one exception (A-48): a wrongly recorded outcome can be corrected |
 | A-20 | No authentication; a single clinic |
 | A-21 | A "day" for the cap is the India calendar date of the start |
 | A-22 | The trailing 30 days are the closed interval from now minus 30 x 24 hours to now |
@@ -325,6 +332,14 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-42 | A recurring series keeps the same India time of day, books all occurrences in one transaction, and checks each exactly as a single booking; if one fails none is booked |
 | A-43 | A doctor can be deleted only while no appointment of any status references them; their hours and leave go with them |
 | A-44 | `deposit_required` on a patient is derived from the same rule as the deposit status, never stored; it is null in search results |
+| A-45 | An `Idempotency-Key` is stored with its booking in the same transaction. The same key and the same request returns the original appointment even if it was cancelled since; the same key with another request is refused. Keys are never expired in this version |
+| A-46 | Check-in opens on the India date of the appointment and is recorded once. A checked-in patient cannot cancel or reschedule themselves; the clinic can still cancel, and complete or no-show work as before |
+| A-47 | Registering, or editing, a patient into the same name (ignoring case and extra spaces) and date of birth as another patient is refused with the matches listed, unless the caller confirms with `allow_duplicate`. Different phones do not make two people different |
+| A-48 | Corrections: completed becomes no-show or the other way round, and a late cancellation can be waived to a normal one. A note is required and the history keeps the original. A cancelled appointment cannot be restored (book again instead). The deposit flag, being derived, follows the correction |
+| A-49 | A doctor with `accepting_bookings` off refuses new bookings and series and offers no slots, whatever their hours. Existing appointments, cancellations, marking and the waitlist are unaffected |
+| A-50 | An offer that lapses, is declined or is abandoned by leaving is passed to the next patient who could take the slot. A patient who declines keeps their place for other slots but is never offered the same slot again. A lapsed offer is settled when someone next reads or changes that doctor's waitlist (there are no background jobs) |
+| A-51 | Report definitions: a rescheduled appointment (cancelled only because it was moved) is counted as rescheduled, not as a cancellation, and its replacement is not a new booking; the no-show rate is no-shows out of completed plus no-shows; utilisation is appointments that took a slot (booked, completed, no-show) out of the slots the hours offered; periods are India dates |
+| A-52 | The urgent-symptom check is a keyword match on the reason. It warns and marks the appointment; it never refuses a booking and is not a clinical tool |
 
 ## 9. Error handling and logging
 
@@ -412,12 +427,13 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
 - The free hosting plan puts the API to sleep, so the first request can take about a minute. The
   test clock is enabled on the hosted instance on purpose (it is how the rules are reviewed); it is
   off by default everywhere else.
-- Final statuses cannot be corrected (a mistaken no-show stays), and there is no audit trail beyond
-  the timestamps on the row.
+- An outcome can be corrected, but a cancelled appointment cannot be restored and the audit trail
+  is a table the application only appends to, not a tamper-proof ledger.
 - One clinic, India Standard Time only, appointments exactly one slot long. The Stretch items are
   built (waitlist with auto-offer, recurring appointments, calendar export). Not built:
-  notifications (an offer is only visible on the patient page, nobody is messaged) and corrections of
-  final statuses.
+  notifications (an offer is only visible on the patient page, nobody is messaged), branches, rooms
+  and equipment, appointment types, and a guardian model. [docs/SCENARIOS.md](docs/SCENARIOS.md) sorts
+  about 400 edge-case scenarios into covered, added and out of scope, with the reason for each.
 - The `needs_attention` list is derived from the current hours for every matching row, so on a very
   large database it would need a stored flag or an index. The patient history page loads 50
   appointments and a button shows up to 100; the needs-attention list shows the first 100.
@@ -425,8 +441,8 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
   checked by hand against the basics (labels, keyboard, visible focus, text alongside colour), not audited.
 - The seed data is relative to the date it was created on: the flags drift as days pass, which is why
   there is a "Seed day" clock preset and a re-seed command.
-- No `Idempotency-Key` header: a double click is caught by the overlap check (`same_patient: true`)
-  and by the disabled button instead.
+- `Idempotency-Key` is optional and applies to single bookings only (not to series, cancel or
+  reschedule). Without a key a double click is caught by the overlap check (`same_patient: true`).
 
 ## 12. AI and third-party usage
 
