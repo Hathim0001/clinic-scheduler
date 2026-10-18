@@ -185,3 +185,44 @@ describe("moving an appointment", () => {
     expect(screen.queryByLabelText("Length of the visit")).not.toBeInTheDocument();
   });
 });
+
+describe("when the chosen day has no time", () => {
+  const empty: SlotsResponse = { ...slotsFor(30), slots: [], unavailable_reason: "FULLY_BOOKED" };
+  const option = {
+    ...slot("09:00", "09:30"),
+    doctor_id: 2,
+    doctor_name: "Dr. Menon",
+    speciality: "General",
+    same_doctor: false,
+  };
+
+  it("offers the nearest times and fills in the doctor, day and time when one is chosen", async () => {
+    const api = installFakeApi({
+      ...base(),
+      "GET /doctors": { body: [doctor(), doctor({ id: 2, name: "Dr. Menon" })] },
+      "GET /doctors/1/slots": { body: empty },
+      "GET /doctors/2/slots": () => ({ body: { ...slotsFor(30), doctor_id: 2 } }),
+      "GET /alternatives": { body: [option] },
+    });
+    const user = userEvent.setup();
+    renderPage(<Book />, "/book?patient=7&doctor=1&date=2026-11-02");
+
+    await user.click(await screen.findByRole("button", { name: /Dr\. Menon, / }));
+
+    await waitFor(() => expect(api.count("GET", "/doctors/2/slots")).toBeGreaterThan(0));
+    expect(api.last("GET", "/alternatives")?.query).toMatchObject({ doctor_id: "1", slots: "1" });
+    expect(await screen.findByRole("button", { name: "10:00–10:30" })).toBeInTheDocument();
+  });
+
+  it("says so when nothing else is free", async () => {
+    installFakeApi({
+      ...base(),
+      "GET /doctors/1/slots": { body: empty },
+      "GET /alternatives": { body: [] },
+    });
+    renderPage(<Book />, "/book?patient=7&doctor=1&date=2026-11-02");
+    expect(
+      await screen.findByText(/Nothing else is free in the next two weeks/),
+    ).toBeInTheDocument();
+  });
+});

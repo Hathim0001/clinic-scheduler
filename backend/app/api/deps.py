@@ -16,6 +16,7 @@ from app.core.actor import current_actor
 from app.core.auth import verify_token
 from app.domain.errors import ErrorCode
 from app.domain.timeutil import utc_iso
+from app.services.alternatives_service import AlternativesService
 from app.services.appointment_queries import AppointmentQueries
 from app.services.availability_service import AvailabilityService
 from app.services.booking_service import BookingService
@@ -38,18 +39,22 @@ class Services:
     meta: MetaService
     waitlist: WaitlistService
     records: RecordService
+    alternatives: AlternativesService
 
     @classmethod
     def build(cls, factory: sessionmaker[Session]) -> Services:
+        availability = AvailabilityService(factory)
+        doctors = DoctorService(factory)
         return cls(
             booking=BookingService(factory),
-            availability=AvailabilityService(factory),
-            doctors=DoctorService(factory),
+            availability=availability,
+            doctors=doctors,
             patients=PatientService(factory),
             queries=AppointmentQueries(factory),
             meta=MetaService(factory),
             waitlist=WaitlistService(factory),
             records=RecordService(factory),
+            alternatives=AlternativesService(availability, doctors),
         )
 
 

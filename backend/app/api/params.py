@@ -13,6 +13,7 @@ from app.api.schemas.types import IsoDate
 MAX_ID = 2_147_483_647
 
 DoctorId = Annotated[int, Path(ge=1, le=MAX_ID)]
+DoctorIdQuery = Annotated[int, Query(ge=1, le=MAX_ID)]
 PatientId = Annotated[int, Path(ge=1, le=MAX_ID)]
 AppointmentId = Annotated[int, Path(ge=1, le=MAX_ID)]
 EntityPath = Annotated[int, Path(ge=1, le=MAX_ID)]

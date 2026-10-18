@@ -1,4 +1,5 @@
 import { useTriage } from "../api/hooks";
+import { Alternatives } from "../components/booking/Alternatives";
 import { BookedBanner } from "../components/booking/BookedBanner";
 import { DoctorDateFields } from "../components/booking/DoctorDateFields";
 import { RepeatFields } from "../components/booking/RepeatFields";
@@ -13,7 +14,7 @@ import { Banner, ErrorBanner } from "../components/common";
 import { DepositCheckbox } from "../components/DepositNotice";
 import { PatientPicker } from "../components/PatientPicker";
 import { JoinWaitlist } from "../components/Waitlist";
-import { formatIST } from "../lib/formatIST";
+import { formatIST, istDate } from "../lib/formatIST";
 import { useDebounced } from "../lib/useDebounced";
 
 /**
@@ -99,8 +100,25 @@ export default function Book() {
             forPatient={patientId !== null}
             loading={doctorId !== null && form.date !== ""}
           />
-          {form.slots.data && form.offered.length === 0 && !rescheduleId && doctorId !== null && (
-            <JoinWaitlist doctorId={doctorId} patientId={patientId} date={form.date} />
+          {form.slots.data && form.offered.length === 0 && doctorId !== null && (
+            <>
+              {form.lengthInSlots !== null && (
+                <Alternatives
+                  doctorId={doctorId}
+                  date={form.date}
+                  patientId={patientId ?? undefined}
+                  slots={form.lengthInSlots}
+                  onChoose={(option) => {
+                    f.setPickedDoctor(option.doctor_id);
+                    f.setPickedDate(istDate(option.start_at_ist));
+                    f.setPickedStart(option.start_at_ist);
+                  }}
+                />
+              )}
+              {!rescheduleId && (
+                <JoinWaitlist doctorId={doctorId} patientId={patientId} date={form.date} />
+              )}
+            </>
           )}
         </section>
 

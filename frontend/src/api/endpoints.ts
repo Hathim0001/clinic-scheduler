@@ -1,5 +1,6 @@
 import { request } from "./client";
 import type {
+  Alternative,
   Appointment,
   AppointmentEvent,
   CancelledBy,
@@ -120,6 +121,10 @@ export const api = {
       query: { acknowledge_conflicts: acknowledge },
     }),
 
+  alternatives: (doctorId: number, date: string, patientId?: number, slots = 1) =>
+    request<Alternative[]>("GET", "/alternatives", {
+      query: { doctor_id: doctorId, date, patient_id: patientId, slots },
+    }),
   slots: (doctorId: number, date: string, patientId?: number, slots = 1) =>
     request<SlotsResponse>("GET", `/doctors/${doctorId}/slots`, {
       query: { date, patient_id: patientId, slots },

@@ -6,6 +6,7 @@ from dataclasses import asdict
 from datetime import datetime, timedelta
 
 from app.api.schemas.responses import (
+    AlternativeOut,
     AppointmentOut,
     DepositOut,
     DoctorOut,
@@ -27,6 +28,7 @@ from app.api.schemas.responses import (
 )
 from app.domain.model import DepositStatus, WeeklyWindow, Window
 from app.domain.timeutil import format_minutes, ist_iso, utc_iso
+from app.services.alternatives_service import Alternative
 from app.services.record_service import PatientExport, ReportView
 from app.services.views import (
     AppointmentView,
@@ -142,6 +144,16 @@ def _slot_times(start: datetime, minutes: int) -> dict[str, str]:
         "end_at_utc": utc_iso(end),
         "end_at_ist": ist_iso(end),
     }
+
+
+def alternative_out(option: Alternative) -> AlternativeOut:
+    return AlternativeOut(
+        **_slot_times(option.start_at, option.duration_min),
+        doctor_id=option.doctor_id,
+        doctor_name=option.doctor_name,
+        speciality=option.speciality,
+        same_doctor=option.same_doctor,
+    )
 
 
 def slots_out(view: SlotsView) -> SlotsOut:

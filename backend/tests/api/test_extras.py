@@ -96,3 +96,41 @@ def test_long_lines_are_folded_without_splitting_a_character() -> None:
         assert len(line.encode("utf-8")) <= 75
     unfolded = calendar_text([view], NOW).replace("\r\n ", "")
     assert "é" * 100 in unfolded
+
+
+def test_alternatives_offer_other_days_and_doctors_when_the_doctor_is_away(api: Api) -> None:
+    api.put(f"/doctors/{api.clinic.rao}/overrides/2026-11-02", {"windows": [], "note": "leave"})
+    response = api.get(
+        "/alternatives",
+        params={"doctor_id": api.clinic.rao, "date": "2026-11-02", "patient_id": api.clinic.asha},
+    )
+    assert response.status_code == 200
+    options = response.json()
+    assert options[0]["same_doctor"] is True
+    assert options[0]["start_at_ist"] == "2026-11-03T09:00:00+05:30"
+    assert any(o["doctor_id"] == api.clinic.menon for o in options)
+    assert set(options[0]) >= {"doctor_name", "speciality", "start_at_utc", "end_at_ist"}
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"date": "2026-11-02"},
+        {"doctor_id": 0, "date": "2026-11-02"},
+        {"doctor_id": 1, "date": "tomorrow"},
+        {"doctor_id": 1, "date": "2026-11-02", "slots": 9},
+        {"doctor_id": 1, "date": "2026-11-02", "limit": 0},
+    ],
+)
+def test_alternatives_reject_malformed_queries_with_422(
+    api: Api, params: dict[str, object]
+) -> None:
+    assert_error(api.get("/alternatives", params=params), 422, "VALIDATION_ERROR")
+
+
+def test_alternatives_for_an_unknown_doctor_is_404(api: Api) -> None:
+    assert_error(
+        api.get("/alternatives", params={"doctor_id": 999, "date": "2026-11-02"}),
+        404,
+        "DOCTOR_NOT_FOUND",
+    )

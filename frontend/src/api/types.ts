@@ -133,6 +133,14 @@ export interface SlotsResponse {
   duration_min: number; // the visit length each listed start is free for
 }
 
+/** A bookable start offered instead of the one asked for (same doctor later, or another doctor). */
+export interface Alternative extends Slot {
+  doctor_id: number;
+  doctor_name: string;
+  speciality: string;
+  same_doctor: boolean;
+}
+
 export type SlotState = "FREE" | "BOOKED" | "PAST" | "CAPPED" | "CLOSED" | "BUSY";
 
 export interface ScheduleSlot extends Slot {

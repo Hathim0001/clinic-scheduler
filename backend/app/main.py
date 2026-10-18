@@ -22,6 +22,7 @@ from app.api.errors import register_exception_handlers
 from app.api.middleware import RequestContextMiddleware
 from app.api.ratelimit import RateLimitMiddleware
 from app.api.routers import (
+    alternatives,
     appointments,
     auth,
     availability,
@@ -107,6 +108,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     for router in (
         doctors.router,
         availability.router,
+        alternatives.router,
         patients.router,
         appointments.router,
         queue.router,

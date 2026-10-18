@@ -131,6 +131,13 @@ class SlotOut(BaseModel):
     end_at_ist: str
 
 
+class AlternativeOut(SlotOut):
+    doctor_id: int
+    doctor_name: str
+    speciality: str
+    same_doctor: bool
+
+
 class SlotsOut(BaseModel):
     doctor_id: int
     date: str

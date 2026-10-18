@@ -33,6 +33,20 @@ export const useSlots = (doctorId: number | null, date: string, patientId?: numb
     enabled: doctorId !== null && date !== "",
   });
 
+/** Nearby bookable times, asked for only when the chosen day has none. */
+export const useAlternatives = (
+  doctorId: number | null,
+  date: string,
+  patientId: number | undefined,
+  slots: number,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ["slots", "alternatives", doctorId, date, patientId ?? null, slots],
+    queryFn: () => api.alternatives(doctorId as number, date, patientId, slots),
+    enabled: enabled && doctorId !== null && date !== "",
+  });
+
 export const useSchedule = (doctorId: number | null, date: string) =>
   useQuery({
     queryKey: ["schedule", doctorId, date],
