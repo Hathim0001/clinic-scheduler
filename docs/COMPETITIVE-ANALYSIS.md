@@ -97,9 +97,10 @@ These are weaknesses in what is built, whatever the competitors do:
 ## What this means for a decision
 
 Nothing in the first table is something the brief asks for, and the brief says a complete Core
-beats extra features. If one gap were closed first, the evidence points to **reminders and
-two-way SMS**: they are the feature every product sells to cut no-shows (vendor figures of 30 to
-50 percent are widely quoted but come from vendors and are not verified here), and the outbox and
-webhook already built are the place to attach them. For the submission itself, the better use of
+beats extra features. If one gap were closed first, the first pass pointed to reminders and two-way SMS. **That is
+corrected in [COMPETITOR-REPORT.md](COMPETITOR-REPORT.md):** a 2025 meta-analysis found SMS
+reminders did not reach statistical significance (RR 1.14, 95% CI 0.99 to 1.31) while telephone
+reminders did (RR 1.11, 1.04 to 1.19), and the 30 to 50 percent figures trace to vendors. A reception
+call list is the better-supported first step; the outbox and webhook are still where a gateway would attach. For the submission itself, the better use of
 time is the list of things only the author can do: trying the edge cases on the hosted site and
 rehearsing the code walkthrough.
