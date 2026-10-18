@@ -233,8 +233,8 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/healthz` (root) | Liveness, never touches the database | |
 | GET | `/readyz` (root) | The database answers | 503 `SERVICE_UNAVAILABLE` |
 | GET | `/clock` | Effective "now", test-clock status, seed dates | 400 `INVALID_TEST_CLOCK` |
-| GET | `/auth/status` | Does this server ask for a sign-in? (open) | |
-| POST | `/auth/login` | Name and staff password for a signed Bearer token, 10 tries a minute per client (open) | 401 `UNAUTHENTICATED`, 429 |
+| GET | `/auth/status` | Does this server ask for a sign-in, and with individual accounts? (open) | |
+| POST | `/auth/login` | A username and password (individual accounts) or a name and the shared staff password; returns a signed Bearer token and the role; 10 tries a minute per client (open) | 401 `UNAUTHENTICATED`, 429 |
 | GET, POST | `/doctors` | List, create | 422 |
 | DELETE | `/doctors/{id}` | Remove a doctor with no appointments on record | 404, 409 `DOCTOR_HAS_APPOINTMENTS` |
 | GET, PATCH | `/doctors/{id}` | Read; change name, speciality, cap, slot length, `accepting_bookings` | 404, 409 `SLOT_LENGTH_LOCKED` |
