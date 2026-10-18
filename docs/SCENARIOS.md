@@ -51,7 +51,7 @@ numbering several times.
 | A patient requests a different doctor after check-in | **Covered** | The clinic cancels and rebooks, or reschedules before check-in |
 | Appointments have different durations; a free slot cannot accommodate the required duration; a patient requests a visit longer than the slot | **Added** | A visit lasts one to four of the doctor's slots. Free times are listed per length, a long visit must fit inside one window and not touch anything of the doctor's or the patient's, rescheduling keeps the length, and a freed long visit is offered as a long visit (A-04, A-57) |
 | A patient reschedules at the last minute and is penalised unfairly; the clinic moves an appointment and the patient is penalised | **Added** | A patient move inside 2 hours is refused until confirmed, so the penalty is never a surprise. A clinic move is never a late cancellation (A-10) |
-| The audit log is modified or lost; an audit event is written but the booking transaction fails; an audit report must separate the original time from later changes; a copy of the historical timeline | **Added** | `appointment_events`, written in the same transaction as each change (so it cannot describe a rolled-back change), append-only in the code. `GET /appointments/{id}/history` and `GET /patients/{id}/export` |
+| The audit log is modified or lost; an audit event is written but the booking transaction fails; an audit report must separate the original time from later changes; a copy of the historical timeline | **Added** | `appointment_events`, written in the same transaction as each change (so it cannot describe a rolled-back change), append-only in the database, and hash-chained per appointment so an edited or removed event shows up in `GET /diagnostics/audit` (tamper-evident, not tamper-proof: A-68). `GET /appointments/{id}/history` and `GET /patients/{id}/export` |
 
 ## 4. Arrival and the waiting room
 
@@ -72,7 +72,7 @@ numbering several times.
 | A parent or relative books for someone; a guardian loses authority; consent of the person booked | **Out of scope** | Needs accounts and relationships. Without authentication (A-20) there is no "who is booking" to check |
 | Several accounts with different phones to bypass limits | **Partly** | The duplicate guard catches the same name and birth date; deliberate evasion is not detectable without identity checks |
 | Duplicate profiles merged or merged wrongly; a merge during a booking | **Out of scope** | No merge tool; a merge touches every table that references a patient |
-| A patient requests deletion of their data; retention rules change | **Out of scope** | Deleting would break the audit and the cap counts. `GET /patients/{id}/export` covers the access request. Retention is a policy decision for the clinic |
+| A patient requests deletion of their data; retention rules change; consent of the person booked | **Added** | `POST /patients/{id}/erase` replaces the name, phone, date of birth and visit reasons and keeps the appointments as anonymous history, so the counts and the audit still hold; it is refused while a booking or waitlist place is upcoming. Consent is recorded (`consent` on registration, or `POST /patients/{id}/consent`). A retention purge (`scripts/purge_inactive.py`, dry run first) erases patients inactive for a period the clinic chooses. `GET /patients/{id}/export` is the access half (A-64, A-65) |
 | A patient requests access to their appointment history | **Added** | `GET /patients/{id}/export` and a download link on the patient page |
 
 ## 6. Emergencies and urgent symptoms
@@ -84,14 +84,17 @@ numbering several times.
 
 ## 7. Notifications and reminders
 
-Every scenario about SMS, WhatsApp, e-mail, reminders, delivery receipts, wrong language, opt-out,
-inbound replies, provider outages or rate limits, expired links, recipient mapping, emergency
-contacts and background reminder jobs is **out of scope**. The system sends nothing. The reasons:
-SMS and payments are optional in the assignment, and a notification subsystem is a product of its own
-(an outbox, provider adapters, retries, templates per language, consent records). What exists
-instead: an offer from the waitlist is visible on the patient page, a booking returns its details to
-the screen that made it, and any appointment can be downloaded to the patient's own calendar
-(`.ics`, with a stable `UID`, so re-importing updates rather than duplicates).
+The system **writes** the messages and keeps them reliably; it does not own an SMS account.
+
+| Scenario | Status | How |
+|---|---|---|
+| A patient must be told a booking, a move, a clinic cancellation or a waitlist offer | **Added** | A message is written to an outbox in the same transaction as the change, so there is never a message about something rolled back and never a change without its message (A-66) |
+| A message is sent to someone who never agreed | **Added** | Only patients whose consent is recorded are messaged by the server; for the rest the message is SKIPPED and says to phone |
+| The provider is down; a message is sent twice; two servers send the same message | **Covered** | The gateway call is retried up to three times, then the message is FAILED and listed; each message is handled under a row lock that skips rows another instance holds |
+| There is no SMS provider | **Covered** | By default nothing leaves the server and the messages wait on the Messages page, where reception phones the patient and marks each one sent |
+| Delivery receipts, replies, templates per language, opt-out per channel, WhatsApp templates | **Out of scope** | These belong to the gateway the clinic chooses |
+| Reminders before an appointment | **Out of scope** | Needs a per-appointment timer; the outbox is ready for one |
+| A patient's calendar | **Covered** | Any appointment downloads as `.ics`, with a stable `UID`, so re-importing updates rather than duplicates |
 
 ## 8. Time, dates and calendars
 
@@ -120,13 +123,15 @@ the screen that made it, and any appointment can be downloaded to the patient's 
 ## 10. Security and privacy
 
 Authentication is optional in the assignment, so it is **off by default** (it would lock out a
-reviewer) and available by setting `STAFF_PASSWORD`. With it on: every data route needs a signed,
-expiring token; guessing the password is limited to 10 tries a minute per client; and every audit row
+reviewer) and available by setting `STAFF_PASSWORD` (one shared password) or `AUTH_SECRET` (individual
+accounts with an administrator and a receptionist role). With it on: every data route needs a signed,
+expiring token; guessing a password is limited to 10 tries a minute per client; and every audit row
 names who made the change. With it off, the scenarios that depend on **who** is asking stay out of
 reach: a staff member changing a booking without authorisation, a compromised account, exporting the
 whole list, another branch's staff, a leaver's account, an unauthorised change to hours, and a patient
-enumerating appointments by guessing ids. Even with it on there are no roles, so every signed-in
-person can do everything, and there is one shared password rather than individual accounts.
+enumerating appointments by guessing ids. With individual accounts a leaver's account is switched off and stops working on the next request, a
+receptionist cannot change hours, delete a doctor, export or erase a patient, and the audit names the
+person. With only the shared password there are no roles and every signed-in person can do everything.
 
 Covered either way: strict input validation and no echo of hostile input
 (`tests/api/test_hostile_input.py`), request size limits, a per-client rate limit that cannot be
@@ -161,6 +166,9 @@ person. The one automatic action, a waitlist offer, follows a written rule, is n
 the patient accepts it, and is checked against the authoritative rules at that moment.
 
 ## Summary of what changed in this pass
+
+Added since: individual staff accounts with roles; consent, erasure and a retention purge; a message
+outbox; a stored, indexed `needs_attention`; a hash-chained audit trail; a load test.
 
 Added: idempotent booking retries; an audit history with a patient export; check-in; outcome
 corrections; patient edits and a duplicate guard; a doctor switch for new bookings; waitlist decline

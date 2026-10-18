@@ -23,7 +23,7 @@ configuration.
 
 Sign-in is **optional and off by default**: the assignment makes authentication optional, and a login would lock out a reviewer. Set `STAFF_PASSWORD` to turn it on (see section 3 and the settings table). With it off there is no login, so there
 are no credentials to give. **Cold start:** on Render's free plan the API sleeps when idle and the
-first request can take about a minute. The UI says "Waking the server" instead of showing a blank
+first request can take about a minute; a scheduled workflow pings it every 10 minutes to keep it awake (section 11). The UI says "Waking the server" instead of showing a blank
 page.
 
 ## 3. Tech stack
@@ -139,6 +139,8 @@ npm run format:check && npm run lint && npm run typecheck   # what CI runs (npm 
 | `DB_POOL_SIZE`, `DB_MAX_OVERFLOW` | backend | Database connections kept per process and how many more a burst may borrow (defaults 5 and 5) |
 | `TRUSTED_PROXY_HOPS` | backend | How many reverse proxies append to `X-Forwarded-For` (default 0; the Render blueprint sets 1). The rate limit counts the entry that many places from the right, because the left side can be forged |
 | `STAFF_PASSWORD` | backend | Optional, 8+ characters. When set, every route except the health checks, the clock and the login needs a signed token, and each audit row names who made the change. Unset (the default) leaves the API open |
+| `AUTH_SECRET` | backend | Optional, 16+ characters. Turns on **individual staff accounts with roles** (administrator or receptionist): people sign in with their own username and password, and a demotion or a switch-off applies on the very next request. Create the first administrator with `python -m scripts.create_staff` (or sign in with `STAFF_PASSWORD`, if also set, which signs in as an administrator). Unset (the default) leaves accounts off |
+| `NOTIFY_WEBHOOK_URL`, `NOTIFY_WEBHOOK_TOKEN` | backend | Optional. Where messages to patients are POSTed as `{to, body, kind}` JSON (an SMS or WhatsApp gateway, or a relay in front of one), with the token as a Bearer header. Unset (the default) sends nothing: the messages wait on the Messages page for reception to phone through |
 | `AUTH_TOKEN_TTL_HOURS` | backend | How long a sign-in lasts (default 12) |
 | `OFFER_SWEEP_INTERVAL_S` | backend | How often lapsed waitlist offers are passed to the next patient (default 30; 0 turns the sweep off) |
 | `RATE_LIMIT_PER_MINUTE` | backend | Requests per minute from one client address before `429 RATE_LIMITED` (default 600; 0 turns it off) |
@@ -242,6 +244,8 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/doctors/{id}/slots?date&patient_id?&slots?` | Free starts for a visit of `slots` slots (1 to 4, default 1), with `unavailable_reason` | 404, 422 |
 | GET | `/doctors/{id}/schedule?date&patient_id?` | Every grid slot of a day with its state | 404, 422 |
 | GET, POST | `/patients` | Search by phone or name prefix; register (`allow_duplicate` despite a likely duplicate) | 409 `PHONE_TAKEN` (only the owner's id), `POSSIBLE_DUPLICATE`, 422 |
+| POST | `/patients/{id}/consent` | Record that the patient accepted the privacy notice (`consent: true` on registration does the same) | 404, 409 `PATIENT_ERASED` |
+| POST | `/patients/{id}/erase` | **Admin.** Erase a patient's personal data on request: name, phone, date of birth and visit reasons are replaced; appointments stay as anonymous history; repeating it changes nothing | 409 `PATIENT_HAS_UPCOMING` |
 | GET, PATCH | `/patients/{id}` | Patient with the deposit status and a literal `deposit_required` flag; correct name, phone or date of birth | 404, 409 `PHONE_TAKEN`, `POSSIBLE_DUPLICATE` |
 | GET | `/patients/{id}/export` | Everything held about a patient: details, every appointment and its history | 404 |
 | GET | `/patients/{id}/appointments` | History, newest first | 404 |
@@ -264,6 +268,10 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | POST | `/waitlist/{id}/accept` | Turn an offer into a booking, with every rule checked | 409 `OFFER_EXPIRED`, `SLOT_TAKEN`, 422 `DEPOSIT_REQUIRED` |
 | GET | `/alternatives?doctor_id&date&patient_id?&slots?&limit?` | The nearest bookable times when a day has none: the same doctor's next days first, then other doctors (same speciality first); every option passed the booking rules for this patient and length | 404, 422 |
 | GET | `/reports/summary?from&to` | Per doctor: appointments, outcomes, rates, utilisation, and freed / refilled / refilled-by-waitlist slots with a recovery rate (at most 92 days) | 422 |
+| GET | `/notifications?status=`, `/notifications/pending` | Messages the system wrote for patients, and how many still need sending | 422 |
+| POST | `/notifications/{id}/sent` | Reception phoned or messaged the patient: mark it sent | 404 `NOTIFICATION_NOT_FOUND`, 409 |
+| GET, POST, PATCH | `/staff`, `/staff/{id}` | **Admin.** List, create and change staff accounts (role, switch off, reset password); never returns a hash | 409 `STAFF_USERNAME_TAKEN`, `LAST_ADMIN`, 404 `STAFF_NOT_FOUND` |
+| GET | `/diagnostics/audit` | **Admin.** Recompute the audit hash chain in the database and list any event that no longer matches | |
 | POST | `/diagnostics/proof` | Run the rule scenarios through the real services and database inside a transaction that is always rolled back; returns each scenario's expected and observed result and the row counts before and after | |
 | POST | `/triage` | Does a text describe symptoms that may need emergency care? (a hint for the form, never a block) | 422 |
 
@@ -372,6 +380,13 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-59 | `GET /alternatives` only reads. It probes up to 14 days for the same doctor and 3 days for other accepting doctors with the same `free_slots` used for booking, returns each (doctor, day)'s first start, and keeps half the list for the patient's own doctor so a busy fortnight cannot crowd out a free colleague. Booking an alternative goes through the normal booking path |
 | A-60 | The rule proof (`POST /diagnostics/proof`) runs on a fixed clock with its own doctors and patients in a transaction that is rolled back (services' transactions become savepoints), so it neither reads nor keeps clinic data. It does consume database sequence numbers, so ids in the real tables may skip. Concurrency is not part of it: that is proven by the race tests, which need several real connections |
 | A-61 | Recovery counts a cancellation (not a move) as *refilled* when another active appointment of the same doctor overlaps its time and was booked, by the effective clock, at or after the cancellation. It is credited to the waitlist when that booking's `BOOKED` event says `via: WAITLIST` |
+| A-62 | Roles apply only when sign-in is on. An **administrator** sets the clinic up (doctors, hours, erasing a patient, the export, accounts, diagnostics); a **receptionist** does the day-to-day work (patients, bookings, the queue, the waitlist, reports, messages). With no sign-in at all everything is open, as the assignment allows. The role and the active flag are read from the database on every request, not trusted from the token |
+| A-63 | The last active administrator account cannot be switched off or demoted, so the clinic cannot lock itself out. The shared `STAFF_PASSWORD` is not an account and does not count |
+| A-64 | Erasing a patient is refused while they have an upcoming booking or a waitlist place (erasing would silently cancel care). The name, phone (replaced by a reserved-looking number that keeps `phone` unique), date of birth, consent and appointment reasons go; their messages keep only ids. Audit events keep ids and times but no personal data, except a free-text correction note a staff member typed, which the append-only guard stops us rewriting |
+| A-65 | Consent is recorded, not required: registration works without it, because a clinic may rely on another lawful basis and the assignment does not ask for it. Without recorded consent the server never messages the patient (the message is SKIPPED and says to phone) |
+| A-66 | Messages are written in the same transaction as the change they announce, for a booking, a clinic cancellation, a move and a waitlist offer. A patient's own cancellation is not messaged back. There are no reminders: nothing runs on a per-appointment timer |
+| A-67 | `needs_attention` is stored as `appointments.outside_hours` and refreshed in the same transaction as any change to a doctor's hours, the only thing that can change it. "Future" is applied at read time, so it does not depend on a clock. A test compares the stored flag with the rule after random sequences of hour changes |
+| A-68 | The audit hash chain is per appointment (each event hashes the previous event of the same appointment), which needs no global lock. It detects an edited or removed event in the middle of a history; it cannot detect events removed from the very end, and someone with full database rights could recompute the chain, so it is tamper-evident, not tamper-proof |
 
 ## 9. Error handling and logging
 
@@ -466,43 +481,59 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
 
 ## 11. Known limitations
 
-- The hosted instance runs on free plans; see the cold-start note in section 2.
-- **Authentication is optional and off by default.** While `STAFF_PASSWORD` is unset, any caller of the
-  API can read patient names and phones, export a patient, delete a doctor and change hours. With it set
-  there is one shared password and no roles. Production would need individual accounts and permissions.
-  The rate limit (default 600 requests a minute per address) is in memory, so with several instances
-  each counts on its own.
-- **The hosted test clock is switched on** so reviewers can try the time-based rules. That also lets any
-  caller send `X-Test-Clock` and book in the past or skip the 60-day window. After the review set
-  `TEST_CLOCK_ENABLED=false` in the Render dashboard.
-- The free hosting plan puts the API to sleep, so the first request can take about a minute. The
-  test clock is enabled on the hosted instance on purpose (it is how the rules are reviewed); it is
-  off by default everywhere else.
-- An outcome can be corrected, but a cancelled appointment cannot be restored and the audit trail
-  is a table the application only appends to, not a tamper-proof ledger.
-- One clinic, India Standard Time only. A visit may last one to four of the doctor's slots, but every
-  appointment still has one doctor, one patient and one length: there are no appointment types with
-  their own durations or preparation time. The Stretch items are built (waitlist with auto-offer, recurring appointments, calendar export). Not built:
-  notifications (an offer is only visible on the patient page, nobody is messaged), branches, rooms
-  and equipment, appointment types, and a guardian model. [docs/SCENARIOS.md](docs/SCENARIOS.md) sorts
-  about 400 edge-case scenarios into covered, added and out of scope, with the reason for each.
-- The `needs_attention` list is derived from the current hours for every matching row, so on a very
-  large database it would need a stored flag or an index. The patient history page loads 50
-  appointments and a button shows up to 100; the needs-attention list shows the first 100.
-- Accessibility is checked by axe-core on every page (light and dark, desktop and phone) and by hand
-  for keyboard use, but it has not been audited by a person who uses a screen reader.
-- **Privacy.** The API returns patient names and phones to anyone who can call it unless
-  `STAFF_PASSWORD` is set. The duplicate-phone error returns only the owner's id, and logs carry
-  ids and codes, never names, phones or reasons. Every response is `no-store`, with `nosniff`,
-  `no-referrer`, HSTS and a CSP; the UI is served with a CSP that allows scripts only from itself
-  and requests only to its API. Under India's DPDP Act a real deployment would also need consent
-  records, a retention rule and deletion on request; `GET /patients/{id}/export` is the access half.
-- **The rule proof** (`POST /diagnostics/proof`) is open to anyone who can call the API when sign-in is off. It
-  keeps nothing, but each run holds a database connection for a few seconds and burns sequence ids.
+What is left after the work in sections 8 to 10, and why. Items the assignment asks for are not
+limitations; items it makes optional or leaves out are.
+
+- **Sign-in is optional and off by default**, because the assignment makes authentication optional
+  and a login would lock out a reviewer. Turned on, it can be one shared password (`STAFF_PASSWORD`)
+  or individual accounts with two roles (`AUTH_SECRET`). Not built: password reset by email,
+  two-factor sign-in, more than two roles. While sign-in is off any caller can read patient names
+  and phones.
+- **The hosted test clock is switched on on purpose.** The assignment requires a way for a reviewer
+  to set "now"; that also lets any caller send `X-Test-Clock` and book in the past or skip the 60-day
+  window. After the review set `TEST_CLOCK_ENABLED=false` in the Render dashboard.
+- **Messages go nowhere by themselves.** The outbox, the consent gate, the retries and the webhook
+  are built and tested, but sending needs a gateway (an SMS or WhatsApp account) that the clinic
+  chooses and pays for; this project has none, so by default messages wait on the Messages page for
+  reception. There are no reminders before an appointment.
+- **Cold start.** Render's free plan sleeps when idle. A scheduled workflow (`keepalive.yml`) pings
+  `/healthz` every 10 minutes to prevent that; GitHub may pause scheduled workflows on a repository
+  with no activity for 60 days, and a paid plan is the real fix.
+- **The rate limit is in memory**, so with several instances each counts on its own. The hosted
+  setup is one instance. A shared limit would need Redis or a database table.
+- **Tamper-evident, not tamper-proof.** The audit trail is append-only in the database and
+  hash-chained per appointment (A-68). A cancelled appointment cannot be restored; an outcome can be
+  corrected with a note.
+- **Scope the assignment does not ask for:** one clinic and India Standard Time; no branches, rooms
+  or equipment; no appointment types with their own durations (a visit can last one to four of the
+  doctor's slots, A-04); no guardian model (one phone, one patient, A-15); no payments, so the
+  deposit is an acknowledgement. [docs/SCENARIOS.md](docs/SCENARIOS.md) sorts about 400 edge-case
+  scenarios into covered, added and out of scope, with the reason for each.
+- **Accessibility** is checked by axe-core on every page (light and dark, desktop and phone) and by
+  hand for keyboard use, plus tests for the skip link, page titles and focus on navigation. It has **not** been audited by a person who uses a screen
+  reader; that cannot be done by the author or by software and is the one item here that stays open.
+- **Privacy.** Consent can be recorded and a patient's data erased on request or by a retention
+  purge (`python -m scripts.purge_inactive`, dry run by default); `GET /patients/{id}/export` is the
+  access half. Logs hold ids and codes, never names, phones or reasons (a test enforces it); every
+  response is `no-store` with `nosniff`, `no-referrer`, HSTS and a CSP. A real deployment would still
+  need a written privacy notice, a retention period chosen by the clinic (the default of three years
+  is a placeholder), a data processing agreement with Neon, Render and any message gateway, and
+  legal review; this is engineering support for the Digital Personal Data Protection Act, not
+  advice.
+- **Load.** `python scripts/load.py --users 100` mixes reads, bookings and cancels from 100
+  simultaneous users: no server error and no double booking, but at 100 users on a laptop the median
+  request takes about two seconds because the pool holds ten connections. A test runs 60 users in
+  the suite. Raise `DB_POOL_SIZE` for more, within what the database allows; no test goes past 100
+  users.
+- **The rule proof** (`POST /diagnostics/proof`) is administrator-only when sign-in is on; when it is
+  off anyone can call it. It keeps nothing, but each run holds a database connection for a few
+  seconds and burns sequence ids.
 - The seed data is relative to the date it was created on: the flags drift as days pass, which is why
   there is a "Seed day" clock preset and a re-seed command.
-- `Idempotency-Key` is optional and applies to single bookings only (not to series, cancel or
-  reschedule). Without a key a double click is caught by the overlap check (`same_patient: true`).
+- `Idempotency-Key` applies to single bookings only. Repeating a cancel or a reschedule is safe
+  without one: the second attempt gets a conflict (`INVALID_TRANSITION` or `RESCHEDULE_NO_CHANGE`),
+  never a second effect. Without a key a double-clicked booking is caught by the overlap check
+  (`same_patient: true`).
 
 ## 12. AI and third-party usage
 
