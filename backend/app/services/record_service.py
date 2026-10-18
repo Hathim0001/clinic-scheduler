@@ -160,6 +160,10 @@ class RecordService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
 
+    def verify_audit(self) -> tuple[int, list[int]]:
+        """(events checked, ids whose hash chain is broken): empty means nothing was altered."""
+        return run(self._factory, repo.audit_chain_breaks)
+
     def history(self, appointment_id: int) -> list[EventView]:
         """Everything that happened to one appointment, oldest first."""
 

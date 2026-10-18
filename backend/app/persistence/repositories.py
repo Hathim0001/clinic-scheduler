@@ -14,7 +14,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import ColumnElement, Select, and_, func, or_, select
+from sqlalchemy import ColumnElement, Select, and_, func, or_, select, text
 from sqlalchemy.orm import Session
 
 from app.core.actor import current_actor
@@ -473,6 +473,14 @@ def refresh_outside_hours(session: Session, doctor_id: int | None = None) -> int
             changed += 1
     session.flush()
     return changed
+
+
+def audit_chain_breaks(session: Session) -> tuple[int, list[int]]:
+    """(events checked, ids of events whose hash chain no longer holds), recomputed by the database
+    itself with the same function its trigger used to write them."""
+    checked = session.scalar(select(func.count()).select_from(AppointmentEvent)) or 0
+    broken = [row[0] for row in session.execute(text("SELECT event_id FROM verify_audit_chain()"))]
+    return checked, broken
 
 
 def count_rows(session: Session) -> int:

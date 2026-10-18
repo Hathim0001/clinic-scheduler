@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     SmallInteger,
     Text,
     func,
@@ -202,6 +203,9 @@ class AppointmentEvent(Base):
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     actor: Mapped[str] = mapped_column(Text, default="system")
+    # Set by a database trigger (migration 0011), never by the application.
+    prev_hash: Mapped[bytes | None] = mapped_column(LargeBinary)
+    row_hash: Mapped[bytes | None] = mapped_column(LargeBinary)
 
 
 class IdempotencyKey(Base):

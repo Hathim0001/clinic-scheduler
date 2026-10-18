@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 
 from fastapi import APIRouter, Request
+from pydantic import BaseModel
 
 from app.api.deps import AdminOnly
 from app.api.schemas.responses import ProofCaseOut, ProofOut
@@ -43,3 +44,22 @@ def run_rule_proof(request: Request) -> ProofOut:
             for c in report.cases
         ],
     )
+
+
+class AuditOut(BaseModel):
+    events_checked: int
+    broken_event_ids: list[int]
+    intact: bool
+
+
+@router.get(
+    "/diagnostics/audit",
+    response_model=AuditOut,
+    summary="Check that no past audit event has been altered",
+    dependencies=[AdminOnly],
+)
+def verify_audit(request: Request) -> AuditOut:
+    """Each audit event carries a hash that includes the one before it (set by a database trigger).
+    This recomputes them all in the database and lists any event that no longer matches."""
+    checked, broken = request.app.state.services.records.verify_audit()
+    return AuditOut(events_checked=checked, broken_event_ids=broken, intact=not broken)

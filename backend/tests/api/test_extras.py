@@ -168,3 +168,25 @@ def test_messages_are_queued_listed_and_marked_sent_over_http(api: Api) -> None:
 
 def test_the_messages_list_rejects_an_unknown_status(api: Api) -> None:
     assert_error(api.get("/notifications", params={"status": "LOST"}), 422, "VALIDATION_ERROR")
+
+
+def test_the_audit_check_reports_an_intact_history_and_a_broken_one(api: Api) -> None:
+    api.post("/appointments", book_body(api))
+    clean = api.get("/diagnostics/audit").json()
+    assert clean["intact"] is True
+    assert clean["events_checked"] >= 1
+    assert clean["broken_event_ids"] == []
+
+    from sqlalchemy import text
+
+    with api.clinic.factory() as session, session.begin():
+        session.execute(
+            text("ALTER TABLE appointment_events DISABLE TRIGGER appointment_events_no_change")
+        )
+        session.execute(text("UPDATE appointment_events SET actor = 'forged'"))
+        session.execute(
+            text("ALTER TABLE appointment_events ENABLE TRIGGER appointment_events_no_change")
+        )
+    forged = api.get("/diagnostics/audit").json()
+    assert forged["intact"] is False
+    assert forged["broken_event_ids"]
