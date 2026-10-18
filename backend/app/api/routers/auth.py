@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app.api.errors import ApiError
+from app.api.ratelimit import LoginLockout
 from app.api.schemas.requests import LoginRequest
 from app.core.auth import issue_token
 from app.domain.errors import ErrorCode, RuleViolation
@@ -56,8 +57,20 @@ def login(request: Request, body: LoginRequest) -> TokenOut:
     ttl = settings.auth_token_ttl_hours * 3600
 
     if settings.auth_secret is not None:
+        lockout: LoginLockout = request.app.state.login_lockout
+        who = body.name.strip().lower()
+        wait = lockout.retry_after(who, time.time())
+        if wait is not None:
+            log.warning("auth.login_locked")
+            raise ApiError(
+                ErrorCode.RATE_LIMITED,
+                "Too many wrong passwords for this account. Try again later.",
+                {"retry_after_seconds": wait},
+                {"Retry-After": str(wait)},
+            )
         account = request.app.state.services.staff.authenticate(body.name, body.password)
         if account is not None:
+            lockout.succeeded(who)
             token, expires = issue_token(
                 secret, account.display_name, time.time(), ttl, account.role.value, account.id
             )
@@ -68,8 +81,11 @@ def login(request: Request, body: LoginRequest) -> TokenOut:
                 role=account.role.value,
                 expires_at_epoch=expires,
             )
+        lockout.failed(who, time.time())
     shared = settings.staff_password
     if shared is not None and hmac.compare_digest(body.password.encode(), shared.encode()):
+        if settings.auth_secret is not None:
+            request.app.state.login_lockout.succeeded(body.name.strip().lower())
         token, expires = issue_token(secret, body.name, time.time(), ttl, Role.ADMIN.value)
         log.info("auth.login", staff=body.name, role=Role.ADMIN.value)
         return TokenOut(

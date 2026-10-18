@@ -11,7 +11,7 @@ from app.api.deps import AdminOnly, NowDep, ServicesDep
 from app.api.ics import calendar_text
 from app.api.params import Limit, Offset, PatientId
 from app.api.presenters import appointment_out, export_out, patient_out
-from app.api.schemas.requests import PatientCreate, PatientPatch
+from app.api.schemas.requests import ConsentRequest, PatientCreate, PatientPatch
 from app.api.schemas.responses import AppointmentOut, PageOut, PatientExportOut, PatientOut
 from app.domain.model import Status
 
@@ -49,7 +49,13 @@ def search_patients(
 )
 def create_patient(body: PatientCreate, services: ServicesDep, now: NowDep) -> PatientOut:
     view = services.patients.create(
-        body.name, body.phone, body.date_of_birth, now, body.allow_duplicate, body.consent
+        body.name,
+        body.phone,
+        body.date_of_birth,
+        now,
+        body.allow_duplicate,
+        body.consent,
+        body.consent_by,
     )
     log.info("patient.created", patient_id=view.id)
     return patient_out(view)
@@ -118,8 +124,10 @@ def update_patient(
     response_model=PatientOut,
     summary="Record that the patient accepted the privacy notice",
 )
-def record_consent(patient_id: PatientId, services: ServicesDep, now: NowDep) -> PatientOut:
-    view = services.patients.record_consent(patient_id, now)
+def record_consent(
+    patient_id: PatientId, body: ConsentRequest, services: ServicesDep, now: NowDep
+) -> PatientOut:
+    view = services.patients.record_consent(patient_id, now, body.consent_by)
     log.info("patient.consent_recorded", patient_id=patient_id)
     return patient_out(view)
 

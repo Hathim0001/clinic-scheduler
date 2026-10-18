@@ -43,6 +43,44 @@ def client_address(scope: Scope, trusted_proxy_hops: int) -> str:
     return str(socket_address)
 
 
+class LoginLockout:
+    """Too many wrong passwords for one account lock it for a while, whoever is guessing.
+
+    The per-address limit stops one machine; this stops a spread-out guess at a single account.
+    The price is that someone can lock an account on purpose, which is why the lock is short and
+    why a correct password is also refused while it lasts. In memory, like the rate limit.
+    """
+
+    MAX_FAILURES = 5
+    WINDOW_SECONDS = 15 * 60.0
+
+    def __init__(self) -> None:
+        self._failures: dict[str, deque[float]] = {}
+
+    def _recent(self, account: str, now: float) -> deque[float]:
+        window = self._failures.setdefault(account, deque())
+        while window and now - window[0] >= self.WINDOW_SECONDS:
+            window.popleft()
+        if not window:
+            self._failures.pop(account, None)
+        return window
+
+    def retry_after(self, account: str, now: float) -> int | None:
+        """Seconds until the account may try again, or None when it is not locked."""
+        window = self._recent(account, now)
+        if len(window) < self.MAX_FAILURES:
+            return None
+        return max(1, int(self.WINDOW_SECONDS - (now - window[0])) + 1)
+
+    def failed(self, account: str, now: float) -> None:
+        if len(self._failures) >= MAX_TRACKED_CLIENTS and account not in self._failures:
+            return  # never grow without bound; the per-address limit still applies
+        self._failures.setdefault(account, deque()).append(now)
+
+    def succeeded(self, account: str) -> None:
+        self._failures.pop(account, None)
+
+
 class RateLimitMiddleware:
     def __init__(self, app: ASGIApp, per_minute: int = 600, trusted_proxy_hops: int = 0) -> None:
         self.app = app

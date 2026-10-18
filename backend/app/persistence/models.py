@@ -106,6 +106,7 @@ class Patient(Base):
     created_at: Mapped[datetime] = _created_at()
     consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     consent_version: Mapped[str | None] = mapped_column(Text, default=None)
+    consent_by: Mapped[str | None] = mapped_column(Text, default=None)  # PATIENT or GUARDIAN
     erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
@@ -140,6 +141,7 @@ class Notification(Base):
     created_at: Mapped[datetime] = _created_at()
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sent_via: Mapped[str | None] = mapped_column(Text)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Appointment(Base):
@@ -161,6 +163,7 @@ class Appointment(Base):
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     slots: Mapped[int] = mapped_column(SmallInteger, default=1)
     outside_hours: Mapped[bool] = mapped_column(Boolean, default=False)
+    confirmed_by_phone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 

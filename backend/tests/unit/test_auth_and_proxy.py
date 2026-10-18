@@ -235,3 +235,19 @@ def test_a_token_with_a_non_integer_account_id_is_refused() -> None:
     digest = hmac.new(_key(PASSWORD), body.encode(), hashlib.sha256).digest()
     signature = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
     assert verify_claims(PASSWORD, f"{body}.{signature}", now=1_000) is None
+
+
+def test_the_lockout_counts_in_a_window_and_forgets_after_it() -> None:
+    from app.api.ratelimit import LoginLockout
+
+    lockout = LoginLockout()
+    for second in range(LoginLockout.MAX_FAILURES - 1):
+        lockout.failed("meera", float(second))
+    assert lockout.retry_after("meera", 10.0) is None  # one short of the limit
+    lockout.failed("meera", 11.0)
+    assert lockout.retry_after("meera", 12.0) is not None
+    later = 11.0 + LoginLockout.WINDOW_SECONDS + 1
+    assert lockout.retry_after("meera", later) is None  # the old failures have aged out
+    lockout.failed("meera", later)
+    lockout.succeeded("meera")
+    assert lockout.retry_after("meera", later) is None

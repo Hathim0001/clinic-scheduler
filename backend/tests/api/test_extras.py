@@ -198,3 +198,19 @@ def test_ids_in_the_new_paths_are_bounded_so_they_never_reach_the_database(
 ) -> None:
     assert_error(api.post(f"/notifications/{bad}/sent", {}), 422, "VALIDATION_ERROR")
     assert_error(api.patch(f"/staff/{bad}", {"active": True}), 422, "VALIDATION_ERROR")
+
+
+def test_the_proof_cannot_be_run_in_a_loop(api: Api) -> None:
+    assert api.post("/diagnostics/proof").status_code == 200
+    again = api.post("/diagnostics/proof")
+    assert_error(again, 429, "RATE_LIMITED")
+    assert int(again.headers["retry-after"]) >= 1
+
+
+def test_metrics_need_the_token_when_one_is_configured(api: Api, database_url: str) -> None:
+    with TestClient(create_app(make_settings(database_url, metrics_token="metrics-secret"))) as c:
+        assert c.get("/metrics").status_code == 401
+        assert c.get("/metrics", headers={"Authorization": "Bearer nope-nope"}).status_code == 401
+        ok = c.get("/metrics", headers={"Authorization": "Bearer metrics-secret"})
+        assert ok.status_code == 200
+        assert c.get("/healthz").status_code == 200  # the health check stays open

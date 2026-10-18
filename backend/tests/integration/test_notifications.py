@@ -267,3 +267,36 @@ def test_the_background_task_delivers_pending_messages_through_the_gateway(
     assert len(_Handler.received) == 1
     assert _Handler.received[0]["kind"] == "APPOINTMENT_BOOKED"
     assert all_messages(clinic)[0].status == "SENT"
+
+
+def test_the_gateway_is_called_with_no_database_lock_held(clinic: Clinic) -> None:
+    """A slow gateway must not hold a row lock or a connection: the row can be locked meanwhile."""
+    from sqlalchemy import text
+
+    consent(clinic, clinic.asha)
+    clinic.booking.book(BookCommand(clinic.rao, clinic.asha, at(10), "x"), NOW)
+    (message,) = all_messages(clinic)
+    probed: list[bool] = []
+
+    class Probe:
+        def send(self, to: str, body: str, kind: str) -> None:
+            with clinic.factory() as session, session.begin():
+                session.execute(
+                    text("SELECT id FROM notifications WHERE id = :i FOR UPDATE NOWAIT"),
+                    {"i": message.id},
+                )
+            probed.append(True)
+
+    assert service(clinic).dispatch(Probe(), NOW) == 1
+    assert probed == [True]
+
+
+def test_a_message_being_sent_is_left_alone_until_its_lease_runs_out(clinic: Clinic) -> None:
+    consent(clinic, clinic.asha)
+    clinic.booking.book(BookCommand(clinic.rao, clinic.asha, at(10), "x"), NOW)
+    (message,) = all_messages(clinic)
+    assert service(clinic)._claim(message.id, NOW) is not None
+    sent = Recorder()
+    assert service(clinic).dispatch(sent, NOW + timedelta(seconds=30)) == 0  # still leased
+    assert sent.sent == []
+    assert service(clinic).dispatch(sent, NOW + timedelta(minutes=3)) == 1  # lease expired

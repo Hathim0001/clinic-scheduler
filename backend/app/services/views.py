@@ -106,6 +106,7 @@ class PatientView:
     deposit: DepositStatus | None  # None in search results, which do not compute it
     consent_at: datetime | None = None
     erased_at: datetime | None = None
+    consent_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

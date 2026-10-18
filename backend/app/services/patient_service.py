@@ -26,9 +26,33 @@ _UPCOMING = ("BOOKED",)
 _LIVE_WAITLIST = ("WAITING", "OFFERED")
 
 
+ADULT_AGE = 18
+
+
 def erased_phone(patient_id: int) -> str:
-    """A valid but reserved-looking number that keeps `phone` unique and identifies no one."""
-    return f"+91{6_000_000_000 + patient_id}"
+    """A number that keeps `phone` unique and identifies no one. A real Indian mobile never has a
+    zero straight after +91, and the database check allows exactly that shape for erased rows."""
+    return f"+910{patient_id:09d}"
+
+
+def _is_child(born: date, now: datetime) -> bool:
+    today = ist_date(now)
+    birthday_passed = (today.month, today.day) >= (born.month, born.day)
+    return today.year - born.year - (0 if birthday_passed else 1) < ADULT_AGE
+
+
+def _check_consent_by(born: date, now: datetime, consent_by: str) -> None:
+    """A child's acceptance of the privacy notice must come from a parent or guardian."""
+    if consent_by not in ("PATIENT", "GUARDIAN"):
+        raise RuleViolation(
+            ErrorCode.VALIDATION_ERROR, "consent_by is PATIENT or GUARDIAN.", field="consent_by"
+        )
+    if consent_by == "PATIENT" and _is_child(born, now):
+        raise RuleViolation(
+            ErrorCode.VALIDATION_ERROR,
+            "This patient is under 18, so a parent or guardian must accept the privacy notice.",
+            field="consent_by",
+        )
 
 
 def refuse_erased(patient: Patient) -> None:
@@ -52,6 +76,7 @@ def _view(patient: Patient, deposit: DepositStatus | None = None) -> PatientView
         deposit,
         patient.consent_at,
         patient.erased_at,
+        patient.consent_by,
     )
 
 
@@ -121,13 +146,17 @@ class PatientService:
         now: datetime,
         allow_duplicate: bool = False,
         consent: bool = False,
+        consent_by: str = "PATIENT",
     ) -> PatientView:
         """Register a patient. A phone number identifies one patient (the problem statement: phone,
         unique), so a number already in use is refused with PHONE_TAKEN. `consent` records that the
-        patient accepted the privacy notice at `now`; registration works without it."""
+        patient (or, for a child, a parent or guardian) accepted the privacy notice at `now`;
+        registration works without it."""
         cleaned = _clean_name(name)
         normalised = _normalised(phone)
         _check_birth_date(date_of_birth, now)
+        if consent:
+            _check_consent_by(date_of_birth, now, consent_by)
 
         def work(session: Session) -> PatientView:
             _refuse_taken_phone(repo.patient_by_phone(session, normalised))
@@ -136,6 +165,7 @@ class PatientService:
             patient = Patient(name=cleaned, phone=normalised, date_of_birth=date_of_birth)
             if consent:
                 patient.consent_at, patient.consent_version = now, CONSENT_VERSION
+                patient.consent_by = consent_by
             session.add(patient)
             session.flush()
             return _view(patient, deposit_status([], now))
@@ -184,13 +214,17 @@ class PatientService:
 
         return run(self._factory, work)
 
-    def record_consent(self, patient_id: int, now: datetime) -> PatientView:
+    def record_consent(
+        self, patient_id: int, now: datetime, consent_by: str = "PATIENT"
+    ) -> PatientView:
         """Record that the patient accepted the current privacy notice."""
 
         def work(session: Session) -> PatientView:
             patient = repo.get_patient(session, patient_id, lock=True)
             refuse_erased(patient)
+            _check_consent_by(patient.date_of_birth, now, consent_by)
             patient.consent_at, patient.consent_version = now, CONSENT_VERSION
+            patient.consent_by = consent_by
             session.flush()
             return _view(
                 patient, deposit_status(repo.penalty_events(session, patient.id, now), now)
@@ -202,7 +236,9 @@ class PatientService:
         """Erase a patient's personal data on request (DPDP Act right to erasure).
 
         The name, phone and date of birth are replaced and the free-text reasons of their
-        appointments are blanked, so nothing identifies them. The appointments themselves stay,
+        appointments are blanked, so nothing identifies them. The consent record (when, which
+        notice version, patient or guardian) is kept: it holds no identity and the rules expect
+        proof of consent to outlive the data. The appointments themselves stay,
         with the doctor, time and outcome, because the clinic's counts and a doctor's schedule
         depend on them. Refused while the patient has an upcoming booking or a live waitlist
         entry, since erasing then would silently cancel care; leave those first. Repeating it
@@ -243,8 +279,7 @@ class PatientService:
             patient.name = ERASED_NAME
             patient.phone = erased_phone(patient.id)
             patient.date_of_birth = EARLIEST_BIRTH_DATE
-            patient.consent_at = patient.consent_version = None
-            patient.erased_at = now
+            patient.erased_at = now  # the consent record stays: when and by whom, no identity
             for appointment in session.scalars(
                 select(Appointment).where(Appointment.patient_id == patient.id)
             ):

@@ -135,3 +135,56 @@ def test_the_purge_is_a_dry_run_until_told_to_apply(clinic: Clinic) -> None:
 def test_the_purge_command_refuses_a_period_that_could_erase_recent_patients() -> None:
     with pytest.raises(SystemExit):
         purge_main(["--days", "5"])
+
+
+def test_a_childs_consent_must_come_from_a_guardian(clinic: Clinic) -> None:
+    from app.domain.errors import RuleViolation
+
+    child_born = date(2015, 6, 1)
+    with pytest.raises(RuleViolation) as raised:
+        clinic.patients.create("Young Patient", "9000066666", child_born, NOW, consent=True)
+    assert raised.value.details["field"] == "consent_by"
+    made = clinic.patients.create(
+        "Young Patient", "9000066666", child_born, NOW, consent=True, consent_by="GUARDIAN"
+    )
+    assert made.consent_by == "GUARDIAN"
+
+
+def test_an_adult_gives_their_own_consent_and_the_age_boundary_is_the_birthday(
+    clinic: Clinic,
+) -> None:
+    from app.domain.errors import RuleViolation
+
+    exactly_18 = date(2008, 11, 2)  # NOW is 2 Nov 2026
+    day_before_18 = date(2008, 11, 3)
+    adult = clinic.patients.create("Just Adult", "9000077771", exactly_18, NOW, consent=True)
+    assert adult.consent_by == "PATIENT"
+    with pytest.raises(RuleViolation):
+        clinic.patients.create("Nearly Adult", "9000077772", day_before_18, NOW, consent=True)
+
+
+def test_consent_recorded_later_for_a_child_also_needs_a_guardian(clinic: Clinic) -> None:
+    from app.domain.errors import RuleViolation
+
+    child = clinic.patients.create("Small Child", "9000088888", date(2018, 1, 1), NOW)
+    with pytest.raises(RuleViolation):
+        clinic.patients.record_consent(child.id, NOW)
+    done = clinic.patients.record_consent(child.id, NOW, consent_by="GUARDIAN")
+    assert done.consent_by == "GUARDIAN"
+
+
+def test_erasing_keeps_the_consent_record_but_not_who_the_patient_was(clinic: Clinic) -> None:
+    clinic.patients.record_consent(clinic.asha, NOW)
+    erased = clinic.patients.erase(clinic.asha, NOW + timedelta(days=1))
+    assert (erased.consent_at, erased.consent_by) == (NOW, "PATIENT")
+    assert erased.name == ERASED_NAME
+
+
+def test_the_erased_phone_shape_is_accepted_by_the_database_and_never_a_real_number(
+    clinic: Clinic,
+) -> None:
+    from app.domain.phone import normalise_phone
+
+    assert erased_phone(7) == "+910000000007"
+    with pytest.raises(ValueError, match="Not a valid"):
+        normalise_phone(erased_phone(7))  # a real registration can never use it

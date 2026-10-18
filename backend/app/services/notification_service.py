@@ -21,11 +21,11 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Protocol
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.errors import ConflictError, ErrorCode, NotFoundError
@@ -37,6 +37,7 @@ from app.services.views import Page
 log = structlog.get_logger()
 
 MAX_ATTEMPTS = 3
+LEASE = timedelta(minutes=2)  # how long a claimed message is left alone while it is being sent
 BATCH = 50
 STATUSES = ("PENDING", "SENT", "FAILED", "SKIPPED")
 
@@ -220,53 +221,78 @@ class NotificationService:
     def dispatch(self, provider: Provider, now: datetime) -> int:
         """Send pending messages through `provider`; returns how many were delivered.
 
-        Each message is handled in its own transaction under a row lock that skips rows another
-        instance is already working on, so two servers never send the same message twice. A failure
-        is counted and kept; after `MAX_ATTEMPTS` the message is FAILED and shows on the page.
+        A message is claimed with a short lease in one transaction, sent with no transaction open
+        (a slow gateway never holds a database connection or a row lock), and its outcome written in
+        a second transaction. Two servers never claim the same message: the claim uses a row lock
+        that skips rows another instance holds, and the lease keeps a crashed sender's message from
+        being retried for `LEASE`. A failure is counted; after `MAX_ATTEMPTS` the message is FAILED.
         """
         ids = run(
             self._factory,
             lambda session: list(
                 session.scalars(
                     select(Notification.id)
-                    .where(Notification.status == "PENDING", Notification.attempts < MAX_ATTEMPTS)
+                    .where(
+                        Notification.status == "PENDING",
+                        Notification.attempts < MAX_ATTEMPTS,
+                        or_(Notification.locked_until.is_(None), Notification.locked_until < now),
+                    )
                     .order_by(Notification.id)
                     .limit(BATCH)
                 )
             ),
         )
-        delivered = 0
-        for notification_id in ids:
-            delivered += self._deliver(provider, notification_id, now)
-        return delivered
+        return sum(self._deliver(provider, notification_id, now) for notification_id in ids)
 
-    def _deliver(self, provider: Provider, notification_id: int, now: datetime) -> int:
-        def work(session: Session) -> int:
+    def _claim(self, notification_id: int, now: datetime) -> tuple[str, str, str] | None:
+        def work(session: Session) -> tuple[str, str, str] | None:
             row = session.scalars(
                 select(Notification)
-                .where(Notification.id == notification_id, Notification.status == "PENDING")
+                .where(
+                    Notification.id == notification_id,
+                    Notification.status == "PENDING",
+                    or_(Notification.locked_until.is_(None), Notification.locked_until < now),
+                )
                 .with_for_update(skip_locked=True)
             ).one_or_none()
             if row is None:
-                return 0
-            try:
-                provider.send(row.to_phone, row.body, row.kind)
-            except (urllib.error.URLError, OSError, ValueError) as error:
-                row.attempts += 1
-                row.last_error = type(error).__name__
-                if row.attempts >= MAX_ATTEMPTS:
-                    row.status = "FAILED"
-                log.warning(
-                    "notification.failed",
-                    notification_id=row.id,
-                    attempts=row.attempts,
-                    error_type=type(error).__name__,
-                )
-                return 0
-            row.status, row.sent_at, row.sent_via = "SENT", now, "GATEWAY"
-            row.attempts += 1
-            row.last_error = None
-            log.info("notification.sent", notification_id=row.id, kind=row.kind)
-            return 1
+                return None
+            row.locked_until = now + LEASE
+            return row.to_phone, row.body, row.kind
 
         return run(self._factory, work)
+
+    def _finish(self, notification_id: int, now: datetime, error: str | None) -> int:
+        def work(session: Session) -> int:
+            row = session.get(Notification, notification_id, with_for_update=True)
+            if row is None or row.status != "PENDING":
+                return 0
+            row.locked_until = None
+            row.attempts += 1
+            if error is None:
+                row.status, row.sent_at, row.sent_via, row.last_error = "SENT", now, "GATEWAY", None
+                log.info("notification.sent", notification_id=row.id, kind=row.kind)
+                return 1
+            row.last_error = error
+            if row.attempts >= MAX_ATTEMPTS:
+                row.status = "FAILED"
+            log.warning(
+                "notification.failed",
+                notification_id=row.id,
+                attempts=row.attempts,
+                error_type=error,
+            )
+            return 0
+
+        return run(self._factory, work)
+
+    def _deliver(self, provider: Provider, notification_id: int, now: datetime) -> int:
+        claimed = self._claim(notification_id, now)
+        if claimed is None:
+            return 0
+        to, body, kind = claimed
+        try:
+            provider.send(to, body, kind)
+        except (urllib.error.URLError, OSError, ValueError) as error:
+            return self._finish(notification_id, now, type(error).__name__)
+        return self._finish(notification_id, now, None)

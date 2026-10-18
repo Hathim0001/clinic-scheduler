@@ -212,3 +212,34 @@ def test_a_staff_patch_with_nothing_or_a_null_is_refused_not_a_500(
     made = create(accounts, admin, "meera", "RECEPTIONIST").json()
     response = accounts.http.patch(f"{BASE}/staff/{made['id']}", json=body, headers=admin)
     assert_error(response, 422, "VALIDATION_ERROR")
+
+
+def test_five_wrong_passwords_lock_one_account_but_not_the_others(
+    accounts: Api, admin: dict[str, str]
+) -> None:
+    create(accounts, admin, "meera", "RECEPTIONIST")
+    create(accounts, admin, "ravi", "RECEPTIONIST")
+    for _ in range(5):
+        assert_error(login(accounts, "meera", "wrong-wrong"), 401, "UNAUTHENTICATED")
+    locked = login(accounts, "meera", GOOD)  # even the right password is refused for a while
+    assert_error(locked, 429, "RATE_LIMITED")
+    assert int(locked.headers["retry-after"]) >= 1
+    assert login(accounts, "ravi", GOOD).status_code == 200
+
+
+def test_a_successful_sign_in_clears_the_count_of_wrong_passwords(
+    accounts: Api, admin: dict[str, str]
+) -> None:
+    create(accounts, admin, "meera", "RECEPTIONIST")
+    for _ in range(3):
+        login(accounts, "meera", "wrong-wrong")
+    assert login(accounts, "meera", GOOD).status_code == 200
+    for _ in range(3):
+        login(accounts, "meera", "wrong-wrong")
+    assert login(accounts, "meera", GOOD).status_code == 200  # not locked: the count restarted
+
+
+def test_an_unknown_username_is_throttled_the_same_way(accounts: Api) -> None:
+    for _ in range(5):
+        login(accounts, "nobody", "wrong-wrong")
+    assert_error(login(accounts, "nobody", "wrong-wrong"), 429, "RATE_LIMITED")

@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import threading
+import time
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app.api.deps import AdminOnly
+from app.api.errors import ApiError
 from app.api.schemas.responses import ProofCaseOut, ProofOut
+from app.domain.errors import ErrorCode
 from app.services.proof_service import run_proof
 
 router = APIRouter(tags=["proof"])
+PROOF_COOLDOWN_S = 5.0  # it holds a connection for seconds; do not let it be run in a loop
 _one_at_a_time = threading.Lock()  # each run holds a connection and a transaction for a moment
 
 
@@ -26,6 +30,17 @@ def run_rule_proof(request: Request) -> ProofOut:
     move, and more) through the real services and PostgreSQL constraints inside a transaction that
     is always rolled back. `rows_before` and `rows_after` show that nothing was kept. It uses its
     own fixed clock and its own doctors and patients, so it never reads clinic data."""
+    now = time.monotonic()
+    wait = PROOF_COOLDOWN_S - (now - getattr(request.app.state, "proof_last_run", -1e9))
+    if wait > 0:
+        seconds = int(wait) + 1
+        raise ApiError(
+            ErrorCode.RATE_LIMITED,
+            "The proof was run a moment ago. Try again shortly.",
+            {"retry_after_seconds": seconds},
+            {"Retry-After": str(seconds)},
+        )
+    request.app.state.proof_last_run = now
     with _one_at_a_time:
         report = run_proof(request.app.state.engine)
     return ProofOut(

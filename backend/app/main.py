@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.deps import Services, require_admin, require_staff
 from app.api.errors import register_exception_handlers
 from app.api.middleware import RequestContextMiddleware
-from app.api.ratelimit import RateLimitMiddleware
+from app.api.ratelimit import LoginLockout, RateLimitMiddleware
 from app.api.routers import (
     alternatives,
     appointments,
@@ -112,6 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.login_lockout = LoginLockout()
     app.state.engine = engine
     app.state.services = Services.build(factory)
 

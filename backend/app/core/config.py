@@ -50,10 +50,15 @@ class Settings(BaseSettings):
     # Unset (the default) sends nothing: messages wait on the Messages page for reception.
     notify_webhook_url: str | None = Field(default=None, min_length=8)
     notify_webhook_token: str | None = None
+    # Optional: when set, GET /metrics needs `Authorization: Bearer <token>`. Unset leaves it open
+    # (it holds counts only, never paths, ids or personal data).
+    metrics_token: str | None = Field(default=None, min_length=8)
     # How often (seconds) the server passes lapsed waitlist offers to the next patient. 0 is off.
     offer_sweep_interval_s: int = Field(default=30, ge=0, le=3600)
 
-    @field_validator("staff_password", "auth_secret", "notify_webhook_url", mode="before")
+    @field_validator(
+        "staff_password", "auth_secret", "notify_webhook_url", "metrics_token", mode="before"
+    )
     @classmethod
     def _blank_means_off(cls, value: object) -> object:
         """An empty STAFF_PASSWORD (a variable that exists but holds nothing) leaves login off."""

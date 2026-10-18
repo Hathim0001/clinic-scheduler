@@ -49,6 +49,7 @@ class PatientOut(BaseModel):
     deposit_required: bool | None  # same as deposit.required; null in search results
     deposit: DepositOut | None
     consent_at_utc: str | None  # when the patient accepted the privacy notice, if recorded
+    consent_by: str | None  # PATIENT, or GUARDIAN for a child
     erased: bool  # personal data erased on request; name and phone identify no one
 
 

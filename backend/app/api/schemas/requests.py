@@ -104,7 +104,12 @@ class PatientCreate(StrictModel):
     phone: PhoneText
     date_of_birth: BirthDate
     allow_duplicate: StrictBool = False  # register even if the same name and birth date exist
-    consent: StrictBool = False  # the patient accepted the privacy notice
+    consent: StrictBool = False  # the privacy notice was accepted
+    consent_by: Literal["PATIENT", "GUARDIAN"] = "PATIENT"  # a child needs a parent or guardian
+
+
+class ConsentRequest(StrictModel):
+    consent_by: Literal["PATIENT", "GUARDIAN"] = "PATIENT"
 
 
 class PatientPatch(StrictModel):

@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import hmac
+
 import structlog
 from fastapi import APIRouter, Request
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.errors import ServiceUnavailable
+from app.api.errors import ApiError, ServiceUnavailable
 from app.api.schemas.responses import HealthOut
 from app.core import metrics
+from app.domain.errors import ErrorCode
 
 router = APIRouter(tags=["health"])
 log = structlog.get_logger()
@@ -38,6 +41,12 @@ def readyz(request: Request) -> HealthOut:
     response_class=PlainTextResponse,
     summary="Request and rejection counters, Prometheus text format",
 )
-def prometheus_metrics() -> PlainTextResponse:
-    """Aggregates only (see `app.core.metrics`): no paths, ids, names or phone numbers."""
+def prometheus_metrics(request: Request) -> PlainTextResponse:
+    """Aggregates only (see `app.core.metrics`): no paths, ids, names or phone numbers. With
+    `METRICS_TOKEN` set, a Bearer token is required."""
+    token = request.app.state.settings.metrics_token
+    if token is not None:
+        supplied = request.headers.get("authorization", "")[7:].strip()
+        if not hmac.compare_digest(supplied.encode(), token.encode()):
+            raise ApiError(ErrorCode.UNAUTHENTICATED, "A metrics token is required.")
     return PlainTextResponse(metrics.render(), media_type="text/plain; version=0.0.4")
