@@ -215,3 +215,45 @@ def test_a_slot_already_on_offer_is_not_offered_twice(clinic: Clinic) -> None:
         assert offer_freed_slot(session, doctor, at(10), NOW) is None
     states = [e.status for e in clinic.waitlist.for_doctor_day(clinic.rao, MONDAY, NOW)]
     assert states == ["OFFERED", "WAITING"]
+
+
+def test_the_report_counts_a_cancelled_slot_the_waitlist_refilled(clinic: Clinic) -> None:
+    booked = book_ten(clinic)
+    entry = clinic.waitlist.join(clinic.rao, clinic.asha, MONDAY, NOW)
+    clinic.booking.cancel(booked, CancelledBy.PATIENT, NOW)
+    before = clinic.records.summary(MONDAY, MONDAY).total
+    assert (before.freed_slots, before.refilled, before.recovery_rate) == (1, 0, 0.0)
+
+    clinic.waitlist.accept(entry.id, "Fever", False, NOW + timedelta(minutes=5))
+
+    total = clinic.records.summary(MONDAY, MONDAY).total
+    assert (total.freed_slots, total.refilled, total.refilled_via_waitlist) == (1, 1, 1)
+    assert total.recovery_rate == 1.0
+
+
+def test_a_slot_refilled_by_an_ordinary_booking_is_not_credited_to_the_waitlist(
+    clinic: Clinic,
+) -> None:
+    booked = book_ten(clinic)
+    clinic.booking.cancel(booked, CancelledBy.PATIENT, NOW)
+    clinic.booking.book(
+        BookCommand(clinic.rao, clinic.meena, at(10), "Cough"), NOW + timedelta(minutes=1)
+    )
+    total = clinic.records.summary(MONDAY, MONDAY).total
+    assert (total.freed_slots, total.refilled, total.refilled_via_waitlist) == (1, 1, 0)
+
+
+def test_a_booking_made_before_the_cancellation_is_not_a_refill(clinic: Clinic) -> None:
+    booked = book_ten(clinic)
+    other = clinic.booking.book(BookCommand(clinic.rao, clinic.meena, at(11), "Cough"), NOW)
+    clinic.booking.cancel(booked, CancelledBy.PATIENT, NOW + timedelta(minutes=1))
+    total = clinic.records.summary(MONDAY, MONDAY).total
+    assert other.id != booked
+    assert (total.freed_slots, total.refilled) == (1, 0)
+
+
+def test_a_moved_appointment_is_not_counted_as_freed(clinic: Clinic) -> None:
+    mine = clinic.booking.book(BookCommand(clinic.rao, clinic.meena, at(10), "Cough"), NOW)
+    clinic.booking.reschedule(mine.id, at(11), None, None, NOW)
+    total = clinic.records.summary(MONDAY, MONDAY).total
+    assert (total.freed_slots, total.recovery_rate) == (0, None)

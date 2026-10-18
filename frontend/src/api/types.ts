@@ -232,6 +232,10 @@ export interface DoctorReport {
   checked_in: number;
   utilisation: number | null;
   no_show_rate: number | null;
+  freed_slots: number;
+  refilled: number;
+  refilled_via_waitlist: number;
+  recovery_rate: number | null;
 }
 
 export interface Report {

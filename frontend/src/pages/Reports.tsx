@@ -22,6 +22,12 @@ function Row({ row }: { row: DoctorReport }) {
       <td data-label="Slots offered">{row.capacity_slots}</td>
       <td data-label="Utilisation">{percent(row.utilisation)}</td>
       <td data-label="No-show rate">{percent(row.no_show_rate)}</td>
+      <td data-label="Freed slots">{row.freed_slots}</td>
+      <td data-label="Refilled">
+        {row.refilled}
+        {row.refilled_via_waitlist > 0 ? ` (${row.refilled_via_waitlist} via waitlist)` : ""}
+      </td>
+      <td data-label="Recovery">{percent(row.recovery_rate)}</td>
     </tr>
   );
 }
@@ -52,7 +58,10 @@ export default function Reports() {
         A moved appointment counts once, as rescheduled: not as a cancellation, and its replacement
         is not a new booking. The no-show rate is no-shows out of completed plus no-shows.
         Utilisation is appointments that took a slot out of the slots the doctor&apos;s hours
-        offered, so leave days and special hours are taken into account. At most 92 days.
+        offered, so leave days and special hours are taken into account. Freed slots are
+        cancellations (not moves); refilled means another appointment with the same doctor later
+        took that time, and recovery is refilled out of freed: what the waitlist and walk-ins win
+        back. At most 92 days.
       </p>
       {report.isPending && <Skeleton rows={4} />}
       {report.error && <ErrorBanner error={report.error} onRetry={() => void report.refetch()} />}
@@ -76,6 +85,9 @@ export default function Reports() {
                 <th scope="col">Slots offered</th>
                 <th scope="col">Utilisation</th>
                 <th scope="col">No-show rate</th>
+                <th scope="col">Freed slots</th>
+                <th scope="col">Refilled</th>
+                <th scope="col">Recovery</th>
               </tr>
             </thead>
             <tbody>

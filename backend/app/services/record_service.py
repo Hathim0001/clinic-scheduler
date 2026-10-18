@@ -11,6 +11,10 @@ differently is its own scenario):
 - *rescheduled*: appointments cancelled only because they were moved; these are not counted as
   cancellations, whether the move was late or not;
 - *no-show rate*: no-shows divided by completed plus no-shows (appointments whose outcome is known);
+- *freed slots*: appointments cancelled (in time or late) and not merely moved; *refilled*: those
+  whose time was later taken by another appointment of the same doctor that is still active, and
+  *via the waitlist* when that appointment came from accepting a waitlist offer. *Recovery rate* is
+  refilled divided by freed, so it shows what the waitlist is worth in real appointments;
 - *utilisation*: appointments that took a slot (booked, completed or no-show) divided by the slots
   the doctor's hours offered in the period, so leave days and special hours are taken into account.
 """
@@ -52,6 +56,10 @@ class DoctorReport:
     checked_in: int
     utilisation: float | None  # None when the doctor offered no slots in the period
     no_show_rate: float | None  # None when no outcome is known yet
+    freed_slots: int = 0
+    refilled: int = 0
+    refilled_via_waitlist: int = 0
+    recovery_rate: float | None = None  # None when nothing was freed
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,8 +87,42 @@ def _ratio(part: int, whole: int) -> float | None:
     return round(part / whole, 4) if whole else None
 
 
+def _recovery(
+    rows: list[Appointment], booked: dict[int, tuple[str, datetime]]
+) -> tuple[int, int, int]:
+    """(freed, refilled, refilled via the waitlist) for the cancellations among `rows`."""
+    freed = [
+        a
+        for a in rows
+        if a.status in (Status.CANCELLED.value, Status.LATE_CANCELLED.value)
+        and a.rescheduled_to_id is None
+        and a.cancelled_at is not None
+    ]
+    refilled = via = 0
+    for gone in freed:
+        takers = [
+            o
+            for o in rows
+            if o.doctor_id == gone.doctor_id
+            and Status(o.status) in ACTIVE_STATUSES
+            and o.start_at < gone.end_at
+            and gone.start_at < o.end_at
+            and o.id in booked
+            and gone.cancelled_at is not None
+            and booked[o.id][1] >= gone.cancelled_at
+        ]
+        refilled += bool(takers)
+        via += any(booked[o.id][0] == "WAITLIST" for o in takers)
+    return len(freed), refilled, via
+
+
 def _doctor_report(
-    doctor_id: int, name: str, capacity: int, rows: list[Appointment], moved_to: set[int]
+    doctor_id: int,
+    name: str,
+    capacity: int,
+    rows: list[Appointment],
+    moved_to: set[int],
+    booked: dict[int, tuple[str, datetime]],
 ) -> DoctorReport:
     def count(status: Status, *, moved: bool = False) -> int:
         return sum(
@@ -91,6 +133,7 @@ def _doctor_report(
 
     completed, no_show = count(Status.COMPLETED), count(Status.NO_SHOW)
     taking_a_slot = sum(a.slots for a in rows if Status(a.status) in ACTIVE_STATUSES)
+    freed, refilled, via = _recovery(rows, booked)
     return DoctorReport(
         doctor_id=doctor_id,
         doctor_name=name,
@@ -106,6 +149,10 @@ def _doctor_report(
         checked_in=sum(1 for a in rows if a.checked_in_at is not None),
         utilisation=_ratio(taking_a_slot, capacity),
         no_show_rate=_ratio(no_show, completed + no_show),
+        freed_slots=freed,
+        refilled=refilled,
+        refilled_via_waitlist=via,
+        recovery_rate=_ratio(refilled, freed),
     )
 
 
@@ -159,6 +206,7 @@ class RecordService:
                 )
             )
             moved_to = {a.rescheduled_to_id for a in rows if a.rescheduled_to_id is not None}
+            booked = repo.booked_events(session, [a.id for a in rows])
             lookup = repo.WindowsLookup(session)
             days = [start + timedelta(days=n) for n in range((end - start).days + 1)]
             reports = []
@@ -174,9 +222,16 @@ class RecordService:
                     for day in days
                 )
                 mine = [a for a in rows if a.doctor_id == doctor.id]
-                reports.append(_doctor_report(doctor.id, doctor.name, capacity, mine, moved_to))
+                reports.append(
+                    _doctor_report(doctor.id, doctor.name, capacity, mine, moved_to, booked)
+                )
             total = _doctor_report(
-                0, "All doctors", sum(r.capacity_slots for r in reports), rows, moved_to
+                0,
+                "All doctors",
+                sum(r.capacity_slots for r in reports),
+                rows,
+                moved_to,
+                booked,
             )
             return ReportView(start, end, tuple(reports), total)
 

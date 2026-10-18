@@ -353,6 +353,10 @@ describe("doctors and the report", () => {
       checked_in: 0,
       utilisation: 0.375,
       no_show_rate: 0.5,
+      freed_slots: 2,
+      refilled: 1,
+      refilled_via_waitlist: 1,
+      recovery_rate: 0.5,
     };
     const api = installFakeApi({
       ...base(),
@@ -369,6 +373,7 @@ describe("doctors and the report", () => {
     expect((await screen.findAllByText("38%")).length).toBe(2); // utilisation 0.375, rounded
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
     expect(screen.getByText("All doctors")).toBeInTheDocument();
+    expect(screen.getAllByText("1 (1 via waitlist)")).toHaveLength(2); // the doctor and the total
     expect(api.last("GET", "/reports/summary")?.query).toMatchObject({ to: "2026-11-02" });
   });
 });

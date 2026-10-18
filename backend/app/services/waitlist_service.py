@@ -285,6 +285,7 @@ class WaitlistService:
                     deposit_confirmed,
                     deposit,
                     now,
+                    via="WAITLIST",
                     slots=entry.offered_slots,
                 )
             except DomainError as error:

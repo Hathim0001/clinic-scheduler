@@ -453,3 +453,23 @@ def count_rows(session: Session) -> int:
         session.scalar(select(func.count()).select_from(model)) or 0
         for model in (Doctor, Patient, Appointment, AppointmentEvent)
     )
+
+
+def booked_events(
+    session: Session, appointment_ids: Sequence[int]
+) -> dict[int, tuple[str, datetime]]:
+    """For each appointment that has a BOOKED event: the route it came by (BOOKING, RESCHEDULE or
+    WAITLIST) and the effective time it was booked, which follows the test clock like every other
+    time the rules use."""
+    if not appointment_ids:
+        return {}
+    events = session.execute(
+        select(AppointmentEvent.appointment_id, AppointmentEvent.detail, AppointmentEvent.at).where(
+            AppointmentEvent.kind == "BOOKED",
+            AppointmentEvent.appointment_id.in_(appointment_ids),
+        )
+    )
+    return {
+        appointment_id: (str(detail.get("via", "BOOKING")), at)
+        for appointment_id, detail, at in events
+    }

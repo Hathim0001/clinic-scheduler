@@ -243,6 +243,10 @@ class DoctorReportOut(BaseModel):
     checked_in: int
     utilisation: float | None
     no_show_rate: float | None
+    freed_slots: int
+    refilled: int
+    refilled_via_waitlist: int
+    recovery_rate: float | None
 
 
 class ReportOut(BaseModel):
