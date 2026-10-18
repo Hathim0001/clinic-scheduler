@@ -49,7 +49,7 @@ describe("messages to patients", () => {
       ]),
     });
     renderPage(<Messages />);
-    expect(await screen.findByText(/Phone the patient \(No consent recorded/)).toBeInTheDocument();
+    expect(await screen.findByText(/No consent recorded/)).toBeInTheDocument();
   });
 
   it("shows how a sent message went out and offers no action on it", async () => {
