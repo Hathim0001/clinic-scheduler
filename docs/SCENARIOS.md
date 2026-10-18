@@ -72,7 +72,7 @@ numbering several times.
 | A parent or relative books for someone; a guardian loses authority; consent of the person booked | **Out of scope** | Needs accounts and relationships. Without authentication (A-20) there is no "who is booking" to check |
 | Several accounts with different phones to bypass limits | **Partly** | The duplicate guard catches the same name and birth date; deliberate evasion is not detectable without identity checks |
 | Duplicate profiles merged or merged wrongly; a merge during a booking | **Out of scope** | No merge tool; a merge touches every table that references a patient |
-| A patient requests deletion of their data; retention rules change; consent of the person booked | **Added** | `POST /patients/{id}/erase` replaces the name, phone, date of birth and visit reasons and keeps the appointments as anonymous history, so the counts and the audit still hold; it is refused while a booking or waitlist place is upcoming. Consent is recorded (`consent` on registration, or `POST /patients/{id}/consent`). A retention purge (`scripts/purge_inactive.py`, dry run first) erases patients inactive for a period the clinic chooses. `GET /patients/{id}/export` is the access half (A-64, A-65) |
+| A patient requests deletion of their data; retention rules change; consent of the person booked; a child's consent | **Added** | `POST /patients/{id}/erase` replaces the name, phone, date of birth and visit reasons and keeps the appointments as anonymous history, so the counts and the audit still hold; it is refused while a booking or waitlist place is upcoming. Consent is recorded (`consent` on registration, or `POST /patients/{id}/consent`). A child's consent must be recorded as a guardian's. The consent record (when, which notice, who) is kept when the rest is erased. A retention purge (`scripts/purge_inactive.py`, dry run first) erases patients inactive for a period the clinic chooses. A breach procedure and the backup and restore steps are in docs/PRIVACY-AND-OPERATIONS.md. `GET /patients/{id}/export` is the access half (A-64, A-65) |
 | A patient requests access to their appointment history | **Added** | `GET /patients/{id}/export` and a download link on the patient page |
 
 ## 6. Emergencies and urgent symptoms
@@ -93,7 +93,7 @@ The system **writes** the messages and keeps them reliably; it does not own an S
 | The provider is down; a message is sent twice; two servers send the same message | **Covered** | The gateway call is retried up to three times, then the message is FAILED and listed; each message is handled under a row lock that skips rows another instance holds |
 | There is no SMS provider | **Covered** | By default nothing leaves the server and the messages wait on the Messages page, where reception phones the patient and marks each one sent |
 | Delivery receipts, replies, templates per language, opt-out per channel, WhatsApp templates | **Out of scope** | These belong to the gateway the clinic chooses |
-| Reminders before an appointment | **Out of scope** | Needs a per-appointment timer; the outbox is ready for one |
+| Reminders before an appointment | **Partly** | No SMS reminders (needs a timer and a gateway). Reception can ring tomorrow's patients from the Calls page and record each call; telephone reminders have the better evidence (docs/COMPETITOR-REPORT.md) |
 | A patient's calendar | **Covered** | Any appointment downloads as `.ics`, with a stable `UID`, so re-importing updates rather than duplicates |
 
 ## 8. Time, dates and calendars

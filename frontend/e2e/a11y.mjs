@@ -9,6 +9,7 @@ const pages = [
   "/day",
   "/book?patient=1",
   "/queue",
+  "/calls",
   "/patients",
   "/patients/1",
   "/admin",

@@ -245,6 +245,7 @@ try {
     "/day",
     "/book",
     "/queue",
+    "/calls",
     "/patients",
     "/patients/1",
     "/admin",

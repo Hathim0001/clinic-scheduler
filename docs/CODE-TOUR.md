@@ -35,6 +35,10 @@ makes every time rule testable at its boundary and lets the reviewer's `X-Test-C
 | A message about every change, never about a rolled-back one | `services/notification_service.py` `queue_message` (called inside the same transaction) and `dispatch` | `tests/integration/test_notifications.py` |
 | `needs_attention` without scanning every booking | `appointments.outside_hours`, refreshed by `repo.refresh_outside_hours` in the same transaction as any change to hours; partial index in migration `0008` | `tests/integration/test_stored_attention.py` (stored flag equals the rule after random hour changes) |
 | The audit trail shows tampering | Migration `0011`: a trigger hashes each event with the previous one of the same appointment; `verify_audit_chain()` | `tests/integration/test_audit_chain.py` |
+| A child's consent comes from a guardian; erasure keeps the consent record | `patient_service._check_consent_by`, `_is_child`, `erase` | `tests/integration/test_privacy.py` (the 18th-birthday boundary is tested) |
+| Five wrong passwords lock one account | `api/ratelimit.py` `LoginLockout`, used by `api/routers/auth.py` | `tests/api/test_staff_roles.py`, `tests/unit/test_auth_and_proxy.py` |
+| The gateway is never called inside a database transaction | `notification_service._claim`, `_deliver`, `_finish` (a short lease, then send, then record) | `test_the_gateway_is_called_with_no_database_lock_held` |
+| Reception confirms by phone | `booking_service.confirm_by_phone`; the Calls page | `tests/integration/test_operations.py`, `frontend/src/pages/Review.test.tsx` |
 | Errors are stable codes, never a 500 for bad input | `domain/errors.py` (`ErrorCode`), `api/errors.py`, `persistence/db_errors.py` | `tests/api/test_hostile_input.py`, Schemathesis job in CI |
 
 ## Ten-minute read order

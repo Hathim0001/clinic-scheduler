@@ -231,13 +231,13 @@ engineer-hours, assuming one person who knows the code.
 | ID | Item | Scope | Priority | Effort | Evidence | Why |
 |---|---|---|---|---|---|---|
 | R-0 | Make the repository public; fix long commit subjects; push | In scope (deliverable) | **P0** | 1 h | The brief | −20 and a git-hygiene deduction otherwise |
-| R-1 | Same-day duplicate alert when booking | In-scope supporting | P1 | 2 to 3 h | Jane and EZnet reviews (weak) | Cheap, visible, rule-adjacent |
-| R-2 | Reception "call list" for tomorrow's appointments, marked called/not | Conditional (reminders are not in the brief) | P2 | 3 to 5 h | 2025 meta-analysis, phone RR 1.11 significant | Better supported than SMS, no gateway |
-| R-3 | Docs: breach procedure, consent-record retention note, minors note | In-scope supporting | P2 | 1 to 2 h | DPDP summaries (Reported) | Closes S-01 to S-03 on paper |
-| R-4 | Per-account login throttle | In-scope supporting | P2 | 2 h | Standard practice | S-05 |
-| R-5 | Move the gateway call out of the DB transaction | Technical | P3 | 2 to 3 h | Code reading | S-04 |
-| R-6 | One query for `alternatives` instead of up to 17 | Technical | P3 | 3 h | Measured 0.9 to 1.1 s | Latency |
-| R-7 | CSV export of the report | Low cost | P3 | 1 h | Gap table | Nice to have |
+| R-1 | Same-day duplicate alert when booking **(done)** | In-scope supporting | P1 | 2 to 3 h | Jane and EZnet reviews (weak) | Cheap, visible, rule-adjacent |
+| R-2 | Reception "call list" for tomorrow's appointments, marked called/not **(done: the Calls page)** | Conditional (reminders are not in the brief) | P2 | 3 to 5 h | 2025 meta-analysis, phone RR 1.11 significant | Better supported than SMS, no gateway |
+| R-3 | Docs: breach procedure, consent-record retention note, minors note **(done, and the consent and guardian code)** | In-scope supporting | P2 | 1 to 2 h | DPDP summaries (Reported) | Closes S-01 to S-03 on paper |
+| R-4 | Per-account login throttle **(done)** | In-scope supporting | P2 | 2 h | Standard practice | S-05 |
+| R-5 | Move the gateway call out of the DB transaction **(done)** | Technical | P3 | 2 to 3 h | Code reading | S-04 |
+| R-6 | `alternatives` in one transaction per doctor instead of up to 17 **(done)** | Technical | P3 | 3 h | Measured 0.9 to 1.1 s | Latency |
+| R-7 | CSV export of the report **(done)** | Low cost | P3 | 1 h | Gap table | Nice to have |
 | R-8 | Real-user test with a receptionist; a screen-reader user | Validation | **P1 for confidence** | 2 to 4 h | Section 14 | Only way to know |
 | R-9 | SMS gateway account and reminders | Conditional | Defer | days | Evidence mixed for SMS | Cost and uncertain benefit |
 | R-10 | ML no-show prediction, overbooking | Out of scope | **Reject** | n/a | Samorani et al. | Equity risk, no data |
