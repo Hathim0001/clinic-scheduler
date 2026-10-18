@@ -134,30 +134,31 @@ export default function Book() {
       )}
       {original.error && <ErrorBanner error={original.error} />}
 
-      <form onSubmit={submit}>
-        <section className="card" aria-label="Choose the patient">
-          <h2>1. Patient</h2>
-          {rescheduleId ? (
-            <p>{patient.data ? `${patient.data.name}, ${patient.data.phone}` : "Loading…"}</p>
-          ) : (
-            <>
-              <PatientPicker selectedId={patientId} onSelect={(p) => setPickedPatient(p.id)} />
-              {patient.data && (
-                <p>
-                  Selected: <strong>{patient.data.name}</strong>, {patient.data.phone}
-                </p>
-              )}
-            </>
-          )}
-          {deposit && (
-            <DepositCheckbox
-              deposit={deposit}
-              checked={depositAcknowledged}
-              onChange={setDepositAcknowledged}
-            />
-          )}
-        </section>
+      {/* Outside the form on purpose: registering a patient is a form of its own. */}
+      <section className="card" aria-label="Choose the patient">
+        <h2>1. Patient</h2>
+        {rescheduleId ? (
+          <p>{patient.data ? `${patient.data.name}, ${patient.data.phone}` : "Loading…"}</p>
+        ) : (
+          <>
+            <PatientPicker selectedId={patientId} onSelect={(p) => setPickedPatient(p.id)} />
+            {patient.data && (
+              <p>
+                Selected: <strong>{patient.data.name}</strong>, {patient.data.phone}
+              </p>
+            )}
+          </>
+        )}
+        {deposit && (
+          <DepositCheckbox
+            deposit={deposit}
+            checked={depositAcknowledged}
+            onChange={setDepositAcknowledged}
+          />
+        )}
+      </section>
 
+      <form onSubmit={submit}>
         <section className="card" aria-label="Doctor and date">
           <h2>2. Doctor and date</h2>
           <div className="row">

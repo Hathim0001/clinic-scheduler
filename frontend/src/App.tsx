@@ -14,24 +14,26 @@ function Header() {
   const count = attention.data?.total ?? 0;
   return (
     <header className="app-header">
-      <Link to="/day" className="brand">
-        Clinic Scheduler
-      </Link>
-      <nav className="nav" aria-label="Main">
-        <NavLink to="/day">Day view</NavLink>
-        <NavLink to="/book">Book</NavLink>
-        <NavLink to="/queue">Queue</NavLink>
-        <NavLink to="/patients">Patients</NavLink>
-        <NavLink to="/reports">Report</NavLink>
-        <NavLink to="/admin">
-          Doctors
-          {count > 0 && (
-            <span className="badge-attention" aria-label={`${count} appointments need attention`}>
-              {count}
-            </span>
-          )}
-        </NavLink>
-      </nav>
+      <div className="app-header-bar">
+        <Link to="/day" className="brand">
+          Clinic Scheduler
+        </Link>
+        <nav className="nav" aria-label="Main">
+          <NavLink to="/day">Day view</NavLink>
+          <NavLink to="/book">Book</NavLink>
+          <NavLink to="/queue">Queue</NavLink>
+          <NavLink to="/patients">Patients</NavLink>
+          <NavLink to="/reports">Report</NavLink>
+          <NavLink to="/admin">
+            Doctors
+            {count > 0 && (
+              <span className="badge-attention" aria-label={`${count} appointments need attention`}>
+                {count}
+              </span>
+            )}
+          </NavLink>
+        </nav>
+      </div>
       <ClockBar />
     </header>
   );

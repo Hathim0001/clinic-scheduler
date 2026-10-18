@@ -21,7 +21,7 @@ export function PatientPicker({ onSelect, selectedId = null }: Props) {
   const isPhone = LOOKS_LIKE_PHONE.test(trimmed);
   const search = usePatientSearch(isPhone ? { phone: trimmed } : trimmed ? { q: trimmed } : {});
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: { preventDefault: () => void }) => {
     event.preventDefault();
     setTerm(text);
     setRegistering(false);
@@ -29,18 +29,26 @@ export function PatientPicker({ onSelect, selectedId = null }: Props) {
 
   return (
     <div>
-      <form className="row" onSubmit={submit} role="search">
+      {/* A div, not a form: this picker sits inside the booking form and forms cannot nest. */}
+      <div className="row" role="search">
         <label>
           Find a patient by phone or name
-          <input value={text} onChange={(event) => setText(event.target.value)} maxLength={100} />
+          <input
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") submit(event);
+            }}
+            maxLength={100}
+          />
         </label>
-        <button type="submit" disabled={!text.trim()}>
+        <button type="button" onClick={submit} disabled={!text.trim()}>
           Search
         </button>
         <button type="button" onClick={() => setRegistering(true)}>
           New patient
         </button>
-      </form>
+      </div>
 
       {search.isPending && trimmed && <Skeleton rows={2} />}
       {search.error && <ErrorBanner error={search.error} onRetry={() => void search.refetch()} />}

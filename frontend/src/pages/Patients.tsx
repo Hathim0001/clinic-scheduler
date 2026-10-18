@@ -47,7 +47,7 @@ export function PatientDetail() {
           <dt>Deposit required</dt>
           <dd>{p.deposit_required === null ? "Unknown" : p.deposit_required ? "Yes" : "No"}</dd>
         </dl>
-        <p>
+        <p className="actions">
           <Link className="primary" to={`/book?patient=${p.id}`}>
             Book an appointment for this patient
           </Link>{" "}
@@ -76,7 +76,7 @@ export function PatientDetail() {
         {history.error && <ErrorBanner error={history.error} />}
         {history.data && history.data.items.length === 0 && <p className="muted">None yet.</p>}
         {history.data && history.data.items.length > 0 && (
-          <table>
+          <table className="stack">
             <caption className="visually-hidden">Appointments of {p.name}, newest first</caption>
             <thead>
               <tr>

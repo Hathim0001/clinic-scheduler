@@ -57,33 +57,35 @@ export default function Reports() {
       {report.isPending && <Skeleton rows={4} />}
       {report.error && <ErrorBanner error={report.error} onRetry={() => void report.refetch()} />}
       {report.data && (
-        <table>
-          <caption className="visually-hidden">
-            Appointments from {start} to {end}
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Doctor</th>
-              <th scope="col">Appointments</th>
-              <th scope="col">New bookings</th>
-              <th scope="col">Completed</th>
-              <th scope="col">No-shows</th>
-              <th scope="col">Cancelled</th>
-              <th scope="col">Late cancels</th>
-              <th scope="col">Rescheduled</th>
-              <th scope="col">Still booked</th>
-              <th scope="col">Slots offered</th>
-              <th scope="col">Utilisation</th>
-              <th scope="col">No-show rate</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.data.doctors.map((row) => (
-              <Row key={row.doctor_id} row={row} />
-            ))}
-            <Row row={report.data.total} />
-          </tbody>
-        </table>
+        <div className="table-scroll">
+          <table>
+            <caption className="visually-hidden">
+              Appointments from {start} to {end}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Doctor</th>
+                <th scope="col">Appointments</th>
+                <th scope="col">New bookings</th>
+                <th scope="col">Completed</th>
+                <th scope="col">No-shows</th>
+                <th scope="col">Cancelled</th>
+                <th scope="col">Late cancels</th>
+                <th scope="col">Rescheduled</th>
+                <th scope="col">Still booked</th>
+                <th scope="col">Slots offered</th>
+                <th scope="col">Utilisation</th>
+                <th scope="col">No-show rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.data.doctors.map((row) => (
+                <Row key={row.doctor_id} row={row} />
+              ))}
+              <Row row={report.data.total} />
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

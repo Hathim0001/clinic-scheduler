@@ -88,7 +88,7 @@ export default function Queue() {
       )}
 
       {queue.data && queue.data.length > 0 && (
-        <table>
+        <table className="stack">
           <caption className="visually-hidden">Appointments for {date}</caption>
           <thead>
             <tr>
