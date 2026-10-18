@@ -51,6 +51,7 @@ def build_views(
                     allowed_actions(status, appt.start_at, now, appt.checked_in_at is not None)
                 ),
                 checked_in_at=appt.checked_in_at,
+                confirmed_by_phone_at=appt.confirmed_by_phone_at,
                 urgent_symptoms=looks_urgent(appt.reason),
                 slots=appt.slots,
             )

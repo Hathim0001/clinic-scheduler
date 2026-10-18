@@ -78,6 +78,7 @@ class AppointmentOut(BaseModel):
     allowed_actions: list[str]
     checked_in_at_utc: str | None
     checked_in_at_ist: str | None
+    confirmed_by_phone_at_utc: str | None
     urgent_symptoms: bool  # the reason mentions symptoms that may need emergency care
     slots: int  # how many of the doctor's slots the visit lasts
     duration_min: int

@@ -133,6 +133,7 @@ def appointment_out(view: AppointmentView) -> AppointmentOut:
         allowed_actions=list(view.allowed_actions),
         checked_in_at_utc=_utc(view.checked_in_at),
         checked_in_at_ist=_ist(view.checked_in_at),
+        confirmed_by_phone_at_utc=_utc(view.confirmed_by_phone_at),
         urgent_symptoms=view.urgent_symptoms,
         slots=view.slots,
         duration_min=int((view.end_at - view.start_at).total_seconds() // 60),

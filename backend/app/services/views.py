@@ -48,6 +48,7 @@ class AppointmentView:
     needs_attention: bool
     allowed_actions: tuple[str, ...]
     checked_in_at: datetime | None = None
+    confirmed_by_phone_at: datetime | None = None
     urgent_symptoms: bool = False
     slots: int = 1
 

@@ -178,25 +178,44 @@ class AvailabilityService:
     ) -> SlotsView:
         """The starts on `day` that booking a visit of `slots` slots would accept, and why there are
         none when empty."""
+        return self.free_slots_many(doctor_id, [day], patient_id, now, slots)[0]
 
-        def work(session: Session) -> SlotsView:
+    def free_slots_many(
+        self,
+        doctor_id: int,
+        days: Sequence[date],
+        patient_id: int | None,
+        now: datetime,
+        slots: int = 1,
+    ) -> list[SlotsView]:
+        """`free_slots` for several days in one transaction: the doctor and patient are loaded once
+        and there is one connection checkout, which is what makes looking ahead cheap."""
+
+        def work(session: Session) -> list[SlotsView]:
             doctor = repo.get_doctor(session, doctor_id)
             if patient_id is not None:
                 repo.get_patient(session, patient_id)
-            windows, source = repo.effective_windows(session, doctor.id, day)
-            context = repo.slot_context(session, doctor, patient_id, day, now, windows)
-            starts = list(candidate_starts(day, windows, doctor.slot_length_min))
-            violations = [first_violation(start, context, slots) for start in starts]
-            return SlotsView(
-                doctor_id=doctor.id,
-                day=day,
-                slot_length_min=doctor.slot_length_min,
-                source=source,
-                windows=windows,
-                slots=tuple(s for s, v in zip(starts, violations, strict=True) if v is None),
-                unavailable_reason=unavailable_reason(violations),
-                duration_min=slots * doctor.slot_length_min,
-            )
+            views = []
+            for day in days:
+                windows, source = repo.effective_windows(session, doctor.id, day)
+                context = repo.slot_context(session, doctor, patient_id, day, now, windows)
+                starts = list(candidate_starts(day, windows, doctor.slot_length_min))
+                violations = [first_violation(start, context, slots) for start in starts]
+                views.append(
+                    SlotsView(
+                        doctor_id=doctor.id,
+                        day=day,
+                        slot_length_min=doctor.slot_length_min,
+                        source=source,
+                        windows=windows,
+                        slots=tuple(
+                            s for s, v in zip(starts, violations, strict=True) if v is None
+                        ),
+                        unavailable_reason=unavailable_reason(violations),
+                        duration_min=slots * doctor.slot_length_min,
+                    )
+                )
+            return views
 
         return run(self._factory, work)
 

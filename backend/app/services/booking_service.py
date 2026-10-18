@@ -371,6 +371,24 @@ class BookingService:
 
         return run(self._factory, work)
 
+    def confirm_by_phone(self, appointment_id: int, now: datetime) -> AppointmentView:
+        """Reception rang the patient and they confirmed. Recorded once; repeating is harmless.
+
+        This is the reminder the evidence supports best (a telephone reminder), kept as a plain
+        record because the clinic, not this server, makes the call.
+        """
+
+        def work(session: Session) -> AppointmentView:
+            appointment = repo.get_appointment(session, appointment_id, lock=True)
+            check_can_cancel(Status(appointment.status))  # only a booked appointment is confirmed
+            if appointment.confirmed_by_phone_at is None:
+                appointment.confirmed_by_phone_at = now
+                session.flush()
+                repo.record_event(session, appointment, "CONFIRMED_BY_PHONE", now)
+            return view_of(session, appointment.id, now)
+
+        return run(self._factory, work)
+
     def correct(
         self, appointment_id: int, target: Status, note: str, now: datetime
     ) -> AppointmentView:

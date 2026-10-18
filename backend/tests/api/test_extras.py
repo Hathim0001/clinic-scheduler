@@ -214,3 +214,41 @@ def test_metrics_need_the_token_when_one_is_configured(api: Api, database_url: s
         ok = c.get("/metrics", headers={"Authorization": "Bearer metrics-secret"})
         assert ok.status_code == 200
         assert c.get("/healthz").status_code == 200  # the health check stays open
+
+
+def test_the_report_downloads_as_csv_with_one_row_per_doctor_and_a_total(api: Api) -> None:
+    api.post("/appointments", book_body(api))
+    response = api.get("/reports/summary.csv", params={"from": "2026-11-01", "to": "2026-11-03"})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert "attachment" in response.headers["content-disposition"]
+    lines = response.text.strip().split("\r\n")
+    assert lines[0].startswith("doctor_id,doctor_name,capacity_slots")
+    assert len(lines) == 1 + 2 + 1  # header, two doctors, the total
+    assert lines[-1].split(",")[1] == "All doctors"
+
+
+def test_a_doctor_name_that_looks_like_a_formula_is_quoted_in_the_csv(api: Api) -> None:
+    api.patch(f"/doctors/{api.clinic.rao}", {"name": '=HYPERLINK("http://x")'})
+    text = api.get("/reports/summary.csv", params={"from": "2026-11-01", "to": "2026-11-01"}).text
+    assert "'=HYPERLINK" in text
+    assert ",=HYPERLINK" not in text
+
+
+def test_the_csv_rejects_a_bad_range_like_the_json_report(api: Api) -> None:
+    bad = api.get("/reports/summary.csv", params={"from": "2026-11-05", "to": "2026-11-01"})
+    assert_error(bad, 422, "VALIDATION_ERROR")
+
+
+def test_a_phone_confirmation_over_http(api: Api) -> None:
+    booked = api.post("/appointments", book_body(api)).json()
+    done = api.post(f"/appointments/{booked['id']}/confirmed-by-phone", {})
+    assert done.status_code == 200
+    assert done.json()["confirmed_by_phone_at_utc"] == "2026-11-02T02:30:00Z"
+    assert_error(
+        api.post("/appointments/99999/confirmed-by-phone", {}), 404, "APPOINTMENT_NOT_FOUND"
+    )
+    api.post(f"/appointments/{booked['id']}/cancel", {"cancelled_by": "CLINIC"})
+    assert_error(
+        api.post(f"/appointments/{booked['id']}/confirmed-by-phone", {}), 409, "INVALID_TRANSITION"
+    )

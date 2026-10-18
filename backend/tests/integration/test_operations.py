@@ -532,3 +532,19 @@ def test_declining_after_the_hold_ran_out_just_closes_the_entry_and_passes_it_on
     later = NOW + timedelta(minutes=45)
     assert clinic.waitlist.decline(first, later).status == "EXPIRED"
     assert clinic.waitlist.for_patient(clinic.meena, later)[0].id == second
+
+
+def test_a_phone_confirmation_is_recorded_once_and_only_for_a_booked_appointment(
+    clinic: Clinic,
+) -> None:
+    booked = clinic.booking.book(BookCommand(clinic.rao, clinic.asha, at(10), "x"), NOW)
+    first = clinic.booking.confirm_by_phone(booked.id, NOW)
+    again = clinic.booking.confirm_by_phone(booked.id, NOW + timedelta(hours=1))
+    assert first.confirmed_by_phone_at == again.confirmed_by_phone_at == NOW
+    kinds = [e.kind for e in clinic.records.history(booked.id)]
+    assert kinds.count("CONFIRMED_BY_PHONE") == 1
+
+    clinic.booking.cancel(booked.id, CancelledBy.CLINIC, NOW)
+    with pytest.raises(ConflictError) as raised:
+        clinic.booking.confirm_by_phone(booked.id, NOW)
+    assert raised.value.code is ErrorCode.INVALID_TRANSITION

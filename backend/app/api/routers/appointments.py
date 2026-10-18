@@ -269,6 +269,21 @@ def no_show(
 
 
 @router.post(
+    "/{appointment_id}/confirmed-by-phone",
+    response_model=AppointmentOut,
+    summary="Record that reception rang the patient and they confirmed (repeating it is harmless)",
+    responses={409: {"description": "INVALID_TRANSITION: only a booked appointment"}},
+)
+def confirmed_by_phone(
+    request: Request, appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+) -> AppointmentOut:
+    request.state.log_fields.update(appointment_id=appointment_id)
+    view = services.booking.confirm_by_phone(appointment_id, now)
+    log.info("appointment.confirmed_by_phone", appointment_id=appointment_id)
+    return appointment_out(view)
+
+
+@router.post(
     "/{appointment_id}/check-in",
     response_model=AppointmentOut,
     summary="Record the patient arriving (on the day of the visit; repeating it is harmless)",

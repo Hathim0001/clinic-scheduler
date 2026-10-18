@@ -58,3 +58,14 @@ def test_a_doctor_who_stopped_taking_bookings_is_not_offered(clinic: Clinic) -> 
     clinic.doctors.update(clinic.menon, NOW, accepting_bookings=False)
     options = service(clinic).nearest(clinic.rao, MONDAY, None, NOW, limit=12)
     assert {o.doctor_id for o in options} == {clinic.rao}
+
+
+def test_looking_at_many_days_in_one_transaction_gives_the_same_answers(clinic: Clinic) -> None:
+    from datetime import timedelta
+
+    days = [MONDAY + timedelta(days=n) for n in range(5)]
+    leave(clinic, clinic.rao, days[1])
+    many = clinic.availability.free_slots_many(clinic.rao, days, clinic.asha, NOW, 2)
+    single = [clinic.availability.free_slots(clinic.rao, d, clinic.asha, NOW, 2) for d in days]
+    assert many == single
+    assert many[1].slots == ()

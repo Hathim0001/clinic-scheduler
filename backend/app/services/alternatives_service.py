@@ -74,12 +74,13 @@ class AlternativesService:
         slots: int,
         same_doctor: bool,
     ) -> list[Alternative]:
+        """The first free start of each (doctor, day), one transaction per doctor."""
+        window = [first_day + timedelta(days=offset) for offset in range(days)]
         found: list[Alternative] = []
         for doctor in doctors:
-            for offset in range(days):
-                view = self._availability.free_slots(
-                    doctor.id, first_day + timedelta(days=offset), patient_id, now, slots
-                )
+            for view in self._availability.free_slots_many(
+                doctor.id, window, patient_id, now, slots
+            ):
                 if view.slots:
                     found.append(
                         Alternative(
