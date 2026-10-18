@@ -131,6 +131,8 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* a focused or scrolled-to element must not end up under the sticky header */
+  scroll-padding-top: 8rem;
 }
 
 body {
@@ -961,6 +963,15 @@ caption {
 }
 
 @media (max-width: 640px) {
+  /* the header is three rows tall on a phone: let it scroll away instead of covering a third of the screen */
+  .app-header {
+    position: static;
+  }
+
+  html {
+    scroll-padding-top: 1rem;
+  }
+
   main {
     padding: var(--space-4) var(--space-3) var(--space-6);
   }
