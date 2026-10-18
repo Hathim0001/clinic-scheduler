@@ -219,7 +219,7 @@ export default function Book() {
                   <li key={slot.start_at_utc}>
                     <button
                       type="button"
-                      className={`slot slot-free${start === slot.start_at_ist ? " slot-selected" : ""}`}
+                      className={`slot slot-free${start === slot.start_at_ist ? "" : ""}`}
                       aria-pressed={start === slot.start_at_ist}
                       onClick={() => setPickedStart(slot.start_at_ist)}
                     >

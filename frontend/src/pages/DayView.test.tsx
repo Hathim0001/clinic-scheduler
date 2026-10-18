@@ -68,7 +68,9 @@ describe("day view", () => {
     renderPage(page, link);
     expect(await screen.findByText("Kavita Nair")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /09:00–09:30\s*Past/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /10:30–11:00\s*Free: click to book/ })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: /10:30–11:00\s*Free\. Book this slot/ }),
+    ).toBeEnabled();
     expect(
       screen.getByRole("button", { name: /11:00–11:30\s*Daily limit reached/ }),
     ).toBeDisabled();

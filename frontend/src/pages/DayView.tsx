@@ -10,7 +10,7 @@ import { REASON_TEXT } from "../lib/errors";
 import { useToday } from "../lib/useToday";
 
 const STATE_TEXT: Record<SlotState, string> = {
-  FREE: "Free: click to book",
+  FREE: "Free",
   BOOKED: "Booked",
   PAST: "Past",
   CAPPED: "Daily limit reached",
@@ -109,7 +109,7 @@ export default function DayView() {
                   : ""}
               </Banner>
             )}
-            <ul className="slot-list">
+            <ul className="timetable">
               {schedule.data.slots.map((slot) => {
                 const time = `${formatTimeIST(slot.start_at_ist)}–${formatTimeIST(slot.end_at_ist)}`;
                 if (slot.state === "FREE") {
@@ -126,7 +126,9 @@ export default function DayView() {
                         }
                       >
                         <span className="time">{time}</span>
-                        <span>{STATE_TEXT.FREE}</span>
+                        <span>
+                          Free<span className="visually-hidden">. Book this slot</span>
+                        </span>
                       </button>
                     </li>
                   );
@@ -137,7 +139,7 @@ export default function DayView() {
                     <li key={slot.start_at_utc}>
                       <button
                         type="button"
-                        className={`slot slot-booked${selectedId === appointment.id ? " slot-selected" : ""}`}
+                        className="slot slot-booked"
                         aria-pressed={selectedId === appointment.id}
                         onClick={() => setSelectedId(appointment.id)}
                       >
