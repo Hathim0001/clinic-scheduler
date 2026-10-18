@@ -83,7 +83,11 @@ export function describeError(error: unknown, context: Context = {}): FriendlyEr
     case "RESCHEDULE_NO_CHANGE":
       return { ...base, message: "Pick a different time or doctor to move this appointment." };
     case "PHONE_TAKEN":
-      return { ...base, message: error.message };
+      return {
+        ...base,
+        message:
+          "A patient with this phone number is already registered. Search by phone to find them.",
+      };
     case "LATE_RESCHEDULE_NEEDS_CONFIRMATION":
       return { ...base, message: error.message };
     case "DOCTOR_NOT_ACCEPTING":

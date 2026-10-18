@@ -14,7 +14,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import Select, and_, func, or_, select, text
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.actor import current_actor
@@ -356,19 +356,8 @@ def appointment_rows_by_id(session: Session, ids: Sequence[int]) -> list[Appoint
 # ---------------------------------------------------------------------------------- patients
 
 
-def patients_by_phone(session: Session, phone: str) -> list[Patient]:
-    """Everyone registered on this number (a family can share one), oldest first."""
-    return list(session.scalars(select(Patient).where(Patient.phone == phone).order_by(Patient.id)))
-
-
-def lock_phone(session: Session, phone: str) -> None:
-    """Serialise registrations on one number for the rest of the transaction.
-
-    The database no longer refuses a second patient on a number, so two requests arriving together
-    would both pass the "is it taken?" check. An advisory lock on the number makes the second wait
-    for the first to commit and then see it.
-    """
-    session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:phone))"), {"phone": phone})
+def patient_by_phone(session: Session, phone: str) -> Patient | None:
+    return session.scalars(select(Patient).where(Patient.phone == phone)).one_or_none()
 
 
 LIKE_ESCAPE = "\\"

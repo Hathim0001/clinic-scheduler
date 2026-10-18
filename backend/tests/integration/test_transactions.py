@@ -124,11 +124,11 @@ def test_a_constraint_error_a_client_caused_becomes_a_domain_error(
     session_factory: sessionmaker[Session],
 ) -> None:
     def work(session: Session) -> None:
-        raise db_error("23P01", "no_doctor_overlap")
+        raise db_error("23505", "patients_phone_key")
 
     with pytest.raises(ConflictError) as raised:
         run(session_factory, work)
-    assert raised.value.code is ErrorCode.SLOT_TAKEN
+    assert raised.value.code is ErrorCode.PHONE_TAKEN
     assert isinstance(raised.value.__cause__, DBAPIError)  # the original stays attached
 
 

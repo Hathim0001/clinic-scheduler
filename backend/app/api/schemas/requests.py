@@ -79,7 +79,6 @@ class PatientCreate(StrictModel):
     phone: PhoneText
     date_of_birth: BirthDate
     allow_duplicate: StrictBool = False  # register even if the same name and birth date exist
-    shares_phone: StrictBool = False  # a family member on a number that is already registered
 
 
 class PatientPatch(StrictModel):
@@ -89,11 +88,10 @@ class PatientPatch(StrictModel):
     phone: PhoneText | None = None
     date_of_birth: BirthDate | None = None
     allow_duplicate: StrictBool = False
-    shares_phone: StrictBool = False
 
     @model_validator(mode="after")
     def _something_to_change(self) -> PatientPatch:
-        sent = self.model_fields_set - {"allow_duplicate", "shares_phone"}
+        sent = self.model_fields_set - {"allow_duplicate"}
         if not sent:
             raise ValueError("send at least one of name, phone, date_of_birth")
         for field in sent:

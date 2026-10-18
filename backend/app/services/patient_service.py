@@ -55,23 +55,17 @@ def _check_birth_date(born: date, now: datetime) -> None:
         )
 
 
-def _refuse_shared_phone(owners: list[Patient]) -> None:
-    """Raise PHONE_TAKEN, naming who is already on the number, if there is anyone.
+def _refuse_taken_phone(owner: Patient | None) -> None:
+    """Raise PHONE_TAKEN if someone is registered on the number.
 
-    One mobile is often a whole family's, so sharing is allowed, but only on purpose: the person
-    registering must confirm it, which also stops the same patient being entered twice by mistake.
+    Only the id is returned, not the name or birth date: telling a receptionist who has a number is
+    useful, telling it to anyone who can send a request is a privacy leak.
     """
-    if owners:
-        names = ", ".join(p.name for p in owners[:3])
+    if owner is not None:
         raise ConflictError(
             ErrorCode.PHONE_TAKEN,
-            f"This phone number is already registered to {names}. If the new patient is a family "
-            "member who shares the number, confirm it; otherwise use the existing patient.",
-            patient_id=owners[0].id,
-            patients=[
-                {"patient_id": p.id, "name": p.name, "date_of_birth": p.date_of_birth.isoformat()}
-                for p in owners
-            ],
+            "A patient with that phone number already exists. Search by phone to find them.",
+            patient_id=owner.id,
         )
 
 
@@ -101,18 +95,15 @@ class PatientService:
         date_of_birth: date,
         now: datetime,
         allow_duplicate: bool = False,
-        shares_phone: bool = False,
     ) -> PatientView:
-        """Register a patient. A number already in use is refused unless `shares_phone` confirms
-        the new patient is someone else who shares it (a family on one mobile)."""
+        """Register a patient. A phone number identifies one patient (the problem statement: phone,
+        unique), so a number already in use is refused with PHONE_TAKEN."""
         cleaned = _clean_name(name)
         normalised = _normalised(phone)
         _check_birth_date(date_of_birth, now)
 
         def work(session: Session) -> PatientView:
-            repo.lock_phone(session, normalised)
-            if not shares_phone:
-                _refuse_shared_phone(repo.patients_by_phone(session, normalised))
+            _refuse_taken_phone(repo.patient_by_phone(session, normalised))
             if not allow_duplicate:
                 _refuse_duplicates(repo.patients_like(session, cleaned, date_of_birth))
             patient = Patient(name=cleaned, phone=normalised, date_of_birth=date_of_birth)
@@ -131,14 +122,12 @@ class PatientService:
         phone: str | None = None,
         date_of_birth: date | None = None,
         allow_duplicate: bool = False,
-        shares_phone: bool = False,
     ) -> PatientView:
         """Correct a patient's details (a new phone number, a misspelt name, a wrong birth date).
 
         Appointments follow the patient, so nothing is rebooked. A new phone that already belongs to
-        someone else is refused unless `shares_phone` confirms they share it, and a new name and
-        birth date that match another patient are refused unless the caller confirms they are
-        different people.
+        someone else is refused, and a new name and birth date that match another patient are
+        refused unless the caller confirms they are different people.
         """
         cleaned = _clean_name(name) if name is not None else None
         normalised = _normalised(phone) if phone is not None else None
@@ -148,9 +137,7 @@ class PatientService:
         def work(session: Session) -> PatientView:
             patient = repo.get_patient(session, patient_id, lock=True)
             if normalised is not None and normalised != patient.phone:
-                repo.lock_phone(session, normalised)
-                if not shares_phone:
-                    _refuse_shared_phone(repo.patients_by_phone(session, normalised))
+                _refuse_taken_phone(repo.patient_by_phone(session, normalised))
             new_name = cleaned if cleaned is not None else patient.name
             new_birth = date_of_birth if date_of_birth is not None else patient.date_of_birth
             changed = (new_name, new_birth) != (patient.name, patient.date_of_birth)

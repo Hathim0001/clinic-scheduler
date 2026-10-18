@@ -1,13 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 import type { SlotsResponse } from "../api/types";
-import { PatientPicker } from "../components/PatientPicker";
 import { apiError, installFakeApi } from "../test/fakeApi";
 import { appointment, clockInfo, doctor, patient, renderPage } from "../test/utils";
 import Book from "./Book";
-import { PatientDetail } from "./Patients";
 
 const slot = (start: string, end: string) => ({
   start_at_utc: "2026-11-02T04:30:00Z",
@@ -186,88 +183,5 @@ describe("moving an appointment", () => {
     expect(await screen.findByRole("button", { name: "10:00–11:00" })).toBeInTheDocument();
     expect(api.last("GET", "/doctors/1/slots")?.query.slots).toBe("2");
     expect(screen.queryByLabelText("Length of the visit")).not.toBeInTheDocument();
-  });
-});
-
-describe("a number that several patients share", () => {
-  const owner = { patient_id: 3, name: "Asha Iyer", date_of_birth: "1985-04-02" };
-  const taken = apiError(
-    409,
-    "PHONE_TAKEN",
-    "This phone number is already registered to Asha Iyer.",
-    {
-      patient_id: 3,
-      patients: [owner],
-    },
-  );
-
-  async function fillNewPatient(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole("button", { name: "New patient" }));
-    const form = screen.getByRole("form", { name: "New patient" });
-    await user.type(within(form).getByLabelText("Name"), "Child One");
-    await user.type(within(form).getByLabelText("Phone"), "9876543210");
-    await user.type(within(form).getByLabelText("Date of birth"), "2012-04-04");
-    await user.click(within(form).getByRole("button", { name: "Register patient" }));
-  }
-
-  it("lets the person pick the existing patient instead", async () => {
-    installFakeApi({
-      ...base(),
-      "GET /patients": { body: { items: [], total: 0, limit: 10, offset: 0 } },
-      "POST /patients": taken,
-    });
-    const user = userEvent.setup();
-    let chosen: number | null = null;
-    renderPage(<PatientPicker onSelect={(p) => (chosen = p.id)} />);
-    await fillNewPatient(user);
-    await user.click(await screen.findByRole("button", { name: "Use Asha Iyer" }));
-    expect(chosen).toBe(3);
-  });
-
-  it("registers a family member on the number only when told to", async () => {
-    const api = installFakeApi({
-      ...base(),
-      "GET /patients": { body: { items: [], total: 0, limit: 10, offset: 0 } },
-      "POST /patients": (call: { body: unknown }) =>
-        (call.body as { shares_phone?: boolean }).shares_phone
-          ? { status: 201, body: patient({ id: 9, name: "Child One" }) }
-          : taken,
-    });
-    const user = userEvent.setup();
-    let chosen: number | null = null;
-    renderPage(<PatientPicker onSelect={(p) => (chosen = p.id)} />);
-    await fillNewPatient(user);
-    expect(api.count("POST", "/patients")).toBe(1);
-    await user.click(
-      await screen.findByRole("button", { name: "Register as a family member on this number" }),
-    );
-    await waitFor(() => expect(chosen).toBe(9));
-    expect(api.last("POST", "/patients")?.body).toMatchObject({ shares_phone: true });
-  });
-
-  it("asks the same when a patient's phone is edited onto a number in use", async () => {
-    const api = installFakeApi({
-      ...base(),
-      "GET /patients/7/waitlist": { body: [] },
-      "GET /patients/7/appointments": { body: { items: [], total: 0, limit: 50, offset: 0 } },
-      "PATCH /patients/7": (call: { body: unknown }) =>
-        (call.body as { shares_phone?: boolean }).shares_phone
-          ? { body: patient({ phone: "+919876543210" }) }
-          : taken,
-    });
-    const user = userEvent.setup();
-    renderPage(
-      <Routes>
-        <Route path="/patients/:id" element={<PatientDetail />} />
-      </Routes>,
-      "/patients/7",
-    );
-    const phone = await screen.findByLabelText("Phone", { selector: "input" });
-    await user.clear(phone);
-    await user.type(phone, "9876543210");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await user.click(await screen.findByRole("button", { name: "save it on this number anyway" }));
-    await waitFor(() => expect(api.count("PATCH", "/patients/7")).toBe(2));
-    expect(api.last("PATCH", "/patients/7")?.body).toMatchObject({ shares_phone: true });
   });
 });

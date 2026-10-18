@@ -140,6 +140,13 @@ WINDOW_AND_PEOPLE_CASES: dict[str, Case] = {
         "23P01",
         "override_windows_no_overlap",
     ),
+    "second patient with the same phone": (
+        "INSERT INTO patients (name, phone, date_of_birth) "
+        "VALUES ('Dup', '+919000000001', '2000-01-01')",
+        lambda w: {},
+        "23505",
+        "patients_phone_key",
+    ),
     "phone that does not start with 6 to 9": (
         "INSERT INTO patients (name, phone, date_of_birth) "
         "VALUES ('Bad', '+911234567890', '2000-01-01')",
@@ -340,14 +347,6 @@ def test_a_visit_of_several_slots_is_accepted(
 ) -> None:
     params = appointment(world, slots=slots, end=LATER + timedelta(minutes=minutes))
     assert run(engine, APPOINTMENT_INSERT, **params) == (None, None)
-
-
-def test_two_patients_may_share_a_phone_number(engine: Engine, world: World) -> None:
-    sql = (
-        "INSERT INTO patients (name, phone, date_of_birth) "
-        "VALUES ('Sibling', '+919000000001', '2001-02-03')"
-    )
-    assert run(engine, sql) == (None, None)
 
 
 def test_adjacent_appointments_do_not_overlap(engine: Engine, world: World) -> None:

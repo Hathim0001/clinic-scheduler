@@ -51,6 +51,7 @@ def wrap(
         ("23P01", "weekly_windows_no_overlap", RuleViolation, ErrorCode.WINDOW_OVERLAP),
         ("23P01", "override_windows_no_overlap", RuleViolation, ErrorCode.WINDOW_OVERLAP),
         ("23P01", "some_future_constraint", ConflictError, ErrorCode.CONFLICT),
+        ("23505", "patients_phone_key", ConflictError, ErrorCode.PHONE_TAKEN),
         ("23505", "some_other_unique", ConflictError, ErrorCode.CONFLICT),
         ("23505", None, ConflictError, ErrorCode.CONFLICT),
         ("23503", "appointments_doctor_id_fkey", NotFoundError, ErrorCode.REFERENCE_NOT_FOUND),

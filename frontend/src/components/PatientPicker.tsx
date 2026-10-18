@@ -122,15 +122,9 @@ function NewPatientForm({
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [birth, setBirth] = useState("");
 
-  const register = (confirm: { allowDuplicate?: boolean; sharesPhone?: boolean } = {}) =>
+  const register = (allowDuplicate = false) =>
     create.mutate(
-      {
-        name,
-        phone,
-        date_of_birth: birth,
-        ...(confirm.allowDuplicate ? { allow_duplicate: true } : {}),
-        ...(confirm.sharesPhone ? { shares_phone: true } : {}),
-      },
+      { name, phone, date_of_birth: birth, ...(allowDuplicate ? { allow_duplicate: true } : {}) },
       { onSuccess: onCreated },
     );
 
@@ -138,17 +132,6 @@ function NewPatientForm({
     event.preventDefault();
     register();
   };
-
-  // The number is already on file: show who has it, so the person can pick the right patient or say
-  // this is a family member who shares it.
-  const owners =
-    create.error instanceof ApiError && create.error.code === "PHONE_TAKEN"
-      ? ((create.error.details.patients as {
-          patient_id: number;
-          name: string;
-          date_of_birth: string;
-        }[]) ?? [])
-      : null;
 
   const duplicates =
     create.error instanceof ApiError && create.error.code === "POSSIBLE_DUPLICATE"
@@ -194,33 +177,6 @@ function NewPatientForm({
           />
         </label>
       </div>
-      {owners && owners.length > 0 && (
-        <Banner kind="warn">
-          This number is already registered to:
-          <ul>
-            {owners.map((owner) => (
-              <li key={owner.patient_id}>
-                <button
-                  type="button"
-                  className="link"
-                  onClick={() =>
-                    onCreated({
-                      id: owner.patient_id,
-                      name: owner.name,
-                      phone,
-                      date_of_birth: owner.date_of_birth,
-                    } as Patient)
-                  }
-                >
-                  Use {owner.name}
-                </button>{" "}
-                <span className="muted">born {owner.date_of_birth}</span>
-              </li>
-            ))}
-          </ul>
-          If the new patient is a family member who shares this number, register them on it.
-        </Banner>
-      )}
       {duplicates ? (
         <Banner kind="warn">
           Someone with the same name and date of birth is already registered:
@@ -247,28 +203,15 @@ function NewPatientForm({
           If this really is a different person, register them anyway.
         </Banner>
       ) : (
-        create.error && !owners && <ErrorBanner error={create.error} />
+        create.error && <ErrorBanner error={create.error} />
       )}
       <div className="actions">
         <button type="submit" className="primary" disabled={create.isPending}>
           Register patient
         </button>
         {duplicates && (
-          <button
-            type="button"
-            disabled={create.isPending}
-            onClick={() => register({ allowDuplicate: true })}
-          >
+          <button type="button" disabled={create.isPending} onClick={() => register(true)}>
             Register anyway
-          </button>
-        )}
-        {owners && (
-          <button
-            type="button"
-            disabled={create.isPending}
-            onClick={() => register({ sharesPhone: true })}
-          >
-            Register as a family member on this number
           </button>
         )}
         <button type="button" onClick={onCancel}>

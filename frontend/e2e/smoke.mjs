@@ -180,30 +180,30 @@ try {
     JSON.stringify(booked && [booked.slots, booked.duration_min]),
   );
 
-  // 4c a family member registered on a number that is already in use
-  const family = await openPage(browser, clock);
-  await family.goto(`${BASE_URL}/patients`, { waitUntil: "domcontentloaded" });
-  await family.waitForSelector('[role="search"] input');
-  await clickButton(family, "New patient");
-  await family.waitForSelector('form[aria-label="New patient"]');
-  const sharedPhone = "9000000001"; // the seeded patient Kavita Nair
-  await family.type('form[aria-label="New patient"] label:nth-of-type(1) input', `Family ${tag}`);
-  await family.type('form[aria-label="New patient"] label:nth-of-type(2) input', sharedPhone);
-  await setField(family, 'form[aria-label="New patient"] label:nth-of-type(3) input', "2012-04-04");
-  await clickButton(family, "Register patient");
-  await family
-    .waitForFunction(() => document.body.innerText.includes("already registered to"), {
+  // 4c a phone number belongs to one patient: registering onto a taken one is refused
+  const dup = await openPage(browser, clock);
+  await dup.goto(`${BASE_URL}/patients`, { waitUntil: "domcontentloaded" });
+  await dup.waitForSelector('[role="search"] input');
+  await clickButton(dup, "New patient");
+  await dup.waitForSelector('form[aria-label="New patient"]');
+  const takenPhone = "9000000001"; // the seeded patient Kavita Nair
+  await dup.type('form[aria-label="New patient"] label:nth-of-type(1) input', `Dup ${tag}`);
+  await dup.type('form[aria-label="New patient"] label:nth-of-type(2) input', takenPhone);
+  await setField(dup, 'form[aria-label="New patient"] label:nth-of-type(3) input', "2012-04-04");
+  await clickButton(dup, "Register patient");
+  await dup
+    .waitForFunction(() => document.body.innerText.includes("already registered"), {
       timeout: 20000,
     })
     .catch(() => undefined);
-  const warned = (await family.evaluate(() => document.body.innerText)).includes("Kavita Nair");
-  await clickButton(family, "Register as a family member");
-  await sleep(3000);
-  const [, shared] = await api("GET", `/patients?phone=${sharedPhone}`);
+  const refused = (await dup.evaluate(() => document.body.innerText)).includes(
+    "already registered",
+  );
+  const [, owners] = await api("GET", `/patients?phone=${takenPhone}`);
   check(
-    "a taken number names its owner and a confirmed family member shares it",
-    warned && shared.total >= 2,
-    `warned=${warned} total=${shared.total}`,
+    "a taken phone number is refused and still belongs to one patient",
+    refused && owners.total === 1,
+    `refused=${refused} total=${owners.total}`,
   );
 
   // 5 search, unknown patient, unknown route

@@ -49,7 +49,7 @@ def search_patients(
 )
 def create_patient(body: PatientCreate, services: ServicesDep, now: NowDep) -> PatientOut:
     view = services.patients.create(
-        body.name, body.phone, body.date_of_birth, now, body.allow_duplicate, body.shares_phone
+        body.name, body.phone, body.date_of_birth, now, body.allow_duplicate
     )
     log.info("patient.created", patient_id=view.id)
     return patient_out(view)

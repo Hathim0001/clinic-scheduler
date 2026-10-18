@@ -371,3 +371,18 @@ def test_the_clock_reports_what_the_seed_recorded(api: Api) -> None:
         )
     body = api.get("/clock", now=NOW).json()
     assert (body["seed_anchor_date"], body["seed_queue_day"]) == ("2026-10-17", "2026-10-19")
+
+
+def test_a_taken_phone_names_no_one_but_gives_the_id_to_search_by(api: Api) -> None:
+    """Telling a caller who owns a number is a privacy leak, so only the id comes back."""
+    taken = api.get(f"/patients/{api.clinic.asha}").json()["phone"]
+    body = {"name": "Someone New", "phone": taken, "date_of_birth": "2010-01-01"}
+    error = assert_error(api.post("/patients", body), 409, "PHONE_TAKEN")
+    assert error["details"] == {"patient_id": api.clinic.asha}
+    assert "Asha" not in error["message"]
+
+
+def test_a_phone_cannot_be_moved_onto_another_patients_number(api: Api) -> None:
+    taken = api.get(f"/patients/{api.clinic.ravi}").json()["phone"]
+    assert_error(api.patch(f"/patients/{api.clinic.asha}", {"phone": taken}), 409, "PHONE_TAKEN")
+    assert api.get(f"/patients/{api.clinic.asha}").json()["phone"] != taken

@@ -1,5 +1,4 @@
-"""The three lifted limits over HTTP: visit length, shared phones, and moving an appointment inside
-two hours."""
+"""Two lifted limits over HTTP: visit length, and moving an appointment inside two hours."""
 
 from __future__ import annotations
 
@@ -83,48 +82,6 @@ def test_the_idempotency_key_covers_the_length(api: Api) -> None:
         api.post("/appointments", book_body(api, slots=2), headers=headers),
         409,
         "IDEMPOTENCY_KEY_REUSED",
-    )
-
-
-# ------------------------------------------------------------------------ shared phone numbers
-
-
-def patient_body(phone: str, **extra: Any) -> dict[str, Any]:
-    return {"name": "Child One", "phone": phone, "date_of_birth": "2012-04-04"} | extra
-
-
-def test_a_taken_number_lists_who_has_it_and_a_confirmed_share_is_created(api: Api) -> None:
-    phone = api.get(f"/patients/{api.clinic.asha}").json()["phone"]
-    refused = api.post("/patients", patient_body(phone))
-    error = assert_error(refused, 409, "PHONE_TAKEN")
-    assert error["details"]["patients"][0]["patient_id"] == api.clinic.asha
-    assert error["details"]["patients"][0]["name"] == "Asha Iyer"
-
-    created = api.post("/patients", patient_body(phone, shares_phone=True))
-    assert created.status_code == 201
-    found = api.get("/patients", params={"phone": phone}).json()
-    assert found["total"] == 2
-
-
-def test_the_confirmation_must_be_a_real_boolean(api: Api) -> None:
-    phone = api.get(f"/patients/{api.clinic.asha}").json()["phone"]
-    assert_error(
-        api.post("/patients", patient_body(phone, shares_phone="yes")), 422, "VALIDATION_ERROR"
-    )
-
-
-def test_changing_a_phone_onto_a_shared_number(api: Api) -> None:
-    taken = api.get(f"/patients/{api.clinic.ravi}").json()["phone"]
-    url = f"/patients/{api.clinic.asha}"
-    assert_error(api.patch(url, {"phone": taken}), 409, "PHONE_TAKEN")
-    ok = api.patch(url, {"phone": taken, "shares_phone": True})
-    assert ok.status_code == 200
-    assert ok.json()["phone"] == taken
-
-
-def test_a_patch_with_only_the_confirmation_is_empty(api: Api) -> None:
-    assert_error(
-        api.patch(f"/patients/{api.clinic.asha}", {"shares_phone": True}), 422, "VALIDATION_ERROR"
     )
 
 

@@ -59,7 +59,6 @@ export interface NewPatient {
   phone: string;
   date_of_birth: string;
   allow_duplicate?: boolean;
-  shares_phone?: boolean;
 }
 
 export interface PatientChanges {
@@ -67,7 +66,6 @@ export interface PatientChanges {
   phone?: string;
   date_of_birth?: string;
   allow_duplicate?: boolean;
-  shares_phone?: boolean;
 }
 
 export interface DoctorChanges {

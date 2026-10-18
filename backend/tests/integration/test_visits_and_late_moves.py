@@ -1,18 +1,16 @@
-"""Visits longer than one slot, patients who share a phone number, and moving an appointment inside
-two hours: the three design limits that were lifted."""
+"""Visits longer than one slot, and moving an appointment inside two hours: two design limits that
+were lifted (a phone number stays unique, as the problem statement defines the patient)."""
 
 from __future__ import annotations
 
 from datetime import date, timedelta
-from functools import partial
 
 import pytest
 
 from app.domain.errors import ConflictError, DomainError, ErrorCode, RuleViolation
 from app.domain.model import CancelledBy, Status
-from app.services.views import AppointmentView, BookCommand, PatientView
+from app.services.views import AppointmentView, BookCommand
 from tests.factories import add_appointment
-from tests.helpers import burst, ist, outcomes
 from tests.integration.conftest import MONDAY, NOW, Clinic, at
 
 pytestmark = pytest.mark.integration
@@ -185,91 +183,6 @@ def test_the_booking_hash_includes_the_length(clinic: Clinic) -> None:
         )
     assert raised.value.code is ErrorCode.IDEMPOTENCY_KEY_REUSED
     assert first.slots == 1
-
-
-# ------------------------------------------------------------------------ shared phone numbers
-
-
-def register(clinic: Clinic, name: str, phone: str, **flags: bool) -> PatientView:
-    return clinic.patients.create(name, phone, date(2010, 5, 5), NOW, **flags)
-
-
-def test_a_number_already_in_use_is_refused_and_names_who_has_it(clinic: Clinic) -> None:
-    phone = clinic.patients.get(clinic.asha, NOW).phone
-    with pytest.raises(ConflictError) as raised:
-        register(clinic, "Child One", phone)
-    assert raised.value.code is ErrorCode.PHONE_TAKEN
-    assert raised.value.details["patient_id"] == clinic.asha
-    assert raised.value.details["patients"] == [
-        {
-            "patient_id": clinic.asha,
-            "name": "Asha Iyer",
-            "date_of_birth": clinic.patients.get(clinic.asha, NOW).date_of_birth.isoformat(),
-        }
-    ]
-    assert "Asha Iyer" in raised.value.message
-
-
-def test_a_family_member_can_share_the_number_when_confirmed(clinic: Clinic) -> None:
-    phone = clinic.patients.get(clinic.asha, NOW).phone
-    child = register(clinic, "Child One", phone, shares_phone=True)
-    assert child.id != clinic.asha
-    assert child.phone == phone
-
-
-def test_searching_by_a_shared_number_finds_everyone_on_it(clinic: Clinic) -> None:
-    phone = clinic.patients.get(clinic.asha, NOW).phone
-    register(clinic, "Child One", phone, shares_phone=True)
-    register(clinic, "Child Two", phone, shares_phone=True)
-    page = clinic.patients.search(phone=phone, name_prefix=None, limit=10, offset=0)
-    assert sorted(p.name for p in page.items) == ["Asha Iyer", "Child One", "Child Two"]
-
-
-def test_sharing_does_not_switch_off_the_duplicate_name_check(clinic: Clinic) -> None:
-    asha = clinic.patients.get(clinic.asha, NOW)
-    with pytest.raises(ConflictError) as raised:
-        clinic.patients.create("Asha Iyer", asha.phone, asha.date_of_birth, NOW, shares_phone=True)
-    assert raised.value.code is ErrorCode.POSSIBLE_DUPLICATE
-
-
-def test_confirming_a_share_on_a_free_number_is_harmless(clinic: Clinic) -> None:
-    assert register(clinic, "Solo", "9111111111", shares_phone=True).phone == "+919111111111"
-
-
-def test_changing_a_phone_onto_someone_elses_needs_the_same_confirmation(clinic: Clinic) -> None:
-    taken = clinic.patients.get(clinic.ravi, NOW).phone
-    with pytest.raises(ConflictError) as raised:
-        clinic.patients.update(clinic.asha, NOW, phone=taken)
-    assert raised.value.code is ErrorCode.PHONE_TAKEN
-    assert raised.value.details["patients"][0]["patient_id"] == clinic.ravi
-    moved = clinic.patients.update(clinic.asha, NOW, phone=taken, shares_phone=True)
-    assert moved.phone == taken
-
-
-def test_a_shared_number_keeps_each_patients_own_deposit_flag(clinic: Clinic) -> None:
-    phone = clinic.patients.get(clinic.asha, NOW).phone
-    sibling = register(clinic, "Child One", phone, shares_phone=True)
-    with clinic.factory() as session, session.begin():
-        for day in (30, 31):
-            when = ist(2026, 10, day, 9)
-            add_appointment(session, clinic.rao, clinic.asha, when, status=Status.NO_SHOW)
-    assert clinic.patients.get(clinic.asha, NOW).deposit.required  # type: ignore[union-attr]
-    assert not clinic.patients.get(sibling.id, NOW).deposit.required  # type: ignore[union-attr]
-
-
-def test_ten_registrations_on_one_new_number_still_give_one_patient(clinic: Clinic) -> None:
-    """Without the confirmation the number is still protected under concurrency."""
-    results = burst([partial(register, clinic, f"Patient {n}", "9222222222") for n in range(10)])
-    assert outcomes(results) == {"OK": 1, "PHONE_TAKEN": 9}
-
-
-def test_ten_confirmed_registrations_on_one_number_all_succeed(clinic: Clinic) -> None:
-    jobs = [
-        partial(register, clinic, f"Patient {n}", "9333333333", shares_phone=True)
-        for n in range(10)
-    ]
-    results = burst(jobs)
-    assert outcomes(results) == {"OK": 10}
 
 
 # --------------------------------------------------------------- moving it inside two hours
