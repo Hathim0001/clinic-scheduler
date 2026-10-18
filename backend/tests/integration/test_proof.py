@@ -7,6 +7,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.persistence.models import Patient
+from app.services import proof_service
 from app.services.proof_service import CASES, run_proof
 from tests.integration.conftest import Clinic
 
@@ -37,3 +38,16 @@ def test_running_it_twice_gives_the_same_answers(engine: Engine, clinic: Clinic)
     first = [(c.id, c.observed) for c in run_proof(engine).cases]
     second = [(c.id, c.observed) for c in run_proof(engine).cases]
     assert first == second
+
+
+def test_a_scenario_that_crashes_is_a_failed_case_not_a_failed_run(
+    engine: Engine, clinic: Clinic, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(lab: object) -> tuple[str, str]:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(proof_service, "CASES", (("broken", "r", "s", broken),))
+    report = proof_service.run_proof(engine)
+    assert not report.passed
+    assert report.cases[0].observed == "RuntimeError: boom"
+    assert report.rows_before == report.rows_after

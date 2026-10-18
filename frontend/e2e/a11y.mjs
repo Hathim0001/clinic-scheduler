@@ -13,6 +13,7 @@ const pages = [
   "/patients/1",
   "/admin",
   "/reports",
+  "/proof",
 ];
 
 const browser = await launch();

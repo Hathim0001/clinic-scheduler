@@ -249,6 +249,7 @@ try {
     "/patients/1",
     "/admin",
     "/reports",
+    "/proof",
   ]) {
     await phone.goto(BASE_URL + path, { waitUntil: "domcontentloaded" });
     await sleep(2500);
@@ -261,6 +262,49 @@ try {
     "no console errors on the phone pages",
     phone.problems.length === 0,
     phone.problems.join(" | "),
+  );
+
+  // 6b a day off offers the nearest times; the rule proof runs and keeps nothing
+  const leaveDay = addDays(day, 7);
+  await api("PUT", `/doctors/${doctor.id}/overrides/${leaveDay}`, {
+    windows: [],
+    note: "e2e leave",
+    acknowledge_conflicts: false,
+  });
+  const away = await openPage(browser, clock);
+  await away.goto(`${BASE_URL}/book?doctor=${doctor.id}&date=${leaveDay}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await away
+    .waitForFunction(() => document.body.innerText.includes("Nearest available times"), {
+      timeout: 20000,
+    })
+    .catch(() => undefined);
+  const offered = await away.evaluate(
+    () => document.querySelectorAll('section[aria-label="Nearest available times"] button').length,
+  );
+  check("a day off lists the nearest available times", offered > 0, `${offered} offered`);
+
+  const prover = await openPage(browser, clock);
+  await prover.goto(`${BASE_URL}/proof`, { waitUntil: "domcontentloaded" });
+  await prover.waitForSelector("button.primary");
+  await clickButton(prover, "Run the proof");
+  await prover
+    .waitForFunction(() => document.body.innerText.includes("documented answer"), {
+      timeout: 60000,
+    })
+    .catch(() => undefined);
+  const proofText = await prover.evaluate(() => document.body.innerText);
+  check(
+    "the rule proof passes and keeps nothing",
+    /All \d+ scenarios gave the documented answer/.test(proofText) &&
+      proofText.includes("nothing kept"),
+    proofText.slice(0, 200),
+  );
+  check(
+    "no console errors (including policy violations) on the new pages",
+    away.problems.length === 0 && prover.problems.length === 0,
+    [...away.problems, ...prover.problems].join(" | "),
   );
 
   // 7 keyboard: the first Tab lands on a link with a visible outline
