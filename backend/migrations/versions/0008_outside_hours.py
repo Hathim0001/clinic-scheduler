@@ -28,11 +28,33 @@ def upgrade() -> None:
           WHERE outside_hours AND status = 'BOOKED';
         """
     )
-    # Fill it in for the bookings that already exist, with the same code that keeps it current.
-    from app.persistence.repositories import refresh_outside_hours
+    # Fill it in for the bookings that already exist, with the same rule that keeps it current.
+    # Only the columns that exist at this revision are read: the ORM model describes the latest
+    # schema, so using it here would break a fresh install at a later revision's columns.
+    from sqlalchemy import text
+
+    from app.domain.availability import fits_in_windows
+    from app.domain.timeutil import ist_date
+    from app.persistence.repositories import WindowsLookup
 
     with Session(bind=op.get_bind()) as session:
-        refresh_outside_hours(session)
+        booked = session.execute(
+            text("SELECT id, doctor_id, start_at, end_at FROM appointments WHERE status = 'BOOKED'")
+        ).all()
+        lookup = WindowsLookup(session)
+        lookup.preload((row.doctor_id, ist_date(row.start_at)) for row in booked)
+        outside = [
+            row.id
+            for row in booked
+            if not fits_in_windows(
+                row.start_at, row.end_at, lookup.windows(row.doctor_id, ist_date(row.start_at))
+            )
+        ]
+        if outside:
+            session.execute(
+                text("UPDATE appointments SET outside_hours = true WHERE id = ANY(:ids)"),
+                {"ids": outside},
+            )
 
 
 def downgrade() -> None:

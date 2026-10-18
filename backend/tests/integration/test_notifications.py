@@ -300,3 +300,12 @@ def test_a_message_being_sent_is_left_alone_until_its_lease_runs_out(clinic: Cli
     assert service(clinic).dispatch(sent, NOW + timedelta(seconds=30)) == 0  # still leased
     assert sent.sent == []
     assert service(clinic).dispatch(sent, NOW + timedelta(minutes=3)) == 1  # lease expired
+
+
+def test_finishing_a_message_that_is_gone_or_already_settled_does_nothing(clinic: Clinic) -> None:
+    assert service(clinic)._finish(9999, NOW, None) == 0
+    consent(clinic, clinic.asha)
+    clinic.booking.book(BookCommand(clinic.rao, clinic.asha, at(10), "x"), NOW)
+    (message,) = all_messages(clinic)
+    service(clinic).mark_sent(message.id, NOW)
+    assert service(clinic)._finish(message.id, NOW, None) == 0

@@ -1,7 +1,7 @@
 == Test run ==
-........................................................................ [ 96%]
-........................................                                 [100%]
-1264 passed in 444.09s (0:07:24)
+........................................................................ [ 95%]
+.............................................................            [100%]
+1285 passed in 599.46s (0:09:59)
 
 == Line and branch coverage of app/ ==
 Name                                   Stmts   Miss Branch BrPart  Cover   Missing
@@ -13,27 +13,27 @@ app\api\middleware.py                     86      0     24      2    98%   109->
 app\api\params.py                         23      0      0      0   100%
 app\api\parsing.py                        63      0     24      0   100%
 app\api\presenters.py                     47      0      0      0   100%
-app\api\ratelimit.py                      55      5     24      3    87%   57, 62-63, 71-72
+app\api\ratelimit.py                      78      6     32      4    89%   77, 95, 100-101, 109-110
 app\api\routers\alternatives.py           13      0      0      0   100%
-app\api\routers\appointments.py           85      0      4      0   100%
-app\api\routers\auth.py                   45      0      8      0   100%
+app\api\routers\appointments.py           91      0      4      0   100%
+app\api\routers\auth.py                   56      0     12      0   100%
 app\api\routers\availability.py           48      0      2      0   100%
 app\api\routers\clock.py                  12      0      0      0   100%
 app\api\routers\doctors.py                31      0      0      0   100%
-app\api\routers\health.py                 26      0      0      0   100%
+app\api\routers\health.py                 33      0      4      0   100%
 app\api\routers\notifications.py          42      0      0      0   100%
 app\api\routers\patients.py               54      0      0      0   100%
-app\api\routers\proof.py                  22      0      0      0   100%
+app\api\routers\proof.py                  32      0      2      0   100%
 app\api\routers\queue.py                  14      0      0      0   100%
-app\api\routers\reports.py                16      0      0      0   100%
+app\api\routers\reports.py                35      0      4      0   100%
 app\api\routers\staff.py                  35      0      2      0   100%
 app\api\routers\waitlist.py               29      0      0      0   100%
-app\api\schemas\requests.py              104      0     16      0   100%
-app\api\schemas\responses.py             195      0      0      0   100%
+app\api\schemas\requests.py              107      0     16      0   100%
+app\api\schemas\responses.py             197      0      0      0   100%
 app\api\schemas\types.py                  26      0      2      0   100%
 app\core\actor.py                          3      0      0      0   100%
 app\core\auth.py                          47      0     10      0   100%
-app\core\config.py                        47      0      2      0   100%
+app\core\config.py                        48      0      2      0   100%
 app\core\logging.py                       22      0      4      0   100%
 app\core\metrics.py                       27      0      0      0   100%
 app\core\passwords.py                     20      0      2      0   100%
@@ -49,29 +49,29 @@ app\domain\timeutil.py                    24      0      0      0   100%
 app\domain\transitions.py                 31      0     12      0   100%
 app\domain\triage.py                       7      0      0      0   100%
 app\domain\violations.py                  46      0     18      0   100%
-app\main.py                               60      0      8      0   100%
+app\main.py                               61      0      8      0   100%
 app\persistence\db.py                     23      0      2      0   100%
 app\persistence\db_errors.py              35      0     14      0   100%
-app\persistence\models.py                130      0      0      0   100%
-app\persistence\repositories.py          195      0     56      0   100%
+app\persistence\models.py                133      0      0      0   100%
+app\persistence\repositories.py          195      0     56      1    99%   184->183
 app\services\alternatives_service.py      39      0      6      0   100%
 app\services\appointment_queries.py       48      0      8      0   100%
 app\services\appointment_views.py         18      0      2      0   100%
-app\services\availability_service.py     148      0     30      0   100%
-app\services\booking_service.py          189      0     26      0   100%
+app\services\availability_service.py     153      0     32      0   100%
+app\services\booking_service.py          199      0     28      0   100%
 app\services\doctor_service.py            81      0     24      0   100%
 app\services\meta_service.py              18      0      0      0   100%
-app\services\notification_service.py     116      0     14      0   100%
-app\services\patient_service.py          133      0     28      0   100%
+app\services\notification_service.py     129      0     18      0   100%
+app\services\patient_service.py          147      0     34      0   100%
 app\services\proof_service.py            164      0      8      0   100%
 app\services\record_service.py           101      0      8      0   100%
 app\services\staff_service.py             84      0     20      0   100%
 app\services\support.py                   14      0      2      0   100%
-app\services\views.py                    144      0      0      0   100%
+app\services\views.py                    146      0      0      0   100%
 app\services\waitlist_offers.py           45      0     12      1    98%   106->113
 app\services\waitlist_service.py         148      0     28      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   3774      7    550      8    99%
+TOTAL                                   3904      8    586     10    99%
 
 8 empty files skipped.
 
@@ -93,20 +93,20 @@ app\domain\violations.py                  46      0     18      0   100%
 app\services\alternatives_service.py      39      0      6      0   100%
 app\services\appointment_queries.py       48      0      8      0   100%
 app\services\appointment_views.py         18      0      2      0   100%
-app\services\availability_service.py     148      0     30      0   100%
-app\services\booking_service.py          189      0     26      0   100%
+app\services\availability_service.py     153      0     32      0   100%
+app\services\booking_service.py          199      0     28      0   100%
 app\services\doctor_service.py            81      0     24      0   100%
 app\services\meta_service.py              18      0      0      0   100%
-app\services\notification_service.py     116      0     14      0   100%
-app\services\patient_service.py          133      0     28      0   100%
+app\services\notification_service.py     129      0     18      0   100%
+app\services\patient_service.py          147      0     34      0   100%
 app\services\proof_service.py            164      0      8      0   100%
 app\services\record_service.py           101      0      8      0   100%
 app\services\staff_service.py             84      0     20      0   100%
 app\services\support.py                   14      0      2      0   100%
-app\services\views.py                    144      0      0      0   100%
+app\services\views.py                    146      0      0      0   100%
 app\services\waitlist_offers.py           45      0     12      1    98%   106->113
 app\services\waitlist_service.py         148      0     28      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   1886      0    312      1    99%
+TOTAL                                   1930      0    326      1    99%
 
 2 empty files skipped.

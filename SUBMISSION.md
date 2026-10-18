@@ -62,7 +62,7 @@ The tagged `m0` to `m6` commits. Later work is tagged `[M2]` to `[M6]` by area; 
 | Data modelling (9) | 5 | Exclusion, CHECK and UNIQUE constraints, 11 migrations, stored versus derived documented, hash-chained audit |
 | API design (8) | 5 | Conventions written down, pagination, one error shape, OpenAPI fuzzed over every operation |
 | UI (6) | 4 | Flows work unaided, axe clean, phone layouts; never tried by a real receptionist or a screen-reader user |
-| Testing (7) | 5 | 1,264 backend and 156 frontend tests, browser, fuzz and load runs, every statement of the rules layer covered |
+| Testing (7) | 5 | 1,285 backend and 167 frontend tests, browser, fuzz and load runs, every statement of the rules layer covered |
 | Deployment (5) | 4 | One-command stack, CI and a keep-alive; hosted and checked live (README section 2) |
 | Git hygiene (4) | 3 | Conventional commits, one author, tags; but commits came in batches (several share a minute) over two days. Timestamps are real, unedited |
 | Documentation (4) | 4 | README in the required order, limitations stated, this write-up cites commits |

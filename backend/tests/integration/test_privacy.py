@@ -188,3 +188,11 @@ def test_the_erased_phone_shape_is_accepted_by_the_database_and_never_a_real_num
     assert erased_phone(7) == "+910000000007"
     with pytest.raises(ValueError, match="Not a valid"):
         normalise_phone(erased_phone(7))  # a real registration can never use it
+
+
+def test_an_unknown_consent_source_is_refused_by_the_service_itself(clinic: Clinic) -> None:
+    from app.domain.errors import RuleViolation
+
+    with pytest.raises(RuleViolation) as raised:
+        clinic.patients.record_consent(clinic.asha, NOW, consent_by="NEIGHBOUR")
+    assert raised.value.details["field"] == "consent_by"
