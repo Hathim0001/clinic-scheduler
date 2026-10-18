@@ -296,27 +296,9 @@ class BookingService:
             deposit = deposit_of(session, patient.id, now)
             confirmed = old.deposit_confirmed if deposit_confirmed is None else deposit_confirmed
 
-            duration = int((old.end_at - old.start_at).total_seconds() // 60)
             target = doctors[target_doctor_id]
-            if (
-                duration % target.slot_length_min
-                or duration // target.slot_length_min > MAX_APPOINTMENT_SLOTS
-            ):
-                raise RuleViolation(
-                    ErrorCode.VALIDATION_ERROR,
-                    f"This visit lasts {duration} minutes, which does not fit {target.name}'s "
-                    f"{target.slot_length_min}-minute slots.",
-                    field="doctor_id",
-                )
-            new_slots = duration // target.slot_length_min
-
-            outcome = classify_cancellation(old.start_at, now, by)
-            old.status = outcome.value
-            old.cancelled_at = now
-            old.cancelled_by = by.value
-            old.status_changed_at = now
-            session.flush()
-
+            new_slots = _slots_for_move(old, target)
+            outcome = _cancel_for_move(session, old, by, now)
             new = place_booking(
                 session,
                 target,
@@ -330,28 +312,8 @@ class BookingService:
                 slots=new_slots,
             )
             if outcome is Status.LATE_CANCELLED and not acknowledge_late:
-                minutes = int((old.start_at - now).total_seconds() // 60)
-                raise ConflictError(
-                    ErrorCode.LATE_RESCHEDULE_NEEDS_CONFIRMATION,
-                    f"This appointment starts in {minutes} minutes, so moving it now is recorded "
-                    "as a late cancellation of the old slot. That counts toward the patient's "
-                    "deposit flag. Confirm to move it anyway, or have the clinic make the move.",
-                    minutes_until_start=minutes,
-                    counts_as="LATE_CANCELLED",
-                )
-            old.rescheduled_to_id = new.id
-            session.flush()
-            repo.record_event(
-                session,
-                old,
-                outcome.value,
-                now,
-                by=by.value,
-                start_at=utc_iso(old.start_at),
-                rescheduled_to_id=new.id,
-                rescheduled_to_start_at=utc_iso(new.start_at),
-            )
-            repo.record_event(session, new, "RESCHEDULED_FROM", now, from_id=old.id)
+                raise _late_move_question(old, now)
+            _link_move(session, old, new, outcome, by, now)
             offer_freed_slot(session, doctors[old.doctor_id], old.start_at, now, old.slots)
             return RescheduleResult(
                 old=view_of(session, old.id, now), new=view_of(session, new.id, now)
@@ -419,6 +381,69 @@ class BookingService:
             return view_of(session, appointment.id, now)
 
         return run(self._factory, work)
+
+
+def _slots_for_move(old: Appointment, target: Doctor) -> int:
+    """The visit keeps its length in minutes; it must be a whole number of the target's slots."""
+    duration = int((old.end_at - old.start_at).total_seconds() // 60)
+    if (
+        duration % target.slot_length_min
+        or duration // target.slot_length_min > MAX_APPOINTMENT_SLOTS
+    ):
+        raise RuleViolation(
+            ErrorCode.VALIDATION_ERROR,
+            f"This visit lasts {duration} minutes, which does not fit {target.name}'s "
+            f"{target.slot_length_min}-minute slots.",
+            field="doctor_id",
+        )
+    return duration // target.slot_length_min
+
+
+def _cancel_for_move(session: Session, old: Appointment, by: CancelledBy, now: datetime) -> Status:
+    """Cancel the old slot under the 2-hour rule, before the new one is placed."""
+    outcome = classify_cancellation(old.start_at, now, by)
+    old.status = outcome.value
+    old.cancelled_at = now
+    old.cancelled_by = by.value
+    old.status_changed_at = now
+    session.flush()
+    return outcome
+
+
+def _late_move_question(old: Appointment, now: datetime) -> ConflictError:
+    minutes = int((old.start_at - now).total_seconds() // 60)
+    return ConflictError(
+        ErrorCode.LATE_RESCHEDULE_NEEDS_CONFIRMATION,
+        f"This appointment starts in {minutes} minutes, so moving it now is recorded "
+        "as a late cancellation of the old slot. That counts toward the patient's "
+        "deposit flag. Confirm to move it anyway, or have the clinic make the move.",
+        minutes_until_start=minutes,
+        counts_as="LATE_CANCELLED",
+    )
+
+
+def _link_move(
+    session: Session,
+    old: Appointment,
+    new: Appointment,
+    outcome: Status,
+    by: CancelledBy,
+    now: datetime,
+) -> None:
+    """Point the old appointment at its replacement and write both audit events."""
+    old.rescheduled_to_id = new.id
+    session.flush()
+    repo.record_event(
+        session,
+        old,
+        outcome.value,
+        now,
+        by=by.value,
+        start_at=utc_iso(old.start_at),
+        rescheduled_to_id=new.id,
+        rescheduled_to_start_at=utc_iso(new.start_at),
+    )
+    repo.record_event(session, new, "RESCHEDULED_FROM", now, from_id=old.id)
 
 
 def _require_not_checked_in(appointment: Appointment, action: str) -> None:
