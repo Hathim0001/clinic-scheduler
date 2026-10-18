@@ -140,6 +140,7 @@ npm run format:check && npm run lint && npm run typecheck   # what CI runs (npm 
 | `TRUSTED_PROXY_HOPS` | backend | How many reverse proxies append to `X-Forwarded-For` (default 0; the Render blueprint sets 1). The rate limit counts the entry that many places from the right, because the left side can be forged |
 | `STAFF_PASSWORD` | backend | Optional, 8+ characters. When set, every route except the health checks, the clock and the login needs a signed token, and each audit row names who made the change. Unset (the default) leaves the API open |
 | `AUTH_SECRET` | backend | Optional, 16+ characters. Turns on **individual staff accounts with roles** (administrator or receptionist): people sign in with their own username and password, and a demotion or a switch-off applies on the very next request. Create the first administrator with `python -m scripts.create_staff` (or sign in with `STAFF_PASSWORD`, if also set, which signs in as an administrator). Unset (the default) leaves accounts off |
+| `METRICS_TOKEN` | backend | Optional, 8+ characters. When set, `GET /metrics` needs it as a Bearer token. Unset leaves the counters open (they hold counts only) |
 | `NOTIFY_WEBHOOK_URL`, `NOTIFY_WEBHOOK_TOKEN` | backend | Optional. Where messages to patients are POSTed as `{to, body, kind}` JSON (an SMS or WhatsApp gateway, or a relay in front of one), with the token as a Bearer header. Unset (the default) sends nothing: the messages wait on the Messages page for reception to phone through |
 | `AUTH_TOKEN_TTL_HOURS` | backend | How long a sign-in lasts (default 12) |
 | `OFFER_SWEEP_INTERVAL_S` | backend | How often lapsed waitlist offers are passed to the next patient (default 30; 0 turns the sweep off) |
@@ -244,7 +245,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/doctors/{id}/slots?date&patient_id?&slots?` | Free starts for a visit of `slots` slots (1 to 4, default 1), with `unavailable_reason` | 404, 422 |
 | GET | `/doctors/{id}/schedule?date&patient_id?` | Every grid slot of a day with its state | 404, 422 |
 | GET, POST | `/patients` | Search by phone or name prefix; register (`allow_duplicate` despite a likely duplicate) | 409 `PHONE_TAKEN` (only the owner's id), `POSSIBLE_DUPLICATE`, 422 |
-| POST | `/patients/{id}/consent` | Record that the patient accepted the privacy notice (`consent: true` on registration does the same) | 404, 409 `PATIENT_ERASED` |
+| POST | `/patients/{id}/consent` | Record that the privacy notice was accepted, by the patient or (`consent_by: GUARDIAN`, required for under 18s) a parent or guardian; `consent: true` on registration does the same | 404, 409 `PATIENT_ERASED`, 422 |
 | POST | `/patients/{id}/erase` | **Admin.** Erase a patient's personal data on request: name, phone, date of birth and visit reasons are replaced; appointments stay as anonymous history; repeating it changes nothing | 409 `PATIENT_HAS_UPCOMING` |
 | GET, PATCH | `/patients/{id}` | Patient with the deposit status and a literal `deposit_required` flag; correct name, phone or date of birth | 404, 409 `PHONE_TAKEN`, `POSSIBLE_DUPLICATE` |
 | GET | `/patients/{id}/export` | Everything held about a patient: details, every appointment and its history | 404 |
@@ -257,6 +258,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | POST | `/appointments/{id}/cancel` | Cancel (patient or clinic); after the start a patient cancel is a late cancel | 409 `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/reschedule` | Cancel and rebook atomically (before the start only). `by` is `PATIENT` (default) or `CLINIC`; a patient move inside 2 hours needs `acknowledge_late` | 409 `APPOINTMENT_ALREADY_STARTED`, `LATE_RESCHEDULE_NEEDS_CONFIRMATION`, 422 `RESCHEDULE_NO_CHANGE`, `DEPOSIT_REQUIRED` |
 | POST | `/appointments/{id}/complete`, `/no-show` | Mark after the start | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
+| POST | `/appointments/{id}/confirmed-by-phone` | Reception rang the patient and they confirmed (recorded once; feeds the Calls page) | 404, 409 `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/check-in` | Patient arrived (on the day; repeating it changes nothing) | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/correct` | Fix a wrong outcome: completed and no-show swap, a late cancel is waived; a note is required | 409 `INVALID_CORRECTION` |
 | GET | `/appointments/{id}/history` | Audit trail, oldest first | 404 |
@@ -267,6 +269,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | POST | `/waitlist/{id}/decline` | Say no to an offer but keep the place; the slot goes to the next patient | 404, 409 `INVALID_TRANSITION` |
 | POST | `/waitlist/{id}/accept` | Turn an offer into a booking, with every rule checked | 409 `OFFER_EXPIRED`, `SLOT_TAKEN`, 422 `DEPOSIT_REQUIRED` |
 | GET | `/alternatives?doctor_id&date&patient_id?&slots?&limit?` | The nearest bookable times when a day has none: the same doctor's next days first, then other doctors (same speciality first); every option passed the booking rules for this patient and length | 404, 422 |
+| GET | `/reports/summary.csv?from&to` | The same report as a CSV file (names that look like formulas are quoted) | 422 |
 | GET | `/reports/summary?from&to` | Per doctor: appointments, outcomes, rates, utilisation, and freed / refilled / refilled-by-waitlist slots with a recovery rate (at most 92 days) | 422 |
 | GET | `/notifications?status=`, `/notifications/pending` | Messages the system wrote for patients, and how many still need sending | 422 |
 | POST | `/notifications/{id}/sent` | Reception phoned or messaged the patient: mark it sent | 404 `NOTIFICATION_NOT_FOUND`, 409 |
@@ -338,55 +341,18 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-17 | The API returns UTC and India time, accepts any explicit offset and refuses a time without one |
 | A-18 | Completed and no-show can only be marked at or after the start |
 | A-19 | Completed, cancelled, late-cancelled and no-show are final, with one exception (A-48): a wrongly recorded outcome can be corrected |
-| A-20 | A single clinic. Authentication is optional: without `STAFF_PASSWORD` there is none (A-53) |
+| A-20 | A single clinic. Authentication is optional and off by default (A-53, A-62) |
 | A-21 | A "day" for the cap is the India calendar date of the start |
 | A-22 | The trailing 30 days are the closed interval from now minus 30 x 24 hours to now |
-| A-23 | The test clock changes "now" for the domain and for `cancelled_at` and `status_changed_at`, but not the audit columns `created_at` and `updated_at` |
-| A-24 | Lowering a doctor's cap never cancels existing appointments; it only blocks new ones |
-| A-25 | The assignment window is 2026-10-17 to 2026-10-23 (the PDFs were saved on 2026-10-17; the date of the email is not known) |
-| A-26 | Availability windows must start and end on the doctor's slot grid |
-| A-27 | `needs_attention` is derived (booked, starting at or after now, outside the effective windows) and never stored |
+| A-27 | `needs_attention` means: booked, starting at or after now, and outside the doctor's effective windows. It is stored as `appointments.outside_hours`, refreshed in the same transaction as any change to hours, and a test checks it against the rule (A-67) |
 | A-28 | Rescheduling to the same doctor and the same start is refused (`RESCHEDULE_NO_CHANGE`) so a no-op cannot create a strike |
-| A-29 | A reschedule inherits `deposit_confirmed` from the old appointment unless restated; a currently flagged patient still needs it to be true |
 | A-30 | Instants, including `X-Test-Clock`, are ISO 8601 text with an explicit offset between 2000 and 2099; an empty header, a malformed one, or any header while the clock is disabled is an error, never ignored |
-| A-31 | A start with non-zero seconds or microseconds is off the grid |
-| A-32 | Text is trimmed, length-bounded, valid Unicode and free of control characters (a reason or note may contain tab and line breaks); unknown JSON fields are refused |
-| A-33 | Ids are integers from 1 to 2,147,483,647; booleans must be literal `true` or `false`; `limit` is at most 100 and `offset` at most 100,000 |
-| A-34 | The queue shows one India day (default today by the clock) and hides cancelled appointments unless `include_cancelled=true` |
-| A-35 | Seed data is built around an anchor date; the UI has a "Seed day" clock preset; the hosted database is re-seeded on the morning of the review |
-| A-36 | Replacing the weekly windows follows the same conflict protocol as an override |
-| A-37 | Only appointments a change would *newly* orphan block it; one already outside the hours (acknowledged earlier) does not hold unrelated edits hostage |
-| A-38 | In the day schedule a slot that holds an appointment shows as booked even when it is in the past; past, capped, closed and busy apply to slots with no appointment |
-| A-39 | Removing a date override that does not exist succeeds and does nothing |
-| A-40 | A new patient's date of birth must be between 1900-01-01 and today by the effective clock |
 | A-41 | The waitlist is per doctor and India date, first come first served. A cancellation or reschedule offers the freed slot to the first waiting patient who could actually book it (same check as a booking); the offer lasts 30 minutes or until the slot starts, is not a reservation, and accepting it is an ordinary booking (the deposit rule applies, and a lost race returns the patient to the queue) |
 | A-42 | A recurring series keeps the same India time of day, books all occurrences in one transaction, and checks each exactly as a single booking; if one fails none is booked |
-| A-43 | A doctor can be deleted only while no appointment of any status references them; their hours and leave go with them |
-| A-44 | `deposit_required` on a patient is derived from the same rule as the deposit status, never stored; it is null in search results |
-| A-45 | An `Idempotency-Key` is stored with its booking in the same transaction. The same key and the same request returns the original appointment even if it was cancelled since; the same key with another request is refused. A key is forgotten 24 hours after it was stored (by the database's clock, so a test clock cannot expire it) |
-| A-46 | Check-in opens on the India date of the appointment and is recorded once. A checked-in patient cannot cancel or reschedule themselves; the clinic can still cancel, and complete or no-show work as before |
-| A-47 | Registering, or editing, a patient into the same name (ignoring case and extra spaces) and date of birth as another patient is refused with the matches listed, unless the caller confirms with `allow_duplicate`. Different phones do not make two people different |
-| A-48 | Corrections: completed becomes no-show or the other way round, and a late cancellation can be waived to a normal one. A note is required and the history keeps the original. A cancelled appointment cannot be restored (book again instead). The deposit flag, being derived, follows the correction |
-| A-49 | A doctor with `accepting_bookings` off refuses new bookings and series and offers no slots, whatever their hours. Existing appointments, cancellations, marking and the waitlist are unaffected |
-| A-50 | An offer that lapses, is declined or is abandoned by leaving is passed to the next patient who could take the slot. A patient who declines keeps their place for other slots but is never offered the same slot again. A lapsed offer is settled when someone next reads or changes that doctor's waitlist (there are no background jobs) |
-| A-51 | Report definitions: a rescheduled appointment (cancelled only because it was moved) is counted as rescheduled, not as a cancellation, and its replacement is not a new booking; the no-show rate is no-shows out of completed plus no-shows; utilisation is appointments that took a slot (booked, completed, no-show) out of the slots the hours offered; periods are India dates |
-| A-52 | The urgent-symptom check is a keyword match on the reason. It warns and marks the appointment; it never refuses a booking and is not a clinical tool |
-| A-53 | Staff login is a shared password plus a name, producing a signed token that expires (HMAC-SHA256 under a key derived from the password, so changing the password signs everyone out). It is not a user database and has no roles: everyone signed in can do everything. The login route is limited to 10 attempts a minute per client |
-| A-54 | Every audit row records its actor: the signed-in name, `anonymous` when login is off, `system` for work the server does itself. The audit table is append-only in the database (a trigger refuses UPDATE and DELETE), not just in the code |
-| A-55 | Waitlist reads take no lock and write nothing: an offer whose time has run out is simply not shown. A server-side sweep (every 30 seconds, and safe to run on several instances) passes each lapsed slot to the next patient. Changing a doctor's waitlist does the same immediately |
-| A-56 | The rate limit counts the address `TRUSTED_PROXY_HOPS` places from the right of `X-Forwarded-For`; with none configured it counts the socket address. Reading the left-most entry would let a caller change it on every request |
-| A-57 | Rescheduling keeps the visit's length: in slots with the same doctor, in minutes with another, and it is refused when the minutes do not divide into that doctor's slots. A freed multi-slot visit is offered to the waitlist as a visit of that length, and a patient is only offered it if the whole of it suits them |
-| A-58 | After a change the UI refreshes only the lists that change can alter (a table in `api/hooks.ts` names them), not everything on screen; changing the test clock is the one change that refreshes all |
-| A-59 | `GET /alternatives` only reads. It probes up to 14 days for the same doctor and 3 days for other accepting doctors with the same `free_slots` used for booking, returns each (doctor, day)'s first start, and keeps half the list for the patient's own doctor so a busy fortnight cannot crowd out a free colleague. Booking an alternative goes through the normal booking path |
-| A-60 | The rule proof (`POST /diagnostics/proof`) runs on a fixed clock with its own doctors and patients in a transaction that is rolled back (services' transactions become savepoints), so it neither reads nor keeps clinic data. It does consume database sequence numbers, so ids in the real tables may skip. Concurrency is not part of it: that is proven by the race tests, which need several real connections |
-| A-61 | Recovery counts a cancellation (not a move) as *refilled* when another active appointment of the same doctor overlaps its time and was booked, by the effective clock, at or after the cancellation. It is credited to the waitlist when that booking's `BOOKED` event says `via: WAITLIST` |
-| A-62 | Roles apply only when sign-in is on. An **administrator** sets the clinic up (doctors, hours, erasing a patient, the export, accounts, diagnostics); a **receptionist** does the day-to-day work (patients, bookings, the queue, the waitlist, reports, messages). With no sign-in at all everything is open, as the assignment allows. The role and the active flag are read from the database on every request, not trusted from the token |
-| A-63 | The last active administrator account cannot be switched off or demoted, so the clinic cannot lock itself out. The shared `STAFF_PASSWORD` is not an account and does not count |
-| A-64 | Erasing a patient is refused while they have an upcoming booking or a waitlist place (erasing would silently cancel care). The name, phone (replaced by a reserved-looking number that keeps `phone` unique), date of birth, consent and appointment reasons go; their messages keep only ids. Audit events keep ids and times but no personal data, except a free-text correction note a staff member typed, which the append-only guard stops us rewriting |
-| A-65 | Consent is recorded, not required: registration works without it, because a clinic may rely on another lawful basis and the assignment does not ask for it. Without recorded consent the server never messages the patient (the message is SKIPPED and says to phone) |
-| A-66 | Messages are written in the same transaction as the change they announce, for a booking, a clinic cancellation, a move and a waitlist offer. A patient's own cancellation is not messaged back. There are no reminders: nothing runs on a per-appointment timer |
-| A-67 | `needs_attention` is stored as `appointments.outside_hours` and refreshed in the same transaction as any change to a doctor's hours, the only thing that can change it. "Future" is applied at read time, so it does not depend on a clock. A test compares the stored flag with the rule after random sequences of hour changes |
-| A-68 | The audit hash chain is per appointment (each event hashes the previous event of the same appointment), which needs no global lock. It detects an edited or removed event in the middle of a history; it cannot detect events removed from the very end, and someone with full database rights could recompute the chain, so it is tamper-evident, not tamper-proof |
+
+These 27 are the readings of the brief that change what the system does. The numbers are
+stable, so some are missing here: the other 41 (design choices, API conventions and the features beyond the brief) are in
+[docs/DESIGN-NOTES.md](docs/DESIGN-NOTES.md), which holds all 68.
 
 ## 9. Error handling and logging
 
@@ -496,6 +462,10 @@ limitations; items it makes optional or leaves out are.
   are built and tested, but sending needs a gateway (an SMS or WhatsApp account) that the clinic
   chooses and pays for; this project has none, so by default messages wait on the Messages page for
   reception. There are no reminders before an appointment.
+- **Reminders.** No SMS reminders are sent. Reception can ring tomorrow's patients from the **Calls**
+  page and record each call; a 2025 meta-analysis found telephone reminders improve attendance
+  significantly and SMS reminders not significantly (docs/COMPETITOR-REPORT.md), so this is the better-supported
+  first step. Payments, a patient portal and multi-location are not built (not in the brief).
 - **Cold start.** Render's free plan sleeps when idle. A scheduled workflow (`keepalive.yml`) pings
   `/healthz` every 10 minutes to prevent that; GitHub may pause scheduled workflows on a repository
   with no activity for 60 days, and a paid plan is the real fix.
@@ -515,7 +485,10 @@ limitations; items it makes optional or leaves out are.
 - **Privacy.** Consent can be recorded and a patient's data erased on request or by a retention
   purge (`python -m scripts.purge_inactive`, dry run by default); `GET /patients/{id}/export` is the
   access half. Logs hold ids and codes, never names, phones or reasons (a test enforces it); every
-  response is `no-store` with `nosniff`, `no-referrer`, HSTS and a CSP. A real deployment would still
+  response is `no-store` with `nosniff`, `no-referrer`, HSTS and a CSP. A child's consent must come from a
+  parent or guardian (recorded, not verified), and the consent record survives erasure. See
+  [docs/PRIVACY-AND-OPERATIONS.md](docs/PRIVACY-AND-OPERATIONS.md) for the breach procedure,
+  backups and alerts. A real deployment would still
   need a written privacy notice, a retention period chosen by the clinic (the default of three years
   is a placeholder), a data processing agreement with Neon, Render and any message gateway, and
   legal review; this is engineering support for the Digital Personal Data Protection Act, not
