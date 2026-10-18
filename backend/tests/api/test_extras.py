@@ -146,3 +146,25 @@ def test_the_rule_proof_passes_over_http_and_leaves_the_clinic_untouched(api: Ap
     assert len(body["cases"]) >= 15
     assert all(case["passed"] for case in body["cases"])
     assert api.get("/patients", params={"q": "A"}).json()["total"] == before
+
+
+def test_messages_are_queued_listed_and_marked_sent_over_http(api: Api) -> None:
+    api.post(f"/patients/{api.clinic.asha}/consent", {})
+    api.post("/appointments", book_body(api))
+    pending = api.get("/notifications/pending").json()
+    assert pending == {"count": 1}
+    page = api.get("/notifications", params={"status": "PENDING"}).json()
+    message = page["items"][0]
+    assert (page["total"], message["kind"]) == (1, "APPOINTMENT_BOOKED")
+    assert "Dr. Rao" in message["body"]
+
+    done = api.post(f"/notifications/{message['id']}/sent", {})
+    assert done.json()["status"] == "SENT"
+    assert done.json()["sent_via"] == "MANUAL"
+    assert api.get("/notifications/pending").json() == {"count": 0}
+    assert_error(api.post(f"/notifications/{message['id']}/sent", {}), 409, "INVALID_TRANSITION")
+    assert_error(api.post("/notifications/9999/sent", {}), 404, "NOTIFICATION_NOT_FOUND")
+
+
+def test_the_messages_list_rejects_an_unknown_status(api: Api) -> None:
+    assert_error(api.get("/notifications", params={"status": "LOST"}), 422, "VALIDATION_ERROR")

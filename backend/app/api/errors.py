@@ -57,6 +57,7 @@ STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.STAFF_USERNAME_TAKEN: 409,
     ErrorCode.LAST_ADMIN: 409,
     ErrorCode.STAFF_NOT_FOUND: 404,
+    ErrorCode.NOTIFICATION_NOT_FOUND: 404,
     ErrorCode.SLOT_LENGTH_LOCKED: 409,
     ErrorCode.DOCTOR_HAS_APPOINTMENTS: 409,
     ErrorCode.ALREADY_WAITING: 409,

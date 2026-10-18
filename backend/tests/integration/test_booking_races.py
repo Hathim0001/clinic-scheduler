@@ -136,13 +136,15 @@ def test_a_cancel_racing_a_complete_has_one_winner(clinic: Clinic) -> None:
 
 
 def test_reschedules_into_one_slot_let_one_through_and_roll_the_rest_back(clinic: Clinic) -> None:
-    patients = add_patients(clinic, 6)
+    patients = add_patients(clinic, 5)
     with clinic.factory() as session, session.begin():
+        # all two hours or more ahead of NOW (08:00), so none of them is a late move that would be
+        # asked about first; the answers then depend only on who wins the race for the target
         olds = [
-            add_appointment(session, clinic.rao, patient, at(9) + timedelta(minutes=30 * n)).id
+            add_appointment(session, clinic.rao, patient, at(10) + timedelta(minutes=30 * n)).id
             for n, patient in enumerate(patients)
         ]
-    target = at(12)
+    target = at(12, 30)
     results = burst([reschedule_job(clinic, old_id, target) for old_id in olds])
     assert outcomes(results) == {"OK": 1, "SLOT_TAKEN": len(olds) - 1}
     booked = [a for a in clinic.appointments() if a.status == "BOOKED" and a.start_at == target]

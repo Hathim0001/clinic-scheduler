@@ -22,6 +22,8 @@ DATA_TABLES = {
     "waitlist_entries",
     "appointment_events",
     "idempotency_keys",
+    "staff_accounts",
+    "notifications",
 }
 
 

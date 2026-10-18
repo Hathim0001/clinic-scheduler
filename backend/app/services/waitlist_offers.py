@@ -22,7 +22,8 @@ from sqlalchemy.orm import Session
 from app.domain.slots import first_violation
 from app.domain.timeutil import ist_date
 from app.persistence import repositories as repo
-from app.persistence.models import Doctor, WaitlistEntry
+from app.persistence.models import Doctor, Patient, WaitlistEntry
+from app.services.notification_service import offer_text, queue_message
 
 log = structlog.get_logger()
 
@@ -101,6 +102,14 @@ def offer_slot(
             entry.offered_start_at = start_at
             entry.offer_expires_at = min(now + OFFER_HOLD, start_at)
             session.flush()
+            patient = session.get(Patient, entry.patient_id)
+            if patient is not None:
+                queue_message(
+                    session,
+                    patient,
+                    "WAITLIST_OFFER",
+                    offer_text(doctor.name, start_at, entry.offer_expires_at),
+                )
             log.info(
                 "waitlist.offered",
                 waitlist_id=entry.id,

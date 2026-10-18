@@ -14,6 +14,7 @@ from app.domain.phone import normalise_phone
 from app.domain.timeutil import ist_date
 from app.persistence import repositories as repo
 from app.persistence.models import Appointment, Patient, WaitlistEntry
+from app.services.notification_service import scrub_patient
 from app.services.support import run
 from app.services.views import Page, PatientView
 
@@ -238,6 +239,7 @@ class PatientService:
                     has_upcoming_appointment=upcoming is not None,
                     on_waitlist=waiting is not None,
                 )
+            scrub_patient(session, patient, erased_phone(patient.id))
             patient.name = ERASED_NAME
             patient.phone = erased_phone(patient.id)
             patient.date_of_birth = EARLIEST_BIRTH_DATE

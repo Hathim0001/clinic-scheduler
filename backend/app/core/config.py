@@ -45,10 +45,15 @@ class Settings(BaseSettings):
     # random string and people sign in with their own username and password; the shared
     # STAFF_PASSWORD, if also set, still works as an administrator, to create the first account.
     auth_secret: str | None = Field(default=None, min_length=16)
+    # Where messages to patients are posted (an SMS or WhatsApp gateway, or a relay in front of
+    # one).
+    # Unset (the default) sends nothing: messages wait on the Messages page for reception.
+    notify_webhook_url: str | None = Field(default=None, min_length=8)
+    notify_webhook_token: str | None = None
     # How often (seconds) the server passes lapsed waitlist offers to the next patient. 0 is off.
     offer_sweep_interval_s: int = Field(default=30, ge=0, le=3600)
 
-    @field_validator("staff_password", "auth_secret", mode="before")
+    @field_validator("staff_password", "auth_secret", "notify_webhook_url", mode="before")
     @classmethod
     def _blank_means_off(cls, value: object) -> object:
         """An empty STAFF_PASSWORD (a variable that exists but holds nothing) leaves login off."""

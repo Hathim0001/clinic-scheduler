@@ -36,6 +36,7 @@ from app.domain.violations import deposit_required_error, ist_text, violation_er
 from app.persistence import repositories as repo
 from app.persistence.models import Appointment, Doctor, IdempotencyKey, Patient
 from app.services.appointment_views import view_of
+from app.services.notification_service import booked_text, cancelled_text, moved_text, queue_message
 from app.services.patient_service import refuse_erased
 from app.services.support import run
 from app.services.views import AppointmentView, BookCommand, CancelResult, RescheduleResult
@@ -82,6 +83,13 @@ def place_booking(
     )
     session.add(appointment)
     session.flush()  # an overlap that slipped past the checks fails here, on the constraint
+    queue_message(
+        session,
+        patient,
+        "APPOINTMENT_MOVED" if via == "RESCHEDULE" else "APPOINTMENT_BOOKED",
+        (moved_text if via == "RESCHEDULE" else booked_text)(doctor.name, start_at),
+        appointment.id,
+    )
     repo.record_event(
         session,
         appointment,
@@ -244,6 +252,14 @@ class BookingService:
                 start_at=utc_iso(appointment.start_at),
             )
             doctor = repo.get_doctor(session, appointment.doctor_id, lock=True)
+            if cancelled_by is CancelledBy.CLINIC:
+                queue_message(
+                    session,
+                    repo.get_patient(session, appointment.patient_id),
+                    "APPOINTMENT_CANCELLED_BY_CLINIC",
+                    cancelled_text(doctor.name, appointment.start_at),
+                    appointment.id,
+                )
             offer_freed_slot(session, doctor, appointment.start_at, now, appointment.slots)
             return CancelResult(
                 appointment=view_of(session, appointment.id, now),

@@ -24,6 +24,7 @@ from app.services.availability_service import AvailabilityService
 from app.services.booking_service import BookingService
 from app.services.doctor_service import DoctorService
 from app.services.meta_service import MetaService
+from app.services.notification_service import NotificationService
 from app.services.patient_service import PatientService
 from app.services.record_service import RecordService
 from app.services.staff_service import StaffService
@@ -44,6 +45,7 @@ class Services:
     records: RecordService
     alternatives: AlternativesService
     staff: StaffService
+    notifications: NotificationService
 
     @classmethod
     def build(cls, factory: sessionmaker[Session]) -> Services:
@@ -60,6 +62,7 @@ class Services:
             records=RecordService(factory),
             alternatives=AlternativesService(availability, doctors),
             staff=StaffService(factory),
+            notifications=NotificationService(factory),
         )
 
 

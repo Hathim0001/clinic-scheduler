@@ -31,6 +31,7 @@ HTTP_STATUS = {
     "UNAUTHENTICATED": 401,
     "FORBIDDEN": 403,
     "STAFF_NOT_FOUND": 404,
+    "NOTIFICATION_NOT_FOUND": 404,
     "STAFF_USERNAME_TAKEN": 409,
     "LAST_ADMIN": 409,
     "DOCTOR_NOT_ACCEPTING": 409,
@@ -85,7 +86,7 @@ DOMAIN_CODES = [code for code in ErrorCode if code not in EDGE_ONLY]
 
 def test_the_catalogue_holds_exactly_the_codes_of_the_catalogue() -> None:
     assert {code.value for code in ErrorCode} == set(HTTP_STATUS)
-    assert len(ErrorCode) == 48
+    assert len(ErrorCode) == 49
 
 
 def test_each_code_is_spelled_like_its_name() -> None:

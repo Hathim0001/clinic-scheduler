@@ -29,6 +29,7 @@ from app.api.routers import (
     clock,
     doctors,
     health,
+    notifications,
     patients,
     proof,
     queue,
@@ -39,12 +40,13 @@ from app.api.routers import (
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.persistence.db import create_db_engine, create_session_factory
+from app.services.notification_service import WebhookProvider
 
 API_PREFIX = "/api/v1"
 log = structlog.get_logger()
 
 
-async def _sweep_offers(app: FastAPI, interval_s: int) -> None:
+async def _sweep_offers(app: FastAPI, interval_s: int, provider: WebhookProvider | None) -> None:
     """Every `interval_s` seconds, pass lapsed waitlist offers to the next patient in line.
 
     It runs on the real clock (a test clock only applies to a request) and never stops on an error:
@@ -58,6 +60,10 @@ async def _sweep_offers(app: FastAPI, interval_s: int) -> None:
             )
             if moved:
                 log.info("waitlist.swept", doctors=moved)
+            if provider is not None:
+                await anyio.to_thread.run_sync(
+                    app.state.services.notifications.dispatch, provider, datetime.now(UTC)
+                )
         except Exception:
             log.exception("waitlist.sweep_failed")
 
@@ -81,10 +87,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     factory = create_session_factory(engine)
 
+    provider = (
+        WebhookProvider(settings.notify_webhook_url, settings.notify_webhook_token)
+        if settings.notify_webhook_url
+        else None
+    )
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         sweeper = (
-            asyncio.create_task(_sweep_offers(app, settings.offer_sweep_interval_s))
+            asyncio.create_task(_sweep_offers(app, settings.offer_sweep_interval_s, provider))
             if settings.offer_sweep_interval_s
             else None
         )
@@ -122,6 +134,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         queue.router,
         waitlist.router,
         reports.router,
+        notifications.router,
     ):
         app.include_router(router, prefix=API_PREFIX, dependencies=[Depends(require_staff)])
 

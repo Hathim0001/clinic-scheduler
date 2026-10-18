@@ -30,6 +30,7 @@ class ErrorCode(StrEnum):
     REFERENCE_NOT_FOUND = "REFERENCE_NOT_FOUND"
     WAITLIST_ENTRY_NOT_FOUND = "WAITLIST_ENTRY_NOT_FOUND"
     STAFF_NOT_FOUND = "STAFF_NOT_FOUND"
+    NOTIFICATION_NOT_FOUND = "NOTIFICATION_NOT_FOUND"
     # The request itself breaks a business rule (422).
     BOOKING_IN_PAST = "BOOKING_IN_PAST"
     BOOKING_TOO_FAR = "BOOKING_TOO_FAR"
@@ -79,6 +80,7 @@ _NOT_FOUND_CODES = frozenset(
         ErrorCode.REFERENCE_NOT_FOUND,
         ErrorCode.WAITLIST_ENTRY_NOT_FOUND,
         ErrorCode.STAFF_NOT_FOUND,
+        ErrorCode.NOTIFICATION_NOT_FOUND,
     }
 )
 _RULE_CODES = frozenset(

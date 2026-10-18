@@ -122,6 +122,25 @@ class StaffAccount(Base):
     created_at: Mapped[datetime] = _created_at()
 
 
+class Notification(Base):
+    """A message to a patient, written in the same transaction as the change it announces."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    appointment_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
+    kind: Mapped[str] = mapped_column(Text)
+    to_phone: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, default="PENDING")
+    attempts: Mapped[int] = mapped_column(SmallInteger, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_via: Mapped[str | None] = mapped_column(Text)
+
+
 class Appointment(Base):
     __tablename__ = "appointments"
 
