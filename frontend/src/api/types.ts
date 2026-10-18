@@ -45,6 +45,8 @@ export interface Patient {
   created_at_utc: string;
   deposit_required: boolean | null; // null in search results
   deposit: Deposit | null; // null in search results
+  consent_at_utc: string | null; // when the privacy notice was accepted, if recorded
+  erased: boolean; // personal data erased on request
 }
 
 export interface WaitlistEntry {

@@ -386,3 +386,40 @@ def test_a_phone_cannot_be_moved_onto_another_patients_number(api: Api) -> None:
     taken = api.get(f"/patients/{api.clinic.ravi}").json()["phone"]
     assert_error(api.patch(f"/patients/{api.clinic.asha}", {"phone": taken}), 409, "PHONE_TAKEN")
     assert api.get(f"/patients/{api.clinic.asha}").json()["phone"] != taken
+
+
+def test_consent_is_stored_when_sent_and_shown_on_the_patient(api: Api) -> None:
+    body = {"name": "Consent Test", "phone": "9000044444", "date_of_birth": "1990-01-01"}
+    plain = api.post("/patients", body).json()
+    assert (plain["consent_at_utc"], plain["erased"]) == (None, False)
+    given = api.post(
+        "/patients", {**body, "name": "Consent Two", "phone": "9000055555", "consent": True}
+    ).json()
+    assert given["consent_at_utc"] == "2026-11-02T02:30:00Z"
+    later = api.post(f"/patients/{plain['id']}/consent", {}).json()
+    assert later["consent_at_utc"] == "2026-11-02T02:30:00Z"
+
+
+def test_erasing_over_http_is_blocked_by_an_upcoming_booking_then_succeeds(api: Api) -> None:
+    booked = api.post("/appointments", book_body(api, reason="Private reason")).json()
+    blocked = api.post(f"/patients/{api.clinic.asha}/erase", {})
+    error = assert_error(blocked, 409, "PATIENT_HAS_UPCOMING")
+    assert error["details"]["has_upcoming_appointment"] is True
+
+    api.post(f"/appointments/{booked['id']}/cancel", {"cancelled_by": "CLINIC"})
+    erased = api.post(f"/patients/{api.clinic.asha}/erase", {})
+    assert erased.status_code == 200
+    body = erased.json()
+    assert (body["name"], body["erased"]) == ("Erased patient", True)
+    assert api.get(f"/appointments/{booked['id']}").json()["reason"] == "[erased]"
+    again = api.post(f"/patients/{api.clinic.asha}/erase", {})
+    assert again.status_code == 200
+
+
+def test_an_erased_patient_cannot_be_booked_over_http(api: Api) -> None:
+    api.post(f"/patients/{api.clinic.asha}/erase", {})
+    assert_error(api.post("/appointments", book_body(api)), 409, "PATIENT_ERASED")
+    assert_error(
+        api.patch(f"/patients/{api.clinic.asha}", {"name": "New Name"}), 409, "PATIENT_ERASED"
+    )
+    assert_error(api.post("/patients/99999/erase", {}), 404, "PATIENT_NOT_FOUND")

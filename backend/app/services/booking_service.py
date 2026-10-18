@@ -36,6 +36,7 @@ from app.domain.violations import deposit_required_error, ist_text, violation_er
 from app.persistence import repositories as repo
 from app.persistence.models import Appointment, Doctor, IdempotencyKey, Patient
 from app.services.appointment_views import view_of
+from app.services.patient_service import refuse_erased
 from app.services.support import run
 from app.services.views import AppointmentView, BookCommand, CancelResult, RescheduleResult
 from app.services.waitlist_offers import offer_freed_slot
@@ -60,6 +61,7 @@ def place_booking(
     slots: int = 1,
 ) -> Appointment:
     """Check every rule for the visit, then insert a BOOKED appointment. Locks must be held."""
+    refuse_erased(patient)
     context = repo.slot_context(session, doctor, patient.id, ist_date(start_at), now)
     violation = first_violation(start_at, context, slots)
     if violation is not None:

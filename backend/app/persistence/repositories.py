@@ -14,7 +14,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import ColumnElement, Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.actor import current_actor
@@ -374,7 +374,7 @@ def find_patients(
     session: Session, *, phone: str | None, name_prefix: str | None, limit: int, offset: int
 ) -> tuple[list[Patient], int]:
     """Patients by exact (normalised) phone and/or case-insensitive name prefix, with the total."""
-    conditions = []
+    conditions: list[ColumnElement[bool]] = [Patient.erased_at.is_(None)]
     if phone is not None:
         conditions.append(Patient.phone == phone)
     if name_prefix is not None:
@@ -439,7 +439,9 @@ def patients_like(
     """Patients with the same name (ignoring case and extra spaces) and the same date of birth."""
     squashed = func.lower(func.regexp_replace(func.trim(Patient.name), r"\s+", " ", "g"))
     statement = select(Patient).where(
-        squashed == " ".join(name.split()).lower(), Patient.date_of_birth == born
+        squashed == " ".join(name.split()).lower(),
+        Patient.date_of_birth == born,
+        Patient.erased_at.is_(None),
     )
     if exclude_id is not None:
         statement = statement.where(Patient.id != exclude_id)

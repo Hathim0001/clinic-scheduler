@@ -79,6 +79,7 @@ class PatientCreate(StrictModel):
     phone: PhoneText
     date_of_birth: BirthDate
     allow_duplicate: StrictBool = False  # register even if the same name and birth date exist
+    consent: StrictBool = False  # the patient accepted the privacy notice
 
 
 class PatientPatch(StrictModel):

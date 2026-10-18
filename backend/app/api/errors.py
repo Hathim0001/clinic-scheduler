@@ -52,6 +52,8 @@ STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.TOO_EARLY_TO_MARK: 409,
     ErrorCode.AVAILABILITY_CONFLICTS: 409,
     ErrorCode.PHONE_TAKEN: 409,
+    ErrorCode.PATIENT_HAS_UPCOMING: 409,
+    ErrorCode.PATIENT_ERASED: 409,
     ErrorCode.SLOT_LENGTH_LOCKED: 409,
     ErrorCode.DOCTOR_HAS_APPOINTMENTS: 409,
     ErrorCode.ALREADY_WAITING: 409,

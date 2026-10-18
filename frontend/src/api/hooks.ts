@@ -303,6 +303,12 @@ export const useCorrect = () =>
     api.correct(args.id, args.status, args.note),
   );
 
+export const useRecordConsent = () =>
+  useRefreshingMutation("patients", (id: number) => api.recordConsent(id));
+
+export const useErasePatient = () =>
+  useRefreshingMutation("patients", (id: number) => api.erasePatient(id));
+
 export const useUpdatePatient = () =>
   useRefreshingMutation("patients", (args: { id: number; changes: PatientChanges }) =>
     api.updatePatient(args.id, args.changes),

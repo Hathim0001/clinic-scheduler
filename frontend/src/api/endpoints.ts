@@ -61,6 +61,7 @@ export interface NewPatient {
   phone: string;
   date_of_birth: string;
   allow_duplicate?: boolean;
+  consent?: boolean;
 }
 
 export interface PatientChanges {
@@ -139,6 +140,8 @@ export const api = {
     request<Page<Patient>>("GET", "/patients", { query }),
   patient: (id: number) => request<Patient>("GET", `/patients/${id}`),
   createPatient: (body: NewPatient) => request<Patient>("POST", "/patients", { body }),
+  recordConsent: (id: number) => request<Patient>("POST", `/patients/${id}/consent`, { body: {} }),
+  erasePatient: (id: number) => request<Patient>("POST", `/patients/${id}/erase`, { body: {} }),
   updatePatient: (id: number, changes: PatientChanges) =>
     request<Patient>("PATCH", `/patients/${id}`, { body: changes }),
   patientAppointments: (id: number, limit = 50) =>

@@ -88,6 +88,18 @@ export function describeError(error: unknown, context: Context = {}): FriendlyEr
         message:
           "A patient with this phone number is already registered. Search by phone to find them.",
       };
+    case "PATIENT_HAS_UPCOMING":
+      return {
+        ...base,
+        message:
+          "This patient still has an upcoming appointment or a waitlist place. Cancel or complete those first, then erase.",
+      };
+    case "PATIENT_ERASED":
+      return {
+        ...base,
+        message:
+          "This patient's data was erased, so they cannot be booked or edited. Register them again if they return.",
+      };
     case "LATE_RESCHEDULE_NEEDS_CONFIRMATION":
       return { ...base, message: error.message };
     case "DOCTOR_NOT_ACCEPTING":

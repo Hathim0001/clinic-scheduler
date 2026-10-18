@@ -65,6 +65,8 @@ export const patient = (overrides: Partial<Patient> = {}): Patient => ({
   created_at_utc: "2026-10-01T00:00:00Z",
   deposit_required: false,
   deposit: noDeposit,
+  consent_at_utc: null,
+  erased: false,
   ...overrides,
 });
 

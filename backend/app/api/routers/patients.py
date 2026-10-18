@@ -49,7 +49,7 @@ def search_patients(
 )
 def create_patient(body: PatientCreate, services: ServicesDep, now: NowDep) -> PatientOut:
     view = services.patients.create(
-        body.name, body.phone, body.date_of_birth, now, body.allow_duplicate
+        body.name, body.phone, body.date_of_birth, now, body.allow_duplicate, body.consent
     )
     log.info("patient.created", patient_id=view.id)
     return patient_out(view)
@@ -110,6 +110,31 @@ def update_patient(
     changes = body.model_dump(exclude_unset=True)
     view = services.patients.update(patient_id, now, **changes)
     log.info("patient.updated", patient_id=patient_id, fields=sorted(changes))
+    return patient_out(view)
+
+
+@router.post(
+    "/{patient_id}/consent",
+    response_model=PatientOut,
+    summary="Record that the patient accepted the privacy notice",
+)
+def record_consent(patient_id: PatientId, services: ServicesDep, now: NowDep) -> PatientOut:
+    view = services.patients.record_consent(patient_id, now)
+    log.info("patient.consent_recorded", patient_id=patient_id)
+    return patient_out(view)
+
+
+@router.post(
+    "/{patient_id}/erase",
+    response_model=PatientOut,
+    summary="Erase a patient's personal data on request",
+    responses={409: {"description": "PATIENT_HAS_UPCOMING: cancel or complete those first"}},
+)
+def erase_patient(patient_id: PatientId, services: ServicesDep, now: NowDep) -> PatientOut:
+    """Name, phone, date of birth and appointment reasons are replaced; the appointments stay as
+    anonymous history. Repeating it changes nothing."""
+    view = services.patients.erase(patient_id, now)
+    log.info("patient.erased", patient_id=patient_id)
     return patient_out(view)
 
 

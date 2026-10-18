@@ -101,6 +101,8 @@ def patient_out(view: PatientView) -> PatientOut:
         created_at_utc=utc_iso(view.created_at),
         deposit_required=view.deposit.required if view.deposit is not None else None,
         deposit=deposit_out(view.deposit) if view.deposit is not None else None,
+        consent_at_utc=utc_iso(view.consent_at) if view.consent_at is not None else None,
+        erased=view.erased_at is not None,
     )
 
 

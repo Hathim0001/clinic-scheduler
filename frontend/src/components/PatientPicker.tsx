@@ -121,10 +121,17 @@ function NewPatientForm({
   const [name, setName] = useState(initial.name ?? "");
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [birth, setBirth] = useState("");
+  const [consent, setConsent] = useState(false);
 
   const register = (allowDuplicate = false) =>
     create.mutate(
-      { name, phone, date_of_birth: birth, ...(allowDuplicate ? { allow_duplicate: true } : {}) },
+      {
+        name,
+        phone,
+        date_of_birth: birth,
+        ...(allowDuplicate ? { allow_duplicate: true } : {}),
+        ...(consent ? { consent: true } : {}),
+      },
       { onSuccess: onCreated },
     );
 
@@ -177,6 +184,14 @@ function NewPatientForm({
           />
         </label>
       </div>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={consent}
+          onChange={(event) => setConsent(event.target.checked)}
+        />
+        The patient has accepted the privacy notice
+      </label>
       {duplicates ? (
         <Banner kind="warn">
           Someone with the same name and date of birth is already registered:

@@ -26,6 +26,7 @@ from app.persistence import repositories as repo
 from app.persistence.models import Doctor, Patient, WaitlistEntry
 from app.services.appointment_views import view_of
 from app.services.booking_service import deposit_of, place_booking
+from app.services.patient_service import refuse_erased
 from app.services.support import run
 from app.services.views import WaitlistAcceptance, WaitlistView
 from app.services.waitlist_offers import ACTIVE, offer_slot, settle_offers
@@ -96,7 +97,7 @@ class WaitlistService:
     def join(self, doctor_id: int, patient_id: int, day: date, now: datetime) -> WaitlistView:
         def work(session: Session) -> WaitlistView:
             doctor = repo.get_doctor(session, doctor_id, lock=True)
-            repo.get_patient(session, patient_id)
+            refuse_erased(repo.get_patient(session, patient_id))
             today = ist_date(now)
             if day < today:
                 raise RuleViolation(ErrorCode.BOOKING_IN_PAST, "That date has already passed.")

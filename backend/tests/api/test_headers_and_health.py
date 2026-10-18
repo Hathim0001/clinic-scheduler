@@ -328,7 +328,7 @@ def test_no_log_line_in_a_full_session_contains_personal_data(
     api.patch(f"/patients/{patient_id}", {"name": "Zebulon Quillfeather Jr"})
     booked = api.post("/appointments", book_body(api, patient_id=patient_id, reason=reason))
     api.post("/appointments", book_body(api, patient_id=patient_id, reason=reason))
-    api.post(f"/appointments/{booked.json()['id']}/cancel", {"by": "PATIENT"})
+    api.post(f"/appointments/{booked.json()['id']}/cancel", {"cancelled_by": "PATIENT"})
     api.post(
         f"/doctors/{api.clinic.rao}/waitlist", {"patient_id": patient_id, "date": "2026-11-03"}
     )

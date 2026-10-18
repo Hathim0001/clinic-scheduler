@@ -103,6 +103,9 @@ class Patient(Base):
     phone: Mapped[str] = mapped_column(Text)
     date_of_birth: Mapped[date] = mapped_column(Date)
     created_at: Mapped[datetime] = _created_at()
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    consent_version: Mapped[str | None] = mapped_column(Text, default=None)
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
 class Appointment(Base):

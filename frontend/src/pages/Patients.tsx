@@ -8,6 +8,7 @@ import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common
 import { CalendarLink } from "../components/CalendarLink";
 import { DepositExplanation } from "../components/DepositNotice";
 import { PatientPicker } from "../components/PatientPicker";
+import { PrivacyPanel } from "../components/PrivacyPanel";
 import { PatientWaitlist } from "../components/Waitlist";
 import { formatDayIST, formatTimeIST } from "../lib/formatIST";
 
@@ -48,16 +49,20 @@ export function PatientDetail() {
           <dd>{p.deposit_required === null ? "Unknown" : p.deposit_required ? "Yes" : "No"}</dd>
         </dl>
         <p className="actions">
-          <Link className="primary" to={`/book?patient=${p.id}`}>
-            Book an appointment for this patient
-          </Link>{" "}
+          {!p.erased && (
+            <Link className="primary" to={`/book?patient=${p.id}`}>
+              Book an appointment for this patient
+            </Link>
+          )}{" "}
           <a href={`${API_BASE}/patients/${p.id}/export`} download={`patient-${p.id}.json`}>
             Download all their records
           </a>
         </p>
       </div>
 
-      <EditPatient key={`${p.id}-${p.name}-${p.phone}-${p.date_of_birth}`} patient={p} />
+      {!p.erased && (
+        <EditPatient key={`${p.id}-${p.name}-${p.phone}-${p.date_of_birth}`} patient={p} />
+      )}
 
       <section className="card" aria-label="Deposit status">
         <h2>Deposit status</h2>
@@ -67,6 +72,8 @@ export function PatientDetail() {
           booking.
         </p>
       </section>
+
+      <PrivacyPanel patient={p} />
 
       <PatientWaitlist patientId={p.id} deposit={p.deposit} />
 
