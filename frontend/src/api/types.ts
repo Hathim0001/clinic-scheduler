@@ -240,3 +240,20 @@ export interface Report {
   doctors: DoctorReport[];
   total: DoctorReport;
 }
+
+export interface ProofCase {
+  id: string;
+  rule: string;
+  scenario: string;
+  expected: string;
+  observed: string;
+  passed: boolean;
+}
+
+/** The rule scenarios run on the server inside a transaction that is rolled back. */
+export interface ProofReport {
+  passed: boolean;
+  rows_before: number;
+  rows_after: number;
+  cases: ProofCase[];
+}

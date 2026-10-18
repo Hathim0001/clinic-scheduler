@@ -138,6 +138,22 @@ class AlternativeOut(SlotOut):
     same_doctor: bool
 
 
+class ProofCaseOut(BaseModel):
+    id: str
+    rule: str
+    scenario: str
+    expected: str
+    observed: str
+    passed: bool
+
+
+class ProofOut(BaseModel):
+    passed: bool
+    rows_before: int
+    rows_after: int
+    cases: list[ProofCaseOut]
+
+
 class SlotsOut(BaseModel):
     doctor_id: int
     date: str

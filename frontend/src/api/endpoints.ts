@@ -1,5 +1,6 @@
 import { request } from "./client";
 import type {
+  ProofReport,
   Alternative,
   Appointment,
   AppointmentEvent,
@@ -195,6 +196,7 @@ export const api = {
 
   report: (from: string, to: string) =>
     request<Report>("GET", "/reports/summary", { query: { from, to } }),
+  runProof: () => request<ProofReport>("POST", "/proof"),
   triage: (text: string) => request<Triage>("POST", "/triage", { body: { text } }),
 
   queue: (query: { date?: string; doctor_id?: number; include_cancelled?: boolean }) =>

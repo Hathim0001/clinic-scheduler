@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import Book from "./pages/Book";
 import DayView from "./pages/DayView";
 import { PatientDetail, PatientSearch } from "./pages/Patients";
+import Proof from "./pages/Proof";
 import Queue from "./pages/Queue";
 import Reports from "./pages/Reports";
 
@@ -29,6 +30,7 @@ function Header() {
           <NavLink to="/queue">Queue</NavLink>
           <NavLink to="/patients">Patients</NavLink>
           <NavLink to="/reports">Report</NavLink>
+          <NavLink to="/proof">Proof</NavLink>
           <NavLink to="/admin">
             Doctors
             {count > 0 && (
@@ -75,6 +77,7 @@ export default function App() {
             <Route path="/patients" element={<PatientSearch />} />
             <Route path="/patients/:id" element={<PatientDetail />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/proof" element={<Proof />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/doctors" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

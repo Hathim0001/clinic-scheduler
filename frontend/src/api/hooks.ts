@@ -315,3 +315,6 @@ export const useLogin = () =>
   useMutation({
     mutationFn: (args: { name: string; password: string }) => api.login(args.name, args.password),
   });
+
+/** Runs the rule scenarios on the server. Nothing is kept, so no list needs refreshing. */
+export const useRunProof = () => useMutation({ mutationFn: api.runProof });

@@ -444,3 +444,12 @@ def patients_like(
     if exclude_id is not None:
         statement = statement.where(Patient.id != exclude_id)
     return list(session.scalars(statement.order_by(Patient.id)))
+
+
+def count_rows(session: Session) -> int:
+    """Doctors, patients, appointments and audit events in all: the proof run compares this before
+    and after to show it left nothing behind."""
+    return sum(
+        session.scalar(select(func.count()).select_from(model)) or 0
+        for model in (Doctor, Patient, Appointment, AppointmentEvent)
+    )
