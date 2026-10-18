@@ -57,7 +57,7 @@ export default function Reports() {
       {report.isPending && <Skeleton rows={4} />}
       {report.error && <ErrorBanner error={report.error} onRetry={() => void report.refetch()} />}
       {report.data && (
-        <div className="table-scroll">
+        <div className="table-scroll" role="region" aria-label="Report by doctor" tabIndex={0}>
           <table>
             <caption className="visually-hidden">
               Appointments from {start} to {end}

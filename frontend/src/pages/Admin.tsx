@@ -298,7 +298,7 @@ function WindowFields({
   onRemove: () => void;
 }) {
   return (
-    <div className="row">
+    <div className="window-row">
       <label>
         <span className="visually-hidden">{label} from</span>
         <input
@@ -310,7 +310,7 @@ function WindowFields({
           onChange={(event) => onChange({ ...window, start: event.target.value })}
         />
       </label>
-      <span>to</span>
+      <span className="muted">to</span>
       <label>
         <span className="visually-hidden">{label} to</span>
         <input
@@ -322,7 +322,7 @@ function WindowFields({
           onChange={(event) => onChange({ ...window, end: event.target.value })}
         />
       </label>
-      <button type="button" onClick={onRemove} aria-label={`Remove ${label}`}>
+      <button type="button" className="small" onClick={onRemove} aria-label={`Remove ${label}`}>
         Remove
       </button>
     </div>
@@ -363,33 +363,36 @@ function WeeklyEditor({ doctor, initial }: { doctor: Doctor; initial: WeeklyWind
         Times are written HH:MM and must fall on the {doctor.slot_length_min}
         -minute grid.
       </p>
-      {WEEKDAYS.map((dayName, weekday) => (
-        <fieldset key={dayName}>
-          <legend>{dayName}</legend>
-          {rows.every((row) => row.weekday !== weekday) && (
-            <span className="muted">Not working</span>
-          )}
-          {rows.map((row, index) =>
-            row.weekday !== weekday ? null : (
-              <WindowFields
-                key={index}
-                label={`${dayName} window`}
-                window={row}
-                onChange={(next) => change(index, { ...next, weekday })}
-                onRemove={() => setRows((current) => current.filter((_, i) => i !== index))}
-              />
-            ),
-          )}
-          <button
-            type="button"
-            onClick={() =>
-              setRows((current) => [...current, { weekday, start: "09:00", end: "13:00" }])
-            }
-          >
-            Add a window on {dayName}
-          </button>
-        </fieldset>
-      ))}
+      <div className="week-grid">
+        {WEEKDAYS.map((dayName, weekday) => (
+          <fieldset key={dayName} className="day">
+            <legend>{dayName}</legend>
+            {rows.every((row) => row.weekday !== weekday) && (
+              <span className="muted day-off">Not working</span>
+            )}
+            {rows.map((row, index) =>
+              row.weekday !== weekday ? null : (
+                <WindowFields
+                  key={index}
+                  label={`${dayName} window`}
+                  window={row}
+                  onChange={(next) => change(index, { ...next, weekday })}
+                  onRemove={() => setRows((current) => current.filter((_, i) => i !== index))}
+                />
+              ),
+            )}
+            <button
+              type="button"
+              className="small"
+              onClick={() =>
+                setRows((current) => [...current, { weekday, start: "09:00", end: "13:00" }])
+              }
+            >
+              Add a window on {dayName}
+            </button>
+          </fieldset>
+        ))}
+      </div>
       <div className="actions">
         <button
           type="button"

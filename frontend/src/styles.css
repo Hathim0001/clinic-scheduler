@@ -349,6 +349,11 @@ main {
   align-items: end;
 }
 
+/* a bare filter row directly under a page title keeps the card rhythm */
+main > div > .row {
+  margin-bottom: var(--space-4);
+}
+
 /* the reviewer clock sits in its own quiet strip under the navigation */
 .clock-bar {
   /* full-bleed strip whose content lines up with the 1200px column above and below */
@@ -555,6 +560,12 @@ button.link:hover:not(:disabled) {
   color: var(--brand-hover);
 }
 
+.small {
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -569,6 +580,39 @@ td .actions {
 .actions button {
   min-height: 2.25rem;
   padding: 0 var(--space-3);
+}
+
+/* ------------------------------------------------- weekly hours editor */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  background: var(--surface-sunken);
+}
+
+.day-off {
+  font-size: var(--text-sm);
+}
+
+.window-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.window-row input {
+  width: 5.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --------------------------------------------------------------- banners */
