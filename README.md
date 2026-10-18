@@ -542,7 +542,9 @@ limitations; items it makes optional or leaves out are.
   app, the tests, the container and CI configuration, and this documentation. The assignment
   suggests writing the business rules by hand; here they were written by the assistant from the
   plan, so the person submitting this has to read and understand them before the review call.
-  Commits made with its help carry a `Co-Authored-By: Claude` trailer.
+  Every commit is authored by the repository owner (`Hathim0001`); the commits carry no AI
+  co-author trailer, so the record of what the assistant did is this section, `PROMPTS.md` and
+  `SUBMISSION.md`, not the commit metadata.
 - **To explain it live:** [docs/CODE-TOUR.md](docs/CODE-TOUR.md) maps every rule to the code that
   decides it and the test that proves it, and lists drills (change a number, say what fails and why).
   Market research and a reasoned answer on an LLM component are in

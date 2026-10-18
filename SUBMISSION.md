@@ -16,7 +16,7 @@ A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a Re
 
 ## C. The hardest part
 
-Proving the locking instead of believing it. A same-slot race passed even with the lock removed, because the exclusion constraint already stops overlaps, so that test proved nothing about the lock. Only the daily cap under ten simultaneous bookings and a booking racing a leave day fail without it (`ffd67af`, `846a8b4`); the ordered locks are in `a86d53f` and `6a2f532`. A mutation run then showed three of ten planted bugs (a 61-day horizon, a non-strict "past", an exclusive 30-day look-back) survived random scenarios, so I biased the generators to boundary days (`c916346`). The assistant also proposed shared phone numbers to lift a documented limit; I removed them again because the brief says phone is unique (`0e11e9d`), and the migration history (0005, then 0006) shows that detour.
+Proving the locking instead of believing it. A same-slot race passed even with the lock removed, because the exclusion constraint already stops overlaps, so that test proved nothing about the lock. Only the daily cap under ten simultaneous bookings and a booking racing a leave day fail without it (`c0a916c`, `d64983b`); the ordered locks are in `4a250f0` and `e3d1efd`. A mutation run then showed three of ten planted bugs (a 61-day horizon, a non-strict "past", an exclusive 30-day look-back) survived random scenarios, so I biased the generators to boundary days (`f1caeec`). The assistant also proposed shared phone numbers to lift a documented limit; I removed them again because the brief says phone is unique (`9c50faf`), and the migration history (0005, then 0006) shows that detour.
 
 ## D. How I handle failure
 
@@ -33,13 +33,13 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 
 | Milestone | Date completed | Commit |
 |---|---|---|
-| M0 Scaffold and tooling | 2026-10-17 | `b2bb58a` |
-| M1 Schema, seed and rule tests | 2026-10-17 | `efff237` |
-| M2 Rules and services | 2026-10-17 | `f44da64` |
-| M3 API | 2026-10-17 | `a02efc2` |
-| M4 UI | 2026-10-17 | `ba91b44` |
-| M5 Docker, CI, deployment config | 2026-10-17 | `75ff1b1` |
-| M6 Documentation | 2026-10-17 | `334ed71` |
+| M0 Scaffold and tooling | 2026-10-17 | `1075d3d` |
+| M1 Schema, seed and rule tests | 2026-10-17 | `91d1bb4` |
+| M2 Rules and services | 2026-10-17 | `88121a4` |
+| M3 API | 2026-10-17 | `42b2a18` |
+| M4 UI | 2026-10-17 | `1b68991` |
+| M5 Docker, CI, deployment config | 2026-10-17 | `2a1559b` |
+| M6 Documentation | 2026-10-17 | `bd72eaf` |
 
 The tagged `m0` to `m6` commits. Later work is tagged `[M2]` to `[M6]` by area; `v1.0` is the final commit.
 
