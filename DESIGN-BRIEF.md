@@ -50,3 +50,15 @@ shadow is kept for things that float (the dialog). All values live in the `:root
 - One border radius per level of hierarchy, one shadow, no gradients.
 - Buttons say what they do ("Book this slot", "Save details").
 - Every state is designed: loading, empty, error, success, disabled.
+
+## UI pass, October 2026
+
+What changed, from a review of the rendered screens at 1280, 768 and 390 px:
+
+- The header keeps the five links used all day; Report, Doctors, Messages, Staff and the rule proof sit in a "More" menu that shows the attention count on its button.
+- Appointment actions show only what is allowed, with one sentence on why the rest are not.
+- The day view's side panel shows booked and free counts and a one-press "Book it" for the next free time until a booking is selected.
+- The booking form says what pressing the button will do, or what is still missing, and the button reads "Booking…" or "Moving…" while it saves.
+- The queue heading names the day when it is not today; the report fits at laptop width; the clock bar is compact on a phone.
+
+Not done: no testing with real clinic staff, and no screen-reader walkthrough by a person (axe and keyboard checks only).

@@ -4,6 +4,7 @@ import { setSession } from "./lib/authStore";
 import { AuthGate, useIsAdmin, useSession } from "./components/AuthGate";
 import { ClockBar } from "./components/ClockBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { NavMenu } from "./components/NavMenu";
 import { OfflineBanner, SkipLink, useRouteAccessibility } from "./components/PageChrome";
 import { WakeBanner } from "./components/WakeBanner";
 import Admin from "./pages/Admin";
@@ -36,25 +37,52 @@ function Header() {
           <NavLink to="/queue">Queue</NavLink>
           <NavLink to="/calls">Calls</NavLink>
           <NavLink to="/patients">Patients</NavLink>
-          <NavLink to="/messages">
-            Messages
-            {messagesWaiting > 0 && (
-              <span className="badge-attention" aria-label={`${messagesWaiting} messages waiting`}>
-                {messagesWaiting}
-              </span>
+          <NavMenu
+            label="More"
+            paths={["/messages", "/reports", "/admin", "/proof", "/staff"]}
+            badge={count + messagesWaiting}
+            badgeLabel={`${count + messagesWaiting} items need attention`}
+          >
+            <li>
+              <NavLink to="/messages">
+                Messages
+                {messagesWaiting > 0 && (
+                  <span
+                    className="badge-attention"
+                    aria-label={`${messagesWaiting} messages waiting`}
+                  >
+                    {messagesWaiting}
+                  </span>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/reports">Report</NavLink>
+            </li>
+            <li>
+              <NavLink to="/admin">
+                Doctors
+                {count > 0 && (
+                  <span
+                    className="badge-attention"
+                    aria-label={`${count} appointments need attention`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </NavLink>
+            </li>
+            {isAdmin && auth.data?.accounts && (
+              <li>
+                <NavLink to="/staff">Staff</NavLink>
+              </li>
             )}
-          </NavLink>
-          <NavLink to="/reports">Report</NavLink>
-          {isAdmin && <NavLink to="/proof">Proof</NavLink>}
-          {isAdmin && auth.data?.accounts && <NavLink to="/staff">Staff</NavLink>}
-          <NavLink to="/admin">
-            Doctors
-            {count > 0 && (
-              <span className="badge-attention" aria-label={`${count} appointments need attention`}>
-                {count}
-              </span>
+            {isAdmin && (
+              <li>
+                <NavLink to="/proof">Prove the rules</NavLink>
+              </li>
             )}
-          </NavLink>
+          </NavMenu>
         </nav>
         {auth.data?.required && session && (
           <button type="button" className="small signed-in" onClick={() => setSession(null)}>

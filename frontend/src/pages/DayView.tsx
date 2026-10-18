@@ -4,6 +4,7 @@ import { useAppointment, useDoctors, useSchedule } from "../api/hooks";
 import type { SlotState } from "../api/types";
 import { AppointmentCard } from "../components/AppointmentCard";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
+import { DaySummary } from "../components/DaySummary";
 import { DayWaitlist } from "../components/Waitlist";
 import { addDays, formatDayIST, formatTimeIST } from "../lib/formatIST";
 import { REASON_TEXT } from "../lib/errors";
@@ -39,6 +40,9 @@ export default function DayView() {
     setParams(next);
     setSelectedId(null);
   };
+
+  const bookingLink = (startIst: string) =>
+    `/book?doctor=${doctorId}&date=${schedule.data?.date ?? date}&start=${encodeURIComponent(startIst)}`;
 
   const hours = schedule.data?.windows.map((w) => `${w.start}–${w.end}`).join(", ");
 
@@ -113,17 +117,12 @@ export default function DayView() {
               {schedule.data.slots.map((slot) => {
                 const time = `${formatTimeIST(slot.start_at_ist)}–${formatTimeIST(slot.end_at_ist)}`;
                 if (slot.state === "FREE") {
-                  const start = encodeURIComponent(slot.start_at_ist);
                   return (
                     <li key={slot.start_at_utc}>
                       <button
                         type="button"
                         className="slot slot-free"
-                        onClick={() =>
-                          navigate(
-                            `/book?doctor=${doctorId}&date=${schedule.data.date}&start=${start}`,
-                          )
-                        }
+                        onClick={() => navigate(bookingLink(slot.start_at_ist))}
                       >
                         <span className="time">{time}</span>
                         <span>
@@ -179,7 +178,10 @@ export default function DayView() {
           <aside aria-label="Appointment details">
             <h2>Details</h2>
             {selectedId === null && (
-              <p className="muted">Select a booked slot to see the details.</p>
+              <DaySummary
+                slots={schedule.data.slots}
+                onBook={(start) => navigate(bookingLink(start))}
+              />
             )}
             {selected.isPending && selectedId !== null && <Skeleton rows={3} />}
             {selected.error && <ErrorBanner error={selected.error} />}

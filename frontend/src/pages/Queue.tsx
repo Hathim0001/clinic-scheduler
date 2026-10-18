@@ -30,7 +30,11 @@ export default function Queue() {
 
   return (
     <div>
-      <h1>Today&apos;s queue</h1>
+      <h1>
+        {date && date !== today
+          ? `Queue for ${formatDayIST(`${date}T12:00:00+05:30`)}`
+          : "Today's queue"}
+      </h1>
       <div className="card row">
         <label>
           Date (India)
@@ -103,7 +107,7 @@ export default function Queue() {
           <tbody>
             {queue.data.map((appointment) => (
               <tr key={appointment.id}>
-                <td data-label="Time">
+                <td data-label="Time" className="nowrap">
                   {formatTimeIST(appointment.start_at_ist)}–{formatTimeIST(appointment.end_at_ist)}
                 </td>
                 <td data-label="Patient">

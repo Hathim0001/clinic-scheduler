@@ -100,7 +100,8 @@ describe("day view", () => {
     expect(await screen.findByRole("article", { name: "Appointment 41" })).toBeInTheDocument();
     expect(screen.getByText("Fever, 3 days")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reschedule" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Complete" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Complete" })).not.toBeInTheDocument();
+    expect(screen.getByText("Cannot mark this appointment before it starts.")).toBeInTheDocument();
     await waitFor(() => expect(api.count("GET", "/appointments/41")).toBe(1));
   });
 

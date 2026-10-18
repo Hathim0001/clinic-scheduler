@@ -323,6 +323,84 @@ main:focus {
   color: var(--brand);
 }
 
+/* the links used now and then live behind one button, so the bar keeps the five used all day */
+.nav-menu {
+  position: relative;
+}
+
+.nav-menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+.nav-menu-button:hover,
+.nav-menu-button[aria-expanded="true"] {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.nav-menu-button[aria-current="page"] {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.nav-menu-chevron {
+  width: 0.65rem;
+  height: 0.4rem;
+  transition: transform var(--transition);
+}
+
+.nav-menu-button[aria-expanded="true"] .nav-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.nav-menu-list {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  min-width: 12rem;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+  animation: menu-in 150ms ease-out;
+}
+
+.nav-menu-list a {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 2.5rem;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.action-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  max-width: 24rem;
+}
+
 .badge-attention {
   background: var(--danger);
   color: var(--surface);
@@ -1037,6 +1115,17 @@ caption {
 
   .clock-bar form {
     width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .clock-bar .row > label {
+    flex: 1 1 100%;
+  }
+
+  .clock-bar .row > button {
+    flex: 1 1 auto;
   }
 
   .row > label,
@@ -1151,4 +1240,49 @@ caption {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Day summary, booking note, and small layout fixes from the redesign pass */
+.day-summary p {
+  margin: 0 0 var(--space-3);
+}
+.day-figures {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 1.125rem;
+}
+.day-figures strong {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+.booking-note {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+}
+td.nowrap {
+  white-space: nowrap;
+}
+
+/* The report has eleven columns: tighter cells and wrapping headers let it fit at laptop width */
+.table-scroll th,
+.table-scroll td {
+  padding: var(--space-3) var(--space-2);
+}
+.table-scroll th {
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.25;
+}
+@media (min-width: 641px) {
+  .table-scroll tbody th:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+  }
+}
+
+.table-scroll th,
+.table-scroll td {
+  padding-inline: 0.4rem;
+  font-size: 0.9rem;
 }

@@ -19,10 +19,16 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
   const [by, setBy] = useState<CancelledBy>("PATIENT");
 
   const allowed = new Set<Action>(appointment.allowed_actions);
-  const hint = (action: Action) =>
-    allowed.has(action) ? undefined : whyDisabled(action, appointment.status);
   const error = cancel.error ?? complete.error ?? noShow.error ?? checkIn.error;
   const busy = cancel.isPending || complete.isPending || noShow.isPending || checkIn.isPending;
+
+  // Only what can be done now is shown. A row of switched-off buttons that repeat on every line
+  // hides the one that matters, so what is not available is explained once, in words.
+  const unavailable = (["complete", "no-show", "reschedule", "cancel"] as const).filter(
+    (action) => !allowed.has(action),
+  );
+  const note =
+    unavailable.length > 0 ? whyDisabled(unavailable[0] ?? "cancel", appointment.status) : null;
 
   return (
     <div>
@@ -32,40 +38,37 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
             Check in
           </button>
         )}
-        <button
-          type="button"
-          disabled={!allowed.has("complete") || busy}
-          title={hint("complete")}
-          onClick={() => complete.mutate(appointment.id)}
-        >
-          Complete
-        </button>
-        <button
-          type="button"
-          disabled={!allowed.has("no-show") || busy}
-          title={hint("no-show")}
-          onClick={() => noShow.mutate(appointment.id)}
-        >
-          No-show
-        </button>
-        <button
-          type="button"
-          disabled={!allowed.has("reschedule") || busy}
-          title={hint("reschedule")}
-          onClick={() => navigate(`/book?reschedule=${appointment.id}`)}
-        >
-          Reschedule
-        </button>
-        <button
-          type="button"
-          className="danger"
-          disabled={!allowed.has("cancel") || busy}
-          title={hint("cancel")}
-          onClick={() => setConfirming(true)}
-        >
-          Cancel…
-        </button>
+        {allowed.has("complete") && (
+          <button type="button" disabled={busy} onClick={() => complete.mutate(appointment.id)}>
+            Complete
+          </button>
+        )}
+        {allowed.has("no-show") && (
+          <button type="button" disabled={busy} onClick={() => noShow.mutate(appointment.id)}>
+            No-show
+          </button>
+        )}
+        {allowed.has("reschedule") && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => navigate(`/book?reschedule=${appointment.id}`)}
+          >
+            Reschedule
+          </button>
+        )}
+        {allowed.has("cancel") && (
+          <button
+            type="button"
+            className="danger"
+            disabled={busy}
+            onClick={() => setConfirming(true)}
+          >
+            Cancel…
+          </button>
+        )}
       </div>
+      {note && <p className="muted action-note">{note}</p>}
 
       {confirming && (
         <fieldset>

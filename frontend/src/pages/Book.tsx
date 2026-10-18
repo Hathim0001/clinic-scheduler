@@ -133,6 +133,7 @@ export default function Book() {
                 value={f.reason}
                 onChange={(event) => f.setReason(event.target.value)}
                 maxLength={500}
+                placeholder="e.g. Fever for two days, or a follow-up check"
               />
             </label>
             {triage.data?.urgent && <Banner kind="error">{triage.data.message}</Banner>}
@@ -164,9 +165,14 @@ export default function Book() {
           <BookedBanner result={form.result} more={Math.max(form.seriesLength - 1, 0)} />
         )}
 
+        <p className="booking-note" aria-live="polite">
+          {bookingNote(form)}
+        </p>
         <button type="submit" className="primary" disabled={!form.ready || form.pending}>
           {form.pending
-            ? "Saving…"
+            ? rescheduleId
+              ? "Moving…"
+              : "Booking…"
             : rescheduleId
               ? "Move the appointment"
               : "Book the appointment"}
@@ -174,4 +180,21 @@ export default function Book() {
       </form>
     </div>
   );
+}
+
+/** One line above the button: what pressing it will do, or what is still needed before it can. */
+function bookingNote(form: ReturnType<typeof useBookingForm>): string {
+  const missing = [
+    form.patientId === null && "a patient",
+    form.start === null && "a time",
+    form.rescheduleId === null && form.fields.reason.trim() === "" && "a reason",
+    form.deposit?.required === true && !form.fields.depositAcknowledged && "the deposit tick box",
+  ].filter(Boolean);
+  if (missing.length > 0) return `Still needed: ${missing.join(", ")}.`;
+  const who = form.patient.data?.name ?? "the patient";
+  const doctor = form.doctor?.name ?? "the doctor";
+  const when = form.start ? formatIST(form.start) : "";
+  return form.rescheduleId !== null
+    ? `This moves ${who} to ${when} with ${doctor}.`
+    : `This books ${who} with ${doctor} on ${when}.`;
 }

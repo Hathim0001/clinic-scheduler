@@ -39,7 +39,7 @@ describe("today's queue", () => {
     expect(screen.getByText(/Time \(IST\)/)).toBeInTheDocument();
   });
 
-  it("enables each button from the actions the server allows, and says why the others are off", async () => {
+  it("shows only the actions the server allows, and says why the others are not there", async () => {
     installFakeApi(routes());
     renderPage(<Queue />, "/queue?date=2026-11-02");
     await screen.findByText("Meera Iyer");
@@ -47,18 +47,13 @@ describe("today's queue", () => {
     const first = within(rowOf("Meera Iyer"));
     expect(first.getByRole("button", { name: "Complete" })).toBeEnabled();
     expect(first.getByRole("button", { name: "No-show" })).toBeEnabled();
-    expect(first.getByRole("button", { name: "Reschedule" })).toBeDisabled();
-    expect(first.getByRole("button", { name: "Reschedule" })).toHaveAttribute(
-      "title",
-      expect.stringContaining("already started"),
-    );
+    expect(first.queryByRole("button", { name: "Reschedule" })).not.toBeInTheDocument();
+    expect(first.getByText(/already started/)).toBeInTheDocument(); // said once, in words
 
     const second = within(rowOf("Neha Joshi"));
-    expect(second.getByRole("button", { name: "Complete" })).toBeDisabled();
-    expect(second.getByRole("button", { name: "No-show" })).toHaveAttribute(
-      "title",
-      "Cannot mark this appointment before it starts.",
-    );
+    expect(second.queryByRole("button", { name: "Complete" })).not.toBeInTheDocument();
+    expect(second.queryByRole("button", { name: "No-show" })).not.toBeInTheDocument();
+    expect(second.getByText("Cannot mark this appointment before it starts.")).toBeInTheDocument();
     expect(second.getByRole("button", { name: "Reschedule" })).toBeEnabled();
   });
 

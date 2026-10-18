@@ -148,8 +148,9 @@ describe("a patient's page", () => {
       within(rows[0] as HTMLElement).getByRole("button", { name: "Reschedule" }),
     ).toBeEnabled();
     expect(
-      within(rows[1] as HTMLElement).getByRole("button", { name: "Reschedule" }),
-    ).toBeDisabled();
+      within(rows[1] as HTMLElement).queryByRole("button", { name: "Reschedule" }),
+    ).not.toBeInTheDocument();
+    expect(within(rows[1] as HTMLElement).getByText(/cannot be changed/)).toBeInTheDocument();
     expect(
       within(rows[1] as HTMLElement).getByText("No-show", { selector: "span.status" }),
     ).toBeInTheDocument();
