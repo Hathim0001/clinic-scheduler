@@ -29,7 +29,10 @@ describe("the API client", () => {
 
   it("reports an unreachable server as NETWORK_ERROR", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
-    await expect(request("GET", "/doctors")).rejects.toMatchObject({ code: "NETWORK_ERROR", status: 0 });
+    await expect(request("GET", "/doctors")).rejects.toMatchObject({
+      code: "NETWORK_ERROR",
+      status: 0,
+    });
   });
 
   it("copes with a reply that is not JSON, such as a proxy error page", async () => {

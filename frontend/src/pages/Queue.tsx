@@ -118,7 +118,9 @@ export default function Queue() {
                   {appointment.checked_in_at_ist && appointment.status === "BOOKED" && (
                     <div>Arrived {formatTimeIST(appointment.checked_in_at_ist)}</div>
                   )}
-                  {appointment.needs_attention && <div className="attention-heading">Needs attention</div>}
+                  {appointment.needs_attention && (
+                    <div className="attention-heading">Needs attention</div>
+                  )}
                 </td>
                 <td data-label="Actions">
                   <ActionButtons appointment={appointment} />

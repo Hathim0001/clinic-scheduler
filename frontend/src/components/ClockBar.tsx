@@ -26,8 +26,8 @@ export function ClockBar() {
       )}
       {info.data && (
         <span>
-          Server time {formatIST(info.data.now_utc)} ({info.data.source === "HEADER" ? "test" : "real"}{" "}
-          clock)
+          Server time {formatIST(info.data.now_utc)} (
+          {info.data.source === "HEADER" ? "test" : "real"} clock)
         </span>
       )}
       {info.data?.test_clock_enabled && (

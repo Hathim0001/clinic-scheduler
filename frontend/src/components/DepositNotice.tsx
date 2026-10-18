@@ -53,7 +53,9 @@ export function DepositCheckbox({ deposit, checked, onChange }: Props) {
         />
         <span>
           The patient has acknowledged the deposit
-          {deposit.required_until_ist ? ` (applies until ${formatIST(deposit.required_until_ist)})` : ""}
+          {deposit.required_until_ist
+            ? ` (applies until ${formatIST(deposit.required_until_ist)})`
+            : ""}
         </span>
       </label>
     </Banner>

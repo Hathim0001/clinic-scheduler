@@ -3,14 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { SlotsResponse } from "../api/types";
 import { apiError, installFakeApi } from "../test/fakeApi";
-import {
-  appointment,
-  clockInfo,
-  doctor,
-  flaggedDeposit,
-  patient,
-  renderPage,
-} from "../test/utils";
+import { appointment, clockInfo, doctor, flaggedDeposit, patient, renderPage } from "../test/utils";
 import Book from "./Book";
 
 const slot = (hour: string, startUtc: string, endUtc: string, endHour: string) => ({
@@ -70,7 +63,10 @@ describe("booking an appointment", () => {
     const api = installFakeApi(routes());
     renderPage(<Book />, link);
     await screen.findByRole("button", { name: "10:00–10:30" });
-    expect(api.last("GET", "/doctors/1/slots")?.query).toMatchObject({ date: "2026-11-02", patient_id: "7" });
+    expect(api.last("GET", "/doctors/1/slots")?.query).toMatchObject({
+      date: "2026-11-02",
+      patient_id: "7",
+    });
   });
 
   it("keeps the button off until a slot and a reason are chosen", async () => {
@@ -99,7 +95,9 @@ describe("booking an appointment", () => {
     const user = userEvent.setup();
     renderPage(<Book />, link);
 
-    expect(await screen.findByText(/Deposit required until 27 Nov 2026, 15:10 IST/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Deposit required until 27 Nov 2026, 15:10 IST/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/No-show on 29 Oct 2026, 10:00 IST/)).toBeInTheDocument();
     expect(screen.getByText(/Late cancellation on 28 Oct 2026, 15:10 IST/)).toBeInTheDocument();
 
@@ -112,7 +110,9 @@ describe("booking an appointment", () => {
     expect(submit).toBeEnabled();
     await user.click(submit);
 
-    await waitFor(() => expect(api.last("POST", "/appointments")?.body).toMatchObject({ deposit_confirmed: true }));
+    await waitFor(() =>
+      expect(api.last("POST", "/appointments")?.body).toMatchObject({ deposit_confirmed: true }),
+    );
   });
 
   it("does not show a deposit box for a patient who is not flagged", async () => {
@@ -149,7 +149,9 @@ describe("booking an appointment", () => {
     await user.click(await screen.findByRole("button", { name: "10:00–10:30" }));
     await user.type(screen.getByLabelText("Reason"), "Check-up");
     await user.click(screen.getByRole("button", { name: "Book the appointment" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Dr. Rao is fully booked on that day.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Dr. Rao is fully booked on that day.",
+    );
   });
 
   it("explains an empty day with the server's reason instead of guessing", async () => {
@@ -162,7 +164,9 @@ describe("booking an appointment", () => {
     );
     renderPage(<Book />, link);
     expect(
-      await screen.findByText(/The doctor has reached the daily limit of appointments for this date/),
+      await screen.findByText(
+        /The doctor has reached the daily limit of appointments for this date/,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -172,14 +176,19 @@ describe("booking an appointment", () => {
       routes({
         "GET /appointments/41": { body: original },
         "POST /appointments/41/reschedule": {
-          body: { old: { ...original, status: "CANCELLED", allowed_actions: [] }, new: appointment({ id: 42 }) },
+          body: {
+            old: { ...original, status: "CANCELLED", allowed_actions: [] },
+            new: appointment({ id: 42 }),
+          },
         },
       }),
     );
     const user = userEvent.setup();
     renderPage(<Book />, "/book?reschedule=41");
 
-    expect(await screen.findByText(/Moving Kavita Nair's appointment from 2 Nov 2026, 10:00 IST/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Moving Kavita Nair's appointment from 2 Nov 2026, 10:00 IST/),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText("Reason")).not.toBeInTheDocument(); // the reason is carried over
     await user.click(await screen.findByRole("button", { name: "10:30–11:00" }));
     await user.click(screen.getByRole("button", { name: "Move the appointment" }));

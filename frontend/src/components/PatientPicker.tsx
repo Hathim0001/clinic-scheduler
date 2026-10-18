@@ -19,9 +19,7 @@ export function PatientPicker({ onSelect, selectedId = null }: Props) {
 
   const trimmed = term.trim();
   const isPhone = LOOKS_LIKE_PHONE.test(trimmed);
-  const search = usePatientSearch(
-    isPhone ? { phone: trimmed } : trimmed ? { q: trimmed } : {},
-  );
+  const search = usePatientSearch(isPhone ? { phone: trimmed } : trimmed ? { q: trimmed } : {});
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -113,7 +111,11 @@ function NewPatientForm({
 
   const duplicates =
     create.error instanceof ApiError && create.error.code === "POSSIBLE_DUPLICATE"
-      ? ((create.error.details.candidates as { patient_id: number; name: string; phone: string }[]) ?? [])
+      ? ((create.error.details.candidates as {
+          patient_id: number;
+          name: string;
+          phone: string;
+        }[]) ?? [])
       : null;
 
   return (
@@ -122,7 +124,12 @@ function NewPatientForm({
       <div className="row">
         <label>
           Name
-          <input value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+            maxLength={100}
+          />
         </label>
         <label>
           Phone
@@ -156,7 +163,11 @@ function NewPatientForm({
                   type="button"
                   className="link"
                   onClick={() =>
-                    onCreated({ id: match.patient_id, name: match.name, phone: match.phone } as Patient)
+                    onCreated({
+                      id: match.patient_id,
+                      name: match.name,
+                      phone: match.phone,
+                    } as Patient)
                   }
                 >
                   Use {match.name}

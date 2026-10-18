@@ -94,7 +94,10 @@ export function describeError(error: unknown, context: Context = {}): FriendlyEr
     case "INVALID_CORRECTION":
       return { ...base, message: "That outcome cannot be changed to the one chosen." };
     case "IDEMPOTENCY_KEY_REUSED":
-      return { ...base, message: "This request was already sent with different details. Reload and try again." };
+      return {
+        ...base,
+        message: "This request was already sent with different details. Reload and try again.",
+      };
     case "SERVICE_UNAVAILABLE":
       return {
         ...base,

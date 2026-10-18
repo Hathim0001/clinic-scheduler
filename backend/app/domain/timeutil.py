@@ -27,12 +27,6 @@ def ist_date(instant: datetime) -> date:
     return instant.astimezone(IST).date()
 
 
-def ist_minute_of_day(instant: datetime) -> int:
-    """Minutes since IST midnight, ignoring seconds (hour * 60 + minute)."""
-    local = instant.astimezone(IST)
-    return local.hour * 60 + local.minute
-
-
 def ist_day_bounds(day: date) -> tuple[datetime, datetime]:
     """The half-open UTC interval [start, end) covered by one IST calendar day."""
     start = datetime.combine(day, time(0), IST)

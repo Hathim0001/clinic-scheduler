@@ -3,7 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 import { apiError, installFakeApi } from "../test/fakeApi";
-import { appointment, clockInfo, flaggedDeposit, noDeposit, patient, renderPage } from "../test/utils";
+import {
+  appointment,
+  clockInfo,
+  flaggedDeposit,
+  noDeposit,
+  patient,
+  renderPage,
+} from "../test/utils";
 import { PatientDetail, PatientSearch } from "./Patients";
 
 const routes = (extra = {}) => ({ "GET /clock": { body: clockInfo() }, ...extra });
@@ -67,11 +74,13 @@ describe("finding patients", () => {
     await user.type(within(form).getByLabelText("Date of birth"), "1985-04-02");
     await user.click(within(form).getByRole("button", { name: "Register patient" }));
 
-    await waitFor(() => expect(api.last("POST", "/patients")?.body).toEqual({
-      name: "Asha Iyer",
-      phone: "98765 43210",
-      date_of_birth: "1985-04-02",
-    }));
+    await waitFor(() =>
+      expect(api.last("POST", "/patients")?.body).toEqual({
+        name: "Asha Iyer",
+        phone: "98765 43210",
+        date_of_birth: "1985-04-02",
+      }),
+    );
     expect(await screen.findByRole("heading", { name: "Asha Iyer" })).toBeInTheDocument();
   });
 
@@ -125,7 +134,9 @@ describe("a patient's page", () => {
   it("says there is no flag for a patient without strikes", async () => {
     installFakeApi(detailRoutes());
     renderPage(searchPage, "/patients/7");
-    expect(await screen.findByText(/No late cancellations or no-shows in the last 30 days/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/No late cancellations or no-shows in the last 30 days/),
+    ).toBeInTheDocument();
   });
 
   it("lists the history with the buttons only where they apply", async () => {
@@ -133,25 +144,34 @@ describe("a patient's page", () => {
     renderPage(searchPage, "/patients/7");
     const table = await screen.findByRole("table");
     const rows = within(table).getAllByRole("row").slice(1);
-    expect(within(rows[0] as HTMLElement).getByRole("button", { name: "Reschedule" })).toBeEnabled();
-    expect(within(rows[1] as HTMLElement).getByRole("button", { name: "Reschedule" })).toBeDisabled();
-    expect(within(rows[1] as HTMLElement).getByText("No-show", { selector: "span.status" })).toBeInTheDocument();
+    expect(
+      within(rows[0] as HTMLElement).getByRole("button", { name: "Reschedule" }),
+    ).toBeEnabled();
+    expect(
+      within(rows[1] as HTMLElement).getByRole("button", { name: "Reschedule" }),
+    ).toBeDisabled();
+    expect(
+      within(rows[1] as HTMLElement).getByText("No-show", { selector: "span.status" }),
+    ).toBeInTheDocument();
   });
 
   it("links to booking for this patient", async () => {
     installFakeApi(detailRoutes());
     renderPage(searchPage, "/patients/7");
-    expect(await screen.findByRole("link", { name: "Book an appointment for this patient" })).toHaveAttribute(
-      "href",
-      "/book?patient=7",
-    );
+    expect(
+      await screen.findByRole("link", { name: "Book an appointment for this patient" }),
+    ).toHaveAttribute("href", "/book?patient=7");
   });
 
   it("shows a not-found message for an unknown patient", async () => {
     installFakeApi(
       routes({
         "GET /patients/99": apiError(404, "PATIENT_NOT_FOUND", "There is no patient with id 99."),
-        "GET /patients/99/appointments": apiError(404, "PATIENT_NOT_FOUND", "There is no patient with id 99."),
+        "GET /patients/99/appointments": apiError(
+          404,
+          "PATIENT_NOT_FOUND",
+          "There is no patient with id 99.",
+        ),
       }),
     );
     renderPage(searchPage, "/patients/99");

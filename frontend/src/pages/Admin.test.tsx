@@ -39,12 +39,10 @@ const routes = (extra = {}) => ({
 });
 
 /** A route that refuses until the request carries the acknowledgement. */
-const refuseUntilAcknowledged =
-  (success: unknown) =>
-  (call: Call) =>
-    (call.body as { acknowledge_conflicts?: boolean }).acknowledge_conflicts === true
-      ? { body: success }
-      : conflictReply;
+const refuseUntilAcknowledged = (success: unknown) => (call: Call) =>
+  (call.body as { acknowledge_conflicts?: boolean }).acknowledge_conflicts === true
+    ? { body: success }
+    : conflictReply;
 
 describe("doctors and availability", () => {
   it("shows the weekly hours and the doctor's details", async () => {
@@ -74,10 +72,15 @@ describe("doctors and availability", () => {
     await user.click(screen.getByRole("button", { name: "Save weekly hours" }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/Kavita Nair, \+919000000001, 2 Nov 2026, 10:00 IST/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/Kavita Nair, \+919000000001, 2 Nov 2026, 10:00 IST/),
+    ).toBeInTheDocument();
     expect(within(dialog).getByText(/Rahul Verma, \+919000000002/)).toBeInTheDocument();
     expect(api.count("PUT", "/doctors/1/weekly-windows")).toBe(1);
-    expect((api.last("PUT", "/doctors/1/weekly-windows")?.body as { acknowledge_conflicts: boolean }).acknowledge_conflicts).toBe(false);
+    expect(
+      (api.last("PUT", "/doctors/1/weekly-windows")?.body as { acknowledge_conflicts: boolean })
+        .acknowledge_conflicts,
+    ).toBe(false);
 
     await user.click(within(dialog).getByRole("button", { name: "Save anyway" }));
 
@@ -95,7 +98,9 @@ describe("doctors and availability", () => {
     renderPage(<Admin />, "/admin");
 
     await user.click(await screen.findByRole("button", { name: "Save weekly hours" }));
-    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Go back" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Go back" }),
+    );
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(api.count("PUT", "/doctors/1/weekly-windows")).toBe(1);
@@ -104,13 +109,19 @@ describe("doctors and availability", () => {
   it("shows a refused window as words, with the field, not as JSON", async () => {
     installFakeApi(
       routes({
-        "PUT /doctors/1/weekly-windows": apiError(422, "WINDOW_OFF_GRID", "The window 09:05-13:00 does not fall on the 30-minute slot grid."),
+        "PUT /doctors/1/weekly-windows": apiError(
+          422,
+          "WINDOW_OFF_GRID",
+          "The window 09:05-13:00 does not fall on the 30-minute slot grid.",
+        ),
       }),
     );
     const user = userEvent.setup();
     renderPage(<Admin />, "/admin");
     await user.click(await screen.findByRole("button", { name: "Save weekly hours" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("does not fall on the 30-minute slot grid");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "does not fall on the 30-minute slot grid",
+    );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -130,7 +141,9 @@ describe("doctors and availability", () => {
 
     await user.type(await screen.findByLabelText("Date"), "2026-11-02");
     await user.click(screen.getByRole("button", { name: "Save override" }));
-    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Save anyway" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Save anyway" }),
+    );
 
     await waitFor(() => expect(api.count("PUT", "/doctors/1/overrides/2026-11-02")).toBe(2));
     expect(api.last("PUT", "/doctors/1/overrides/2026-11-02")?.body).toEqual({
@@ -144,7 +157,14 @@ describe("doctors and availability", () => {
     const api = installFakeApi(
       routes({
         "GET /doctors/1/overrides": {
-          body: [{ date: "2026-11-07", note: "Camp", windows: [{ start: "10:00", end: "12:00" }], needs_attention: [] }],
+          body: [
+            {
+              date: "2026-11-07",
+              note: "Camp",
+              windows: [{ start: "10:00", end: "12:00" }],
+              needs_attention: [],
+            },
+          ],
         },
         "DELETE /doctors/1/overrides/2026-11-07": (call: Call) =>
           call.query.acknowledge_conflicts === "true" ? { status: 204 } : conflictReply,
@@ -154,10 +174,14 @@ describe("doctors and availability", () => {
     renderPage(<Admin />, "/admin");
 
     await user.click(await screen.findByRole("button", { name: "Remove 2026-11-07" }));
-    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Save anyway" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Save anyway" }),
+    );
 
     await waitFor(() => expect(api.count("DELETE", "/doctors/1/overrides/2026-11-07")).toBe(2));
-    expect(api.last("DELETE", "/doctors/1/overrides/2026-11-07")?.query.acknowledge_conflicts).toBe("true");
+    expect(api.last("DELETE", "/doctors/1/overrides/2026-11-07")?.query.acknowledge_conflicts).toBe(
+      "true",
+    );
   });
 
   it("lists appointments that need attention with their actions", async () => {
@@ -182,7 +206,11 @@ describe("doctors and availability", () => {
   it("explains why the slot length cannot change while bookings exist", async () => {
     installFakeApi(
       routes({
-        "PATCH /doctors/1": apiError(409, "SLOT_LENGTH_LOCKED", "Dr. Rao has 3 future booked appointments made on the 30-minute grid."),
+        "PATCH /doctors/1": apiError(
+          409,
+          "SLOT_LENGTH_LOCKED",
+          "Dr. Rao has 3 future booked appointments made on the 30-minute grid.",
+        ),
       }),
     );
     const user = userEvent.setup();

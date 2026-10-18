@@ -15,7 +15,9 @@ describe("the clock bar", () => {
   it("shows the server time and the controls when the server allows a test clock", async () => {
     installFakeApi({ "GET /clock": { body: clockInfo() } });
     renderPage(<ClockBar />);
-    expect(await screen.findByText(/Server time 2 Nov 2026, 08:00 IST \(real clock\)/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Server time 2 Nov 2026, 08:00 IST \(real clock\)/),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Test clock (India time)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Seed day 09:30" })).toBeInTheDocument();
     expect(screen.queryByText(/TEST CLOCK ACTIVE/)).not.toBeInTheDocument();
@@ -29,7 +31,10 @@ describe("the clock bar", () => {
   });
 
   it("sets a test clock from India time, shows the amber badge, remembers it and sends it", async () => {
-    const api = installFakeApi({ "GET /clock": { body: clockInfo() }, "GET /doctors": { body: [] } });
+    const api = installFakeApi({
+      "GET /clock": { body: clockInfo() },
+      "GET /doctors": { body: [] },
+    });
     const user = userEvent.setup();
     renderPage(<ClockBar />);
 
@@ -40,10 +45,14 @@ describe("the clock bar", () => {
     expect(await screen.findByText("TEST CLOCK ACTIVE: 2 Nov 2026, 10:05 IST")).toBeInTheDocument();
     expect(loadTestClock()).toBe("2026-11-02T10:05:00+05:30");
     await waitFor(() =>
-      expect(api.last("GET", "/clock")?.headers.get("x-test-clock")).toBe("2026-11-02T10:05:00+05:30"),
+      expect(api.last("GET", "/clock")?.headers.get("x-test-clock")).toBe(
+        "2026-11-02T10:05:00+05:30",
+      ),
     );
     await request("GET", "/doctors");
-    expect(api.last("GET", "/doctors")?.headers.get("x-test-clock")).toBe("2026-11-02T10:05:00+05:30");
+    expect(api.last("GET", "/doctors")?.headers.get("x-test-clock")).toBe(
+      "2026-11-02T10:05:00+05:30",
+    );
   });
 
   it("applies the seed-day preset at 09:30 India time", async () => {
@@ -51,9 +60,13 @@ describe("the clock bar", () => {
     const user = userEvent.setup();
     renderPage(<ClockBar />);
     await user.click(await screen.findByRole("button", { name: "Seed day 09:30" }));
-    expect(await screen.findByText("TEST CLOCK ACTIVE: 19 Oct 2026, 09:30 IST")).toBeInTheDocument();
+    expect(
+      await screen.findByText("TEST CLOCK ACTIVE: 19 Oct 2026, 09:30 IST"),
+    ).toBeInTheDocument();
     await waitFor(() =>
-      expect(api.last("GET", "/clock")?.headers.get("x-test-clock")).toBe("2026-10-19T09:30:00+05:30"),
+      expect(api.last("GET", "/clock")?.headers.get("x-test-clock")).toBe(
+        "2026-10-19T09:30:00+05:30",
+      ),
     );
   });
 
@@ -80,11 +93,17 @@ describe("the clock bar", () => {
   it("can always be cleared, even when the server refuses the clock that was stored", async () => {
     window.localStorage.setItem("clinic.testClock", "2026-11-02T09:00:00+05:30");
     installFakeApi({
-      "GET /clock": apiError(400, "INVALID_TEST_CLOCK", "The test clock is disabled on this server."),
+      "GET /clock": apiError(
+        400,
+        "INVALID_TEST_CLOCK",
+        "The test clock is disabled on this server.",
+      ),
     });
     const user = userEvent.setup();
     renderPage(<ClockBar />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("The test clock is disabled on this server.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The test clock is disabled on this server.",
+    );
     await user.click(screen.getByRole("button", { name: "Use the real time" }));
     expect(loadTestClock()).toBeNull();
   });
@@ -106,7 +125,10 @@ describe("the wake-up banner", () => {
 
   it("says the server is waking up when it has not answered after three seconds", async () => {
     vi.useFakeTimers();
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => undefined)),
+    );
     withProviders();
     expect(screen.queryByText(/Waking the server/)).not.toBeInTheDocument();
     await act(async () => {

@@ -275,8 +275,8 @@ function DoctorDetails({ doctor }: { doctor: Doctor }) {
       </div>
       <p className="muted">
         The slot length cannot change while future bookings exist. Lowering the daily limit never
-        cancels anything. Switching off \u201cTaking new bookings\u201d (leave, suspension) leaves existing
-        appointments exactly as they are.
+        cancels anything. Switching off \u201cTaking new bookings\u201d (leave, suspension) leaves
+        existing appointments exactly as they are.
       </p>
       {update.error && <ErrorBanner error={update.error} />}
       {update.isSuccess && <Banner kind="success">Saved.</Banner>}

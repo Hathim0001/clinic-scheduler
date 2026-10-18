@@ -65,7 +65,9 @@ describe("today's queue", () => {
   it("marks an appointment completed and refreshes the list", async () => {
     const api = installFakeApi(
       routes({
-        "POST /appointments/1/complete": { body: { ...started, status: "COMPLETED", allowed_actions: [] } },
+        "POST /appointments/1/complete": {
+          body: { ...started, status: "COMPLETED", allowed_actions: [] },
+        },
       }),
     );
     const user = userEvent.setup();
@@ -86,7 +88,12 @@ describe("today's queue", () => {
           body: {
             appointment: { ...upcoming, status: "CANCELLED", allowed_actions: [] },
             late: false,
-            deposit: { required: false, required_until_utc: null, required_until_ist: null, reasons: [] },
+            deposit: {
+              required: false,
+              required_until_utc: null,
+              required_until_ist: null,
+              reasons: [],
+            },
           },
         },
       }),
@@ -100,7 +107,9 @@ describe("today's queue", () => {
     await user.click(row.getByLabelText(/The clinic/));
     await user.click(row.getByRole("button", { name: "Confirm cancellation" }));
 
-    await waitFor(() => expect(api.last("POST", "/appointments/2/cancel")?.body).toEqual({ cancelled_by: "CLINIC" }));
+    await waitFor(() =>
+      expect(api.last("POST", "/appointments/2/cancel")?.body).toEqual({ cancelled_by: "CLINIC" }),
+    );
   });
 
   it("shows the server's explanation, with the request id, when an action is refused", async () => {
@@ -130,7 +139,9 @@ describe("today's queue", () => {
     await user.click(screen.getByRole("button", { name: /set the test clock to that morning/ }));
 
     await waitFor(() =>
-      expect(api.last("GET", "/queue")?.headers.get("x-test-clock")).toBe("2026-10-19T09:30:00+05:30"),
+      expect(api.last("GET", "/queue")?.headers.get("x-test-clock")).toBe(
+        "2026-10-19T09:30:00+05:30",
+      ),
     );
   });
 

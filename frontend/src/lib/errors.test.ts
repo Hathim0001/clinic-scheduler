@@ -40,7 +40,9 @@ describe("error messages", () => {
   });
 
   it("falls back to the words of the server for codes it does not know", () => {
-    const friendly = describeError(error("INVALID_TRANSITION", {}, "This appointment is already cancelled."));
+    const friendly = describeError(
+      error("INVALID_TRANSITION", {}, "This appointment is already cancelled."),
+    );
     expect(friendly.message).toBe("This appointment is already cancelled.");
   });
 
@@ -53,7 +55,9 @@ describe("error messages", () => {
   it("lists the invalid fields of a form without raw JSON", () => {
     const friendly = describeError(
       new ApiError(422, "VALIDATION_ERROR", "bad", {
-        fields: [{ loc: ["body", "date_of_birth"], msg: "must be a real calendar date", type: "x" }],
+        fields: [
+          { loc: ["body", "date_of_birth"], msg: "must be a real calendar date", type: "x" },
+        ],
       }),
     );
     expect(friendly.lines).toEqual(["date_of_birth: must be a real calendar date"]);

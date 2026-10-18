@@ -12,7 +12,6 @@ from app.domain.timeutil import (
     format_minutes,
     ist_date,
     ist_day_bounds,
-    ist_minute_of_day,
 )
 from tests.helpers import ist
 
@@ -36,10 +35,6 @@ def test_half_past_midnight_ist_is_still_the_previous_utc_date() -> None:
     instant = ist(2026, 12, 16, 0, 30)
     assert instant.astimezone(UTC).date() == date(2026, 12, 15)
     assert ist_date(instant) == date(2026, 12, 16)
-
-
-def test_minute_of_day_ignores_seconds() -> None:
-    assert ist_minute_of_day(ist(2026, 11, 2, 9, 15, 59)) == 9 * 60 + 15
 
 
 def test_day_bounds_cover_exactly_one_ist_day() -> None:

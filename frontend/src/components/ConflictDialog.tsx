@@ -29,7 +29,8 @@ export function ConflictDialog({ message, appointments, busy, onConfirm, onCance
         <ul>
           {appointments.map((appointment) => (
             <li key={appointment.id}>
-              {appointment.patient_name}, {appointment.patient_phone}, {formatIST(appointment.start_at_ist)}
+              {appointment.patient_name}, {appointment.patient_phone},{" "}
+              {formatIST(appointment.start_at_ist)}
             </li>
           ))}
         </ul>

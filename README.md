@@ -124,6 +124,7 @@ cd frontend
 cp .env.example .env                         # PowerShell: Copy-Item .env.example .env
 npm ci
 npm run dev                                  # http://localhost:5173
+npm run format:check && npm run lint && npm run typecheck   # what CI runs (npm run format fixes)
 ```
 
 | Variable | Where | Meaning |
@@ -184,7 +185,7 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,009 passing in about 4 minutes: 428 unit (no database), 302 integration and race tests (real PostgreSQL), 279 through HTTP |
+| Backend tests | 1,008 passing in about 4 minutes: 427 unit (no database), 302 integration and race tests (real PostgreSQL), 279 through HTTP |
 | Backend line and branch coverage, all of `app/` | 99 % (2,741 statements, 8 missed, branches included) |
 | Rules layer (`app/domain` + `app/services`) | 100 % (1,359 statements, none missed); the gate is 80 % |
 | Frontend tests (Vitest, network faked at `fetch`) | 103 passing |

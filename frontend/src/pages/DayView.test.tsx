@@ -69,7 +69,9 @@ describe("day view", () => {
     expect(await screen.findByText("Kavita Nair")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /09:00–09:30\s*Past/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /10:30–11:00\s*Free: click to book/ })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /11:00–11:30\s*Daily limit reached/ })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /11:00–11:30\s*Daily limit reached/ }),
+    ).toBeDisabled();
     expect(screen.getByText("09:00–13:00 IST")).toBeInTheDocument();
   });
 
@@ -104,13 +106,21 @@ describe("day view", () => {
     installFakeApi(
       routes({
         "GET /doctors/1/schedule": {
-          body: { ...schedule, slots: [], windows: [], source: "OVERRIDE", unavailable_reason: "NO_AVAILABILITY" },
+          body: {
+            ...schedule,
+            slots: [],
+            windows: [],
+            source: "OVERRIDE",
+            unavailable_reason: "NO_AVAILABILITY",
+          },
         },
       }),
     );
     renderPage(page, link);
     expect(await screen.findByText(/The doctor is not working on this date/)).toBeInTheDocument();
-    expect(screen.getByText(/a leave day or special hours were set for this date/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/a leave day or special hours were set for this date/),
+    ).toBeInTheDocument();
   });
 
   it("lists bookings that fall outside the doctor's hours under their own heading", async () => {
@@ -118,12 +128,19 @@ describe("day view", () => {
     installFakeApi(
       routes({
         "GET /doctors/1/schedule": {
-          body: { ...schedule, slots: [], unavailable_reason: "NO_AVAILABILITY", outside_availability: [orphan] },
+          body: {
+            ...schedule,
+            slots: [],
+            unavailable_reason: "NO_AVAILABILITY",
+            outside_availability: [orphan],
+          },
         },
       }),
     );
     renderPage(page, link);
-    expect(await screen.findByRole("heading", { name: /Booked outside the doctor's hours/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Booked outside the doctor's hours/ }),
+    ).toBeInTheDocument();
     const card = screen.getByRole("article", { name: "Appointment 50" });
     expect(card).toHaveTextContent("Needs attention");
     expect(card).toHaveTextContent("Move it or cancel it");
@@ -137,7 +154,9 @@ describe("day view", () => {
 
     await user.click(screen.getByRole("button", { name: "Next day" }));
 
-    await waitFor(() => expect(api.last("GET", "/doctors/1/schedule")?.query.date).toBe("2026-11-03"));
+    await waitFor(() =>
+      expect(api.last("GET", "/doctors/1/schedule")?.query.date).toBe("2026-11-03"),
+    );
     expect(screen.getByTestId("where")).toHaveTextContent("date=2026-11-03");
   });
 
@@ -146,7 +165,9 @@ describe("day view", () => {
       routes({
         "GET /doctors/1/schedule": {
           status: 503,
-          body: { error: { code: "SERVICE_UNAVAILABLE", message: "busy", details: {}, request_id: "r1" } },
+          body: {
+            error: { code: "SERVICE_UNAVAILABLE", message: "busy", details: {}, request_id: "r1" },
+          },
         },
       }),
     );

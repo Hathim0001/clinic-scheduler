@@ -105,7 +105,10 @@ export default function Book() {
     } else {
       const signature = JSON.stringify([doctorId, patientId, start, reason, depositAcknowledged]);
       if (attempt.current?.signature !== signature) {
-        attempt.current = { signature, key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}` };
+        attempt.current = {
+          signature,
+          key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+        };
       }
       book.mutate({
         doctor_id: doctorId,
