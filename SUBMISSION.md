@@ -4,7 +4,7 @@ Most of the code was written with Claude Code; every prompt is in `PROMPTS.md` a
 
 ## A. What I built
 
-A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI, started locally with `docker compose up --build`. All Core features work: doctors with weekly hours and date overrides, patients with a unique phone, free slots, booking, cancelling, rescheduling, completed and no-show, history, a day view, today's queue and the reviewer test clock. All seven business rules are enforced in the backend and hold under simultaneous requests, with a boundary test for every number. Hosted on Vercel (UI), Render (API) and Neon (database), with links in README section 2. I also built the Stretch items (waitlist with automatic offers, recurring appointments, calendar export) and three additions: nearest alternatives when a day is full, a "prove the rules" page that rolls back what it runs, and a refill metric in the report.
+A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI, started locally with `docker compose up --build`. All Core features work: doctors with weekly hours and date overrides, patients with a unique phone, free slots, booking, cancelling, rescheduling, completed and no-show, history, a day view, today's queue and the reviewer test clock. All seven business rules are enforced in the backend and hold under simultaneous requests, with a boundary test for every number. Hosted on Vercel (UI), Render (API) and Neon (database), with links in README section 2. I also built the Stretch items (waitlist with automatic offers, recurring appointments, calendar export) and extras: nearest alternatives when a day is full, a "prove the rules" page that rolls back what it runs, a refill metric, optional staff accounts with roles, consent and erasure of patient data, and a message outbox.
 
 ## B. Three design decisions
 
@@ -45,11 +45,11 @@ These are the tagged `m0` to `m6` commits. Work after M6 (Stretch features, rede
 
 ## F. If I had two more days
 
-1. Real notifications: an offered waitlist slot is only visible on the patient page, nobody is messaged.
-2. Individual staff accounts with roles; today there is one optional shared password.
-3. A person who uses a screen reader to audit the UI; axe-core passes, which is not the same.
-4. Consent records, retention and deletion on request for patient data (India's DPDP Act).
-5. A stored, indexed `needs_attention` and load tests beyond ten simultaneous connections.
+1. A person who uses a screen reader audits the UI; axe-core passes, which is not the same, and software cannot stand in for that.
+2. A real SMS or WhatsApp gateway with delivery receipts and reminders; the outbox and the webhook are built, the account is not.
+3. Password reset by email and two-factor sign-in for staff accounts.
+4. A written privacy notice, a retention period and processor agreements, reviewed by someone qualified; the erase and purge tools exist.
+5. Load tests beyond 100 users and a shared rate limit (Redis) for more than one API instance.
 
 ## G. Self-assessment
 
