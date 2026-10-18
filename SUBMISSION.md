@@ -10,8 +10,7 @@ started locally with one `docker compose up --build`. All Core features are comp
 weekly hours and date overrides, patients with unique phones, free slots, booking, cancelling,
 rescheduling, completed and no-show, patient history, a day view, today's queue and the reviewer test
 clock. All seven business rules are enforced in the backend and hold under concurrent requests, with a
-boundary test for every number. Partial: the hosted instance is configured (Render, Neon and Vercel
-files, a runbook) but not deployed yet, and the UI has component tests but no browser end-to-end tests.
+boundary test for every number. Hosted: UI on Vercel, API on Render, database on Neon (links in README section 2). Partial: the UI has component tests but no browser end-to-end tests.
 I also built the Stretch items: a per-doctor, per-day waitlist with an automatic 30-minute offer when a
 slot is cancelled or moved, recurring appointments (all or none), and calendar (.ics) export.
 
@@ -88,6 +87,6 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 | API design (8) | 4 | Resource paths, pagination, OpenAPI checked by tests and a fuzz run; cancel and mark are action endpoints |
 | UI usability (6) | 4 | Flows work without instructions, buttons follow the server, loading, error and phone layouts; never tried by a real receptionist |
 | Testing (7) | 5 | 1,008 backend tests, a boundary test per number, property and race tests, 100 % on the rules layer; UI coverage not measured |
-| Deployment and operability (5) | 3 | One-command local stack, Dockerfiles, CI and blueprint committed; not deployed yet, to be raised after the first deploy |
+| Deployment and operability (5) | 3 | One-command local stack, Dockerfiles, CI and blueprint committed; deployed and smoke-tested (20 simultaneous bookings give one booking); to be re-rated after rehearsing the edge cases on the hosted site |
 | Git hygiene (4) | 4 | Conventional commits with milestone tags in logical steps; one working day of history |
 | Documentation and write-up (4) | 4 | README follows the format with limitations stated; this write-up cites commits |

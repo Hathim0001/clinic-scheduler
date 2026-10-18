@@ -9,15 +9,15 @@ requests. Every AI prompt used is logged in [PROMPTS.md](PROMPTS.md) and disclos
 
 ## 2. Live links
 
-**Not hosted yet.** Section 5a lists every step, and `render.yaml`, `backend/Dockerfile`,
-`frontend/vercel.json` and `docker-compose.yml` are the committed configuration. This table is filled
-in after the first deploy.
+Hosted on Vercel (UI), Render (API) and Neon (PostgreSQL). Section 5a lists the steps, and
+`render.yaml`, `backend/Dockerfile`, `frontend/vercel.json` and `docker-compose.yml` are the committed
+configuration.
 
 | What | URL |
 |---|---|
-| UI | _to be added_ (Vercel) |
-| API base | _to be added_ (`https://<service>.onrender.com/api/v1`) |
-| API docs (OpenAPI) | _to be added_ (`https://<service>.onrender.com/docs`) |
+| UI | https://clinic-scheduler-ruby.vercel.app |
+| API base | https://clinic-api-pn9t.onrender.com/api/v1 |
+| API docs (OpenAPI) | https://clinic-api-pn9t.onrender.com/docs |
 
 There is no authentication: it is a single-clinic tool and the assignment makes it optional, so there
 are no credentials to give. **Cold start:** on Render's free plan the API sleeps when idle and the
@@ -421,7 +421,7 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
 
 ## 11. Known limitations
 
-- **No hosted instance yet** until the steps in 5a are done; the links in section 2 are empty.
+- The hosted instance runs on free plans; see the cold-start note in section 2.
 - No authentication or authorisation: any caller of the API can see patient names and phone numbers.
   Acceptable for the assignment, not for production. The rate limit (default 600 requests a minute per
   address) is in memory, so with several instances each would count on its own.
