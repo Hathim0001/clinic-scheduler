@@ -200,3 +200,15 @@ def test_staff_routes_need_a_token_at_all(accounts: Api) -> None:
 def test_without_any_sign_in_everything_stays_open_as_before(api: Api) -> None:
     assert api.get("/staff").status_code == 200
     assert api.post("/diagnostics/proof").status_code == 200
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{}, {"role": None}, {"active": None}, {"password": None}, {"display_name": None}],
+)
+def test_a_staff_patch_with_nothing_or_a_null_is_refused_not_a_500(
+    accounts: Api, admin: dict[str, str], body: dict[str, Any]
+) -> None:
+    made = create(accounts, admin, "meera", "RECEPTIONIST").json()
+    response = accounts.http.patch(f"{BASE}/staff/{made['id']}", json=body, headers=admin)
+    assert_error(response, 422, "VALIDATION_ERROR")

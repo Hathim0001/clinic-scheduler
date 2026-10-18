@@ -89,6 +89,15 @@ class StaffPatch(StrictModel):
     role: Literal["ADMIN", "RECEPTIONIST"] | None = None
     active: StrictBool | None = None
 
+    @model_validator(mode="after")
+    def _something_to_change(self) -> StaffPatch:
+        if not self.model_fields_set:
+            raise ValueError("send at least one of display_name, password, role, active")
+        for field in self.model_fields_set:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} must not be null")
+        return self
+
 
 class PatientCreate(StrictModel):
     name: PersonName

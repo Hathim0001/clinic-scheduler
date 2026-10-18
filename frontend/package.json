@@ -14,7 +14,8 @@
     "test": "vitest",
     "coverage": "vitest run --coverage",
     "e2e": "node e2e/smoke.mjs && node e2e/a11y.mjs",
-    "e2e:auth": "node e2e/auth.mjs"
+    "e2e:auth": "node e2e/auth.mjs",
+    "e2e:roles": "node e2e/roles.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.3",
