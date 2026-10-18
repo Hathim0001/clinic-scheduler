@@ -1,7 +1,7 @@
 == Test run ==
-=========================== short test summary info ===========================
-FAILED tests/unit/test_errors.py::test_a_domain_code_builds_the_exception_class_with_the_right_status[UNAUTHENTICATED]
-1 failed, 1069 passed in 274.46s (0:04:34)
+........................................................................ [ 94%]
+...............................................................          [100%]
+1071 passed in 262.52s (0:04:22)
 
 == Line and branch coverage of app/ ==
 Name                                   Stmts   Miss Branch BrPart  Cover   Missing

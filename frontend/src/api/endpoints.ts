@@ -73,9 +73,18 @@ export interface DoctorChanges {
   accepting_bookings?: boolean;
 }
 
+export interface LoginResult {
+  token: string;
+  name: string;
+  expires_at_epoch: number;
+}
+
 // One function per endpoint. The components never build URLs or read response headers.
 export const api = {
   clock: () => request<ClockInfo>("GET", "/clock"),
+  authStatus: () => request<{ required: boolean }>("GET", "/auth/status"),
+  login: (name: string, password: string) =>
+    request<LoginResult>("POST", "/auth/login", { body: { name, password } }),
 
   doctors: () => request<Doctor[]>("GET", "/doctors"),
   createDoctor: (body: NewDoctor) => request<Doctor>("POST", "/doctors", { body }),

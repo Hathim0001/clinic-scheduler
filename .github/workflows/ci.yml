@@ -58,7 +58,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm run format:check && npm run lint && npm run typecheck && npm test -- --run && npm run build
+      - run: npm run format:check && npm run lint && npm run typecheck
+      - name: Tests with coverage (thresholds are in vite.config.ts)
+        run: npm run coverage
+      - run: npm run build
       - name: Dependency audit (informational)
         run: npm audit --audit-level=high
         continue-on-error: true
@@ -76,6 +79,35 @@ jobs:
           curl -fsS http://localhost:8080/ | grep -q "<div id=\"root\">"
       - name: Twenty simultaneous bookings of one slot give exactly one booking
         run: python backend/scripts/burst.py --base-url http://localhost:8000 --requests 20
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Browser end-to-end checks and the accessibility scan, in a real Chrome
+        working-directory: frontend
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          npm ci
+          npm run e2e
+      - if: failure()
+        run: docker compose logs --no-color --tail 200
+
+  fuzz:
+    runs-on: ubuntu-latest
+    env:
+      RATE_LIMIT_PER_MINUTE: "0"  # the fuzzer sends thousands of requests; the limit would hide bugs
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose up -d --build --wait
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Schemathesis finds no server error on any operation
+        run: |
+          pip install "schemathesis==4.31.1"
+          st run http://localhost:8000/openapi.json --checks not_a_server_error             --max-examples 40 --workers 2 --header "X-Test-Clock: 2026-10-19T09:30:00+05:30"
       - if: failure()
         run: docker compose logs --no-color --tail 200
 

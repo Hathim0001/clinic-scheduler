@@ -16,14 +16,19 @@ export function PatientPicker({ onSelect, selectedId = null }: Props) {
   const [text, setText] = useState("");
   const [term, setTerm] = useState("");
   const [registering, setRegistering] = useState(false);
+  const [shown, setShown] = useState(10);
 
   const trimmed = term.trim();
   const isPhone = LOOKS_LIKE_PHONE.test(trimmed);
-  const search = usePatientSearch(isPhone ? { phone: trimmed } : trimmed ? { q: trimmed } : {});
+  const search = usePatientSearch(
+    isPhone ? { phone: trimmed } : trimmed ? { q: trimmed } : {},
+    shown,
+  );
 
   const submit = (event: { preventDefault: () => void }) => {
     event.preventDefault();
     setTerm(text);
+    setShown(10);
     setRegistering(false);
   };
 
@@ -67,6 +72,17 @@ export function PatientPicker({ onSelect, selectedId = null }: Props) {
               <span className="muted">{patient.phone}</span>
             </li>
           ))}
+          {search.data.total > search.data.items.length && (
+            <li>
+              <button
+                type="button"
+                className="link"
+                onClick={() => setShown((count) => Math.min(count + 10, 50))}
+              >
+                Show more ({search.data.items.length} of {search.data.total})
+              </button>
+            </li>
+          )}
           {search.data.items.length === 0 && (
             <li className="muted">
               No patient found.{" "}

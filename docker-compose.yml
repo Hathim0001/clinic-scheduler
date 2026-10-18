@@ -26,6 +26,10 @@ services:
       CORS_ORIGINS: http://localhost:8080,http://localhost:5173
       TEST_CLOCK_ENABLED: "true"
       LOG_LEVEL: INFO
+      # 0 switches the per-address limit off, for fuzzing; the default keeps the real limit.
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-600}
+      # Optional: set a staff password (8+ characters) to require sign-in.
+      STAFF_PASSWORD: ${STAFF_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy

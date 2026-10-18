@@ -38,6 +38,20 @@ def test_the_preflight_allows_the_ui_origin_and_the_headers_it_sends(api: Api) -
     assert "POST" in response.headers["access-control-allow-methods"]
 
 
+def test_the_preflight_allows_the_sign_in_and_retry_headers(api: Api) -> None:
+    """A signed-in UI on another origin sends Authorization; without this every call is blocked."""
+    wanted = "authorization,idempotency-key,content-type,x-test-clock"
+    response = api.http.options(
+        f"{BASE}/appointments",
+        headers=PREFLIGHT | {"Access-Control-Request-Headers": wanted},
+    )
+    assert response.status_code == 200
+    allowed = set(
+        response.headers["access-control-allow-headers"].lower().replace(" ", "").split(",")
+    )
+    assert {"authorization", "idempotency-key"} <= allowed
+
+
 def test_a_preflight_from_another_origin_or_for_another_header_is_refused(api: Api) -> None:
     stranger = api.http.options(
         f"{BASE}/appointments", headers=PREFLIGHT | {"Origin": "https://evil.example"}

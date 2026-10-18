@@ -117,15 +117,20 @@ the screen that made it, and any appointment can be downloaded to the patient's 
 
 ## 10. Security and privacy
 
-Authentication is optional in the assignment and was deliberately not built (A-20), so every scenario
-that depends on **who** is asking is out of scope: a staff member changing a booking without
-authorisation, a compromised receptionist account, exporting the whole patient list, another branch's
-staff, an account left active after someone leaves, an unauthorised change to a doctor's hours,
-manager reports that hide identities, and a patient enumerating other patients' appointments by
-guessing ids. What is covered without accounts: strict input validation and no echo of hostile input
-(`tests/api/test_hostile_input.py`), request size limits, a rate limit, parameterised SQL only,
-no personal data in the logs, and manipulated parameters (a time outside the hours, off the grid, in
-the past) refused by the same rules that offer slots.
+Authentication is optional in the assignment, so it is **off by default** (it would lock out a
+reviewer) and available by setting `STAFF_PASSWORD`. With it on: every data route needs a signed,
+expiring token; guessing the password is limited to 10 tries a minute per client; and every audit row
+names who made the change. With it off, the scenarios that depend on **who** is asking stay out of
+reach: a staff member changing a booking without authorisation, a compromised account, exporting the
+whole list, another branch's staff, a leaver's account, an unauthorised change to hours, and a patient
+enumerating appointments by guessing ids. Even with it on there are no roles, so every signed-in
+person can do everything, and there is one shared password rather than individual accounts.
+
+Covered either way: strict input validation and no echo of hostile input
+(`tests/api/test_hostile_input.py`), request size limits, a per-client rate limit that cannot be
+dodged by forging `X-Forwarded-For`, parameterised SQL only, no personal data in the logs, manipulated
+parameters (a time outside the hours, off the grid, in the past) refused by the same rules that offer
+slots, and an audit table the database itself refuses to change or delete.
 
 ## 11. Rules and policy beyond the seven in the brief
 

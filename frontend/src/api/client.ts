@@ -1,3 +1,4 @@
+import { getSession } from "../lib/authStore";
 import type { ApiErrorBody } from "./types";
 
 // Vite inlines this at build time (see .env.example), so changing it means rebuilding.
@@ -68,6 +69,8 @@ export async function request<T>(
   const headers: Record<string, string> = { Accept: "application/json", ...extra };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (testClock) headers["X-Test-Clock"] = testClock;
+  const session = getSession();
+  if (session) headers["Authorization"] = `Bearer ${session.token}`;
 
   let response: Response;
   try {

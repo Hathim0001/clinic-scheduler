@@ -198,6 +198,7 @@ export interface AppointmentEvent {
   at_utc: string;
   at_ist: string;
   detail: Record<string, unknown>;
+  actor: string;
 }
 
 export interface Triage {

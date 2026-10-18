@@ -19,7 +19,7 @@ configuration.
 | API base | https://clinic-api-pn9t.onrender.com/api/v1 |
 | API docs (OpenAPI) | https://clinic-api-pn9t.onrender.com/docs |
 
-There is no authentication: it is a single-clinic tool and the assignment makes it optional, so there
+Sign-in is **optional and off by default**: the assignment makes authentication optional, and a login would lock out a reviewer. Set `STAFF_PASSWORD` to turn it on (see section 3 and the settings table). With it off there is no login, so there
 are no credentials to give. **Cold start:** on Render's free plan the API sleeps when idle and the
 first request can take about a minute. The UI says "Waking the server" instead of showing a blank
 page.
@@ -31,7 +31,7 @@ page.
 | Backend | Python 3.13, FastAPI 0.143, SQLAlchemy 2.1 (sync), Alembic, psycopg 3, Pydantic 2, structlog | A recommended stack. Sync SQLAlchemy keeps transactions and row locks easy to reason about |
 | Database | PostgreSQL 16 | Not a free choice: `EXCLUDE USING gist` constraints make overlapping appointments impossible to store, which SQLite and MySQL cannot do |
 | Frontend | React 19, TypeScript 6.0, Vite 8, TanStack Query, React Router 7 | A recommended stack |
-| Tests | pytest, Hypothesis, pytest-cov (backend); Vitest and Testing Library (frontend); Schemathesis was run by hand | |
+| Tests | pytest, Hypothesis, pytest-cov (backend); Vitest and Testing Library (frontend); Schemathesis (in CI); a real Chrome with axe-core for end-to-end and accessibility checks | |
 | Quality | ruff (lint and format), mypy (strict on `domain/`), ESLint, tsc | Enforced in CI |
 | Hosting | Render (API, Docker), Neon (PostgreSQL), Vercel (UI) | Free tiers |
 | CI/CD | GitHub Actions, Docker Compose | |
@@ -134,6 +134,11 @@ npm run format:check && npm run lint && npm run typecheck   # what CI runs (npm 
 | `TEST_CLOCK_ENABLED` | backend | `true` lets a request set "now" with the `X-Test-Clock` header (reviewer aid, section 10). Off by default |
 | `LOG_LEVEL` | backend | `DEBUG`, `INFO` (default), `WARNING`, `ERROR` |
 | `DB_CONNECT_TIMEOUT_S` | backend | Seconds to wait for a database connection (default 10) |
+| `DB_POOL_SIZE`, `DB_MAX_OVERFLOW` | backend | Database connections kept per process and how many more a burst may borrow (defaults 5 and 5) |
+| `TRUSTED_PROXY_HOPS` | backend | How many reverse proxies append to `X-Forwarded-For` (default 0; the Render blueprint sets 1). The rate limit counts the entry that many places from the right, because the left side can be forged |
+| `STAFF_PASSWORD` | backend | Optional, 8+ characters. When set, every route except the health checks, the clock and the login needs a signed token, and each audit row names who made the change. Unset (the default) leaves the API open |
+| `AUTH_TOKEN_TTL_HOURS` | backend | How long a sign-in lasts (default 12) |
+| `OFFER_SWEEP_INTERVAL_S` | backend | How often lapsed waitlist offers are passed to the next patient (default 30; 0 turns the sweep off) |
 | `RATE_LIMIT_PER_MINUTE` | backend | Requests per minute from one client address before `429 RATE_LIMITED` (default 600; 0 turns it off) |
 | `SEED_ANCHOR_DATE` | seed | `YYYY-MM-DD` (India date) the seed scenarios are built around; default today |
 | `TEST_DATABASE_URL` | tests | Test database; default `postgresql+psycopg://clinic:clinic@localhost:5433/clinic_test`, created on demand |
@@ -185,10 +190,11 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,008 passing in about 4 minutes: 427 unit (no database), 302 integration and race tests (real PostgreSQL), 279 through HTTP |
-| Backend line and branch coverage, all of `app/` | 99 % (2,741 statements, 8 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 100 % (1,359 statements, none missed); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 107 passing |
+| Backend tests | 1,071 passing in about 4 minutes: 450 unit (no database), 312 integration and race tests (real PostgreSQL), 309 through HTTP |
+| Backend line and branch coverage, all of `app/` | 99 % (2,881 statements, 8 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 100 % (1,366 statements, none missed); the gate is 80 % |
+| Frontend tests (Vitest, network faked at `fetch`) | 122 passing; 90.6 % of lines, 81.6 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 19 flow checks and 28 accessibility scans (axe-core, light and dark, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one
@@ -208,9 +214,11 @@ import-scanning test keeps `domain/` free of frameworks.
 **What is deliberately not covered.** There are no browser end-to-end tests: the UI is tested with
 Testing Library against a faked `fetch`, and its coverage is not measured. The database-down and
 deadlock paths are exercised with real failures where possible and with stand-ins for the driver's
-errors where not. [Schemathesis](https://schemathesis.readthedocs.io/) 4.31 was run by hand against
-the running containers (it is not part of CI): 2,914 and 3,663 generated cases, no server error in
-any of the 26 operations. The few lines `coverage.txt` lists as missed are defensive branches.
+errors where not. [Schemathesis](https://schemathesis.readthedocs.io/) 4.31 runs in CI (the `fuzz` job)
+against the running containers with the rate limit off: all 45 operations, 4,550 generated cases in the
+last local run, no server error. The browser checks in `frontend/e2e/` run in CI too (the
+`compose-smoke` job): they book through the real form, race a stale page, triple-click Book, check the
+deposit gate and the emergency warning, load every page at phone width, and scan every page with axe-core. The few lines `coverage.txt` lists as missed are defensive branches.
 
 ## 7. API overview
 
@@ -222,6 +230,8 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/healthz` (root) | Liveness, never touches the database | |
 | GET | `/readyz` (root) | The database answers | 503 `SERVICE_UNAVAILABLE` |
 | GET | `/clock` | Effective "now", test-clock status, seed dates | 400 `INVALID_TEST_CLOCK` |
+| GET | `/auth/status` | Does this server ask for a sign-in? (open) | |
+| POST | `/auth/login` | Name and staff password for a signed Bearer token, 10 tries a minute per client (open) | 401 `UNAUTHENTICATED`, 429 |
 | GET, POST | `/doctors` | List, create | 422 |
 | DELETE | `/doctors/{id}` | Remove a doctor with no appointments on record | 404, 409 `DOCTOR_HAS_APPOINTMENTS` |
 | GET, PATCH | `/doctors/{id}` | Read; change name, speciality, cap, slot length, `accepting_bookings` | 404, 409 `SLOT_LENGTH_LOCKED` |
@@ -308,7 +318,7 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-17 | The API returns UTC and India time, accepts any explicit offset and refuses a time without one |
 | A-18 | Completed and no-show can only be marked at or after the start |
 | A-19 | Completed, cancelled, late-cancelled and no-show are final, with one exception (A-48): a wrongly recorded outcome can be corrected |
-| A-20 | No authentication; a single clinic |
+| A-20 | A single clinic. Authentication is optional: without `STAFF_PASSWORD` there is none (A-53) |
 | A-21 | A "day" for the cap is the India calendar date of the start |
 | A-22 | The trailing 30 days are the closed interval from now minus 30 x 24 hours to now |
 | A-23 | The test clock changes "now" for the domain and for `cancelled_at` and `status_changed_at`, but not the audit columns `created_at` and `updated_at` |
@@ -333,7 +343,7 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-42 | A recurring series keeps the same India time of day, books all occurrences in one transaction, and checks each exactly as a single booking; if one fails none is booked |
 | A-43 | A doctor can be deleted only while no appointment of any status references them; their hours and leave go with them |
 | A-44 | `deposit_required` on a patient is derived from the same rule as the deposit status, never stored; it is null in search results |
-| A-45 | An `Idempotency-Key` is stored with its booking in the same transaction. The same key and the same request returns the original appointment even if it was cancelled since; the same key with another request is refused. Keys are never expired in this version |
+| A-45 | An `Idempotency-Key` is stored with its booking in the same transaction. The same key and the same request returns the original appointment even if it was cancelled since; the same key with another request is refused. A key is forgotten 24 hours after it was stored (by the database's clock, so a test clock cannot expire it) |
 | A-46 | Check-in opens on the India date of the appointment and is recorded once. A checked-in patient cannot cancel or reschedule themselves; the clinic can still cancel, and complete or no-show work as before |
 | A-47 | Registering, or editing, a patient into the same name (ignoring case and extra spaces) and date of birth as another patient is refused with the matches listed, unless the caller confirms with `allow_duplicate`. Different phones do not make two people different |
 | A-48 | Corrections: completed becomes no-show or the other way round, and a late cancellation can be waived to a normal one. A note is required and the history keeps the original. A cancelled appointment cannot be restored (book again instead). The deposit flag, being derived, follows the correction |
@@ -341,6 +351,10 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-50 | An offer that lapses, is declined or is abandoned by leaving is passed to the next patient who could take the slot. A patient who declines keeps their place for other slots but is never offered the same slot again. A lapsed offer is settled when someone next reads or changes that doctor's waitlist (there are no background jobs) |
 | A-51 | Report definitions: a rescheduled appointment (cancelled only because it was moved) is counted as rescheduled, not as a cancellation, and its replacement is not a new booking; the no-show rate is no-shows out of completed plus no-shows; utilisation is appointments that took a slot (booked, completed, no-show) out of the slots the hours offered; periods are India dates |
 | A-52 | The urgent-symptom check is a keyword match on the reason. It warns and marks the appointment; it never refuses a booking and is not a clinical tool |
+| A-53 | Staff login is a shared password plus a name, producing a signed token that expires (HMAC-SHA256 under a key derived from the password, so changing the password signs everyone out). It is not a user database and has no roles: everyone signed in can do everything. The login route is limited to 10 attempts a minute per client |
+| A-54 | Every audit row records its actor: the signed-in name, `anonymous` when login is off, `system` for work the server does itself. The audit table is append-only in the database (a trigger refuses UPDATE and DELETE), not just in the code |
+| A-55 | Waitlist reads take no lock and write nothing: an offer whose time has run out is simply not shown. A server-side sweep (every 30 seconds, and safe to run on several instances) passes each lapsed slot to the next patient. Changing a doctor's waitlist does the same immediately |
+| A-56 | The rate limit counts the address `TRUSTED_PROXY_HOPS` places from the right of `X-Forwarded-For`; with none configured it counts the socket address. Reading the left-most entry would let a caller change it on every request |
 
 ## 9. Error handling and logging
 
@@ -422,9 +436,14 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
 ## 11. Known limitations
 
 - The hosted instance runs on free plans; see the cold-start note in section 2.
-- No authentication or authorisation: any caller of the API can see patient names and phone numbers.
-  Acceptable for the assignment, not for production. The rate limit (default 600 requests a minute per
-  address) is in memory, so with several instances each would count on its own.
+- **Authentication is optional and off by default.** While `STAFF_PASSWORD` is unset, any caller of the
+  API can read patient names and phones, export a patient, delete a doctor and change hours. With it set
+  there is one shared password and no roles. Production would need individual accounts and permissions.
+  The rate limit (default 600 requests a minute per address) is in memory, so with several instances
+  each counts on its own.
+- **The hosted test clock is switched on** so reviewers can try the time-based rules. That also lets any
+  caller send `X-Test-Clock` and book in the past or skip the 60-day window. After the review set
+  `TEST_CLOCK_ENABLED=false` in the Render dashboard.
 - The free hosting plan puts the API to sleep, so the first request can take about a minute. The
   test clock is enabled on the hosted instance on purpose (it is how the rules are reviewed); it is
   off by default everywhere else.

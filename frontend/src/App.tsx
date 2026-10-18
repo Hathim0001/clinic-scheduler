@@ -1,6 +1,9 @@
 import { Link, NavLink, Navigate, Route, Routes } from "react-router";
-import { useNeedsAttention } from "./api/hooks";
+import { useAuthStatus, useNeedsAttention } from "./api/hooks";
+import { setSession } from "./lib/authStore";
+import { AuthGate, useSession } from "./components/AuthGate";
 import { ClockBar } from "./components/ClockBar";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { WakeBanner } from "./components/WakeBanner";
 import Admin from "./pages/Admin";
 import Book from "./pages/Book";
@@ -12,6 +15,8 @@ import Reports from "./pages/Reports";
 function Header() {
   const attention = useNeedsAttention();
   const count = attention.data?.total ?? 0;
+  const session = useSession();
+  const auth = useAuthStatus();
   return (
     <header className="app-header">
       <div className="app-header-bar">
@@ -33,6 +38,11 @@ function Header() {
             )}
           </NavLink>
         </nav>
+        {auth.data?.required && session && (
+          <button type="button" className="small signed-in" onClick={() => setSession(null)}>
+            Sign out ({session.name})
+          </button>
+        )}
       </div>
       <ClockBar />
     </header>
@@ -52,23 +62,25 @@ function NotFound() {
 
 export default function App() {
   return (
-    <>
-      <Header />
-      <main>
-        <WakeBanner />
-        <Routes>
-          <Route path="/" element={<Navigate to="/day" replace />} />
-          <Route path="/day" element={<DayView />} />
-          <Route path="/book" element={<Book />} />
-          <Route path="/queue" element={<Queue />} />
-          <Route path="/patients" element={<PatientSearch />} />
-          <Route path="/patients/:id" element={<PatientDetail />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/doctors" element={<Admin />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-    </>
+    <ErrorBoundary>
+      <AuthGate>
+        <Header />
+        <main>
+          <WakeBanner />
+          <Routes>
+            <Route path="/" element={<Navigate to="/day" replace />} />
+            <Route path="/day" element={<DayView />} />
+            <Route path="/book" element={<Book />} />
+            <Route path="/queue" element={<Queue />} />
+            <Route path="/patients" element={<PatientSearch />} />
+            <Route path="/patients/:id" element={<PatientDetail />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/doctors" element={<Admin />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+      </AuthGate>
+    </ErrorBoundary>
   );
 }

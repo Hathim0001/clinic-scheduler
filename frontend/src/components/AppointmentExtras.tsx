@@ -112,6 +112,7 @@ export function History({ appointmentId }: { appointmentId: number }) {
                 ` from ${STATUS_TEXT[String(event.detail.from_status)] ?? event.detail.from_status} to ${
                   STATUS_TEXT[String(event.detail.to_status)] ?? event.detail.to_status
                 }: ${String(event.detail.note ?? "")}`}
+              {event.actor !== "anonymous" && event.actor !== "system" && ` (${event.actor})`}
               {(event.kind === "CANCELLED" || event.kind === "LATE_CANCELLED") &&
                 ` by ${event.detail.by === "CLINIC" ? "the clinic" : "the patient"}`}
             </li>

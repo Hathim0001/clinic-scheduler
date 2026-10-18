@@ -20,6 +20,10 @@ export const useClockInfo = () =>
     refetchInterval: 30_000,
   });
 
+/** Does this server ask for a staff sign-in? It rarely changes, so it is asked once. */
+export const useAuthStatus = () =>
+  useQuery({ queryKey: ["authStatus"], queryFn: api.authStatus, staleTime: Infinity, retry: 1 });
+
 export const useDoctors = () => useQuery({ queryKey: ["doctors"], queryFn: api.doctors });
 
 export const useSlots = (doctorId: number | null, date: string, patientId?: number) =>
@@ -36,10 +40,11 @@ export const useSchedule = (doctorId: number | null, date: string) =>
     enabled: doctorId !== null && date !== "",
   });
 
-export const usePatientSearch = (query: { phone?: string; q?: string }) =>
+export const usePatientSearch = (query: { phone?: string; q?: string }, limit = 10) =>
   useQuery({
-    queryKey: ["patients", query],
-    queryFn: () => api.searchPatients({ ...query, limit: 10 }),
+    queryKey: ["patients", query, limit],
+    queryFn: () => api.searchPatients({ ...query, limit }),
+    placeholderData: (previous) => previous, // keep the list on screen while more is loading
     enabled: Boolean(query.phone || query.q),
   });
 
@@ -224,3 +229,8 @@ export const useUpdatePatient = () =>
   );
 
 export const useDeclineOffer = () => useRefreshingMutation((id: number) => api.declineOffer(id));
+
+export const useLogin = () =>
+  useMutation({
+    mutationFn: (args: { name: string; password: string }) => api.login(args.name, args.password),
+  });

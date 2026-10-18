@@ -86,7 +86,7 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 | Data modelling and persistence (9) | 5 | Exclusion and CHECK constraints, migrations, realistic seed, derived versus stored documented |
 | API design (8) | 4 | Resource paths, pagination, OpenAPI checked by tests and a fuzz run; cancel and mark are action endpoints |
 | UI usability (6) | 4 | Flows work without instructions, buttons follow the server, loading, error and phone layouts; never tried by a real receptionist |
-| Testing (7) | 5 | 1,008 backend tests, a boundary test per number, property and race tests, 100 % on the rules layer; UI coverage not measured |
+| Testing (7) | 5 | 1,071 backend tests, 122 frontend tests with coverage measured, browser end-to-end and axe scans and Schemathesis in CI, a boundary test per number, property and race tests, 100 % on the rules layer; the UI is 90 % line-covered |
 | Deployment and operability (5) | 3 | One-command local stack, Dockerfiles, CI and blueprint committed; deployed and smoke-tested (20 simultaneous bookings give one booking); to be re-rated after rehearsing the edge cases on the hosted site |
-| Git hygiene (4) | 4 | Conventional commits with milestone tags in logical steps; one working day of history |
+| Git hygiene (4) | 4 | Conventional commits, milestone tags `m0` to `m6` on the last commit of each milestone, `v1.0` on the submission commit; one working day of history, with the assistant's later changes in logical commits |
 | Documentation and write-up (4) | 4 | README follows the format with limitations stated; this write-up cites commits |

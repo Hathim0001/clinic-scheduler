@@ -12,7 +12,8 @@ import re
 
 EMERGENCY_MESSAGE = (
     "These symptoms may be an emergency. Do not wait for an appointment: call 112 (India's "
-    "emergency number) or go to the nearest emergency department now."
+    "emergency number) or go to the nearest emergency department now. This is an automatic "
+    "keyword check, not medical advice, and it can miss things: if you are worried, get help."
 )
 
 _PHRASES = (

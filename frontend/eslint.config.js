@@ -18,4 +18,10 @@ export default defineConfig(
     files: ["*.config.{js,ts}"],
     languageOptions: { globals: globals.node },
   },
+  {
+    // End-to-end checks run in Node but pass functions to the browser (page.evaluate), where
+    // `document` and the injected `axe` exist.
+    files: ["e2e/**/*.mjs"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser, axe: "readonly" } },
+  },
 );
