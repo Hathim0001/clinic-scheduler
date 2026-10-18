@@ -190,3 +190,11 @@ def test_the_audit_check_reports_an_intact_history_and_a_broken_one(api: Api) ->
     forged = api.get("/diagnostics/audit").json()
     assert forged["intact"] is False
     assert forged["broken_event_ids"]
+
+
+@pytest.mark.parametrize("bad", ["0", "-1", "99999999999", "abc"])
+def test_ids_in_the_new_paths_are_bounded_so_they_never_reach_the_database(
+    api: Api, bad: str
+) -> None:
+    assert_error(api.post(f"/notifications/{bad}/sent", {}), 422, "VALIDATION_ERROR")
+    assert_error(api.patch(f"/staff/{bad}", {"active": True}), 422, "VALIDATION_ERROR")

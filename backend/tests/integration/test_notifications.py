@@ -241,3 +241,29 @@ def test_an_unreachable_gateway_leaves_the_message_pending_for_retry(clinic: Cli
     assert service(clinic).dispatch(dead, NOW) == 0
     (message,) = all_messages(clinic)
     assert (message.status, message.attempts) == ("PENDING", 1)
+
+
+def test_a_message_that_is_gone_or_already_handled_is_skipped_quietly(clinic: Clinic) -> None:
+    assert service(clinic)._deliver(Recorder(), 9999, NOW) == 0
+
+
+def test_the_background_task_delivers_pending_messages_through_the_gateway(
+    clinic: Clinic, database_url: str, gateway: str
+) -> None:
+    import time
+
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+    from tests.api.conftest import make_settings
+
+    consent(clinic, clinic.asha)
+    clinic.booking.book(BookCommand(clinic.rao, clinic.asha, at(10), "x"), NOW)
+    settings = make_settings(database_url, offer_sweep_interval_s=1, notify_webhook_url=gateway)
+    with TestClient(create_app(settings)):
+        deadline = time.monotonic() + 8
+        while not _Handler.received and time.monotonic() < deadline:
+            time.sleep(0.2)
+    assert len(_Handler.received) == 1
+    assert _Handler.received[0]["kind"] == "APPOINTMENT_BOOKED"
+    assert all_messages(clinic)[0].status == "SENT"

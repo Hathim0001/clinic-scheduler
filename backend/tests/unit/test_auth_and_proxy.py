@@ -220,3 +220,18 @@ def test_the_signing_secret_is_the_auth_secret_else_the_shared_password() -> Non
 def test_a_short_auth_secret_is_refused() -> None:
     with pytest.raises(ValidationError):
         Settings(database_url="postgresql+psycopg://x/y", auth_secret="too-short")
+
+
+def test_a_token_with_a_non_integer_account_id_is_refused() -> None:
+    import base64
+    import hashlib
+    import hmac
+    import json
+
+    from app.core.auth import _key, verify_claims
+
+    claims = {"n": "x", "e": 9_999, "r": "ADMIN", "i": "7"}
+    body = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
+    digest = hmac.new(_key(PASSWORD), body.encode(), hashlib.sha256).digest()
+    signature = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+    assert verify_claims(PASSWORD, f"{body}.{signature}", now=1_000) is None

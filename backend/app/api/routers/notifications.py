@@ -9,7 +9,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.api.deps import NowDep, ServicesDep
-from app.api.params import Limit, Offset
+from app.api.params import Limit, NotificationId, Offset
 from app.api.schemas.responses import PageOut
 from app.domain.timeutil import utc_iso
 from app.services.notification_service import NotificationView
@@ -84,7 +84,9 @@ def pending(services: ServicesDep) -> PendingOut:
     summary="Mark a message as sent by hand (reception phoned or messaged the patient)",
     responses={404: {"description": "NOTIFICATION_NOT_FOUND"}},
 )
-def mark_sent(notification_id: int, services: ServicesDep, now: NowDep) -> NotificationOut:
+def mark_sent(
+    notification_id: NotificationId, services: ServicesDep, now: NowDep
+) -> NotificationOut:
     view = services.notifications.mark_sent(notification_id, now)
     log.info("notification.marked_sent", notification_id=notification_id)
     return notification_out(view)

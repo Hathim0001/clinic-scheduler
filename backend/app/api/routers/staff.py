@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.api.deps import ServicesDep
+from app.api.params import StaffId
 from app.api.schemas.requests import StaffCreate, StaffPatch
 from app.domain.model import Role
 from app.services.staff_service import StaffView
@@ -57,7 +58,7 @@ def create_staff(body: StaffCreate, services: ServicesDep) -> StaffOut:
     summary="Change a role, deactivate or reactivate, or reset a password",
     responses={409: {"description": "LAST_ADMIN: the clinic needs one active administrator"}},
 )
-def update_staff(staff_id: int, body: StaffPatch, services: ServicesDep) -> StaffOut:
+def update_staff(staff_id: StaffId, body: StaffPatch, services: ServicesDep) -> StaffOut:
     changes = body.model_dump(exclude_unset=True)
     if "role" in changes:
         changes["role"] = Role(changes["role"])
