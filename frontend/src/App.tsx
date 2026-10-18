@@ -4,6 +4,7 @@ import { setSession } from "./lib/authStore";
 import { AuthGate, useSession } from "./components/AuthGate";
 import { ClockBar } from "./components/ClockBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { OfflineBanner, SkipLink, useRouteAccessibility } from "./components/PageChrome";
 import { WakeBanner } from "./components/WakeBanner";
 import Admin from "./pages/Admin";
 import Book from "./pages/Book";
@@ -63,11 +64,14 @@ function NotFound() {
 }
 
 export default function App() {
+  const main = useRouteAccessibility();
   return (
     <ErrorBoundary>
+      <SkipLink />
       <AuthGate>
         <Header />
-        <main>
+        <main id="main" ref={main} tabIndex={-1}>
+          <OfflineBanner />
           <WakeBanner />
           <Routes>
             <Route path="/" element={<Navigate to="/day" replace />} />
