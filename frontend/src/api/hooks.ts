@@ -11,7 +11,7 @@ import type {
   SeriesBody,
   StaffChanges,
 } from "./endpoints";
-import type { CancelledBy, Status, TimeWindow, WeeklyWindow } from "./types";
+import type { CancelledBy, MessageStatus, Status, TimeWindow, WeeklyWindow } from "./types";
 
 // Query hooks. The keys start with the resource name so a mutation can refresh what shows it.
 
@@ -206,6 +206,8 @@ const AFFECTS = {
   waitlist: ["waitlist"],
   // staff accounts are listed on one page only
   staff: ["staff"],
+  // a message marked sent changes the lists and the count
+  messages: ["messages"],
 } as const;
 
 type Change = keyof typeof AFFECTS;
@@ -320,6 +322,24 @@ export const useUpdatePatient = () =>
 
 export const useDeclineOffer = () =>
   useRefreshingMutation("waitlist", (id: number) => api.declineOffer(id));
+
+export const useMessages = (status: MessageStatus | undefined, limit: number) =>
+  useQuery({
+    queryKey: ["messages", status ?? null, limit],
+    queryFn: () => api.messages(status, limit),
+    placeholderData: (previous) => previous,
+  });
+
+/** How many messages still need sending or phoning through, for the badge in the menu. */
+export const usePendingMessages = () =>
+  useQuery({
+    queryKey: ["messages", "pending"],
+    queryFn: api.pendingMessages,
+    refetchInterval: 60_000,
+  });
+
+export const useMarkMessageSent = () =>
+  useRefreshingMutation("messages", (id: number) => api.markMessageSent(id));
 
 export const useStaff = (enabled: boolean) =>
   useQuery({ queryKey: ["staff"], queryFn: api.staff, enabled });

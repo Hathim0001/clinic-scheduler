@@ -1,5 +1,7 @@
 import { request } from "./client";
 import type {
+  Message,
+  MessageStatus,
   Role,
   StaffAccount,
   ProofReport,
@@ -106,6 +108,11 @@ export interface LoginResult {
 export const api = {
   clock: () => request<ClockInfo>("GET", "/clock"),
   authStatus: () => request<{ required: boolean; accounts: boolean }>("GET", "/auth/status"),
+  messages: (status: MessageStatus | undefined, limit: number) =>
+    request<Page<Message>>("GET", "/notifications", { query: { status, limit } }),
+  pendingMessages: () => request<{ count: number }>("GET", "/notifications/pending"),
+  markMessageSent: (id: number) =>
+    request<Message>("POST", `/notifications/${id}/sent`, { body: {} }),
   staff: () => request<StaffAccount[]>("GET", "/staff"),
   createStaff: (body: NewStaff) => request<StaffAccount>("POST", "/staff", { body }),
   updateStaff: (id: number, changes: StaffChanges) =>

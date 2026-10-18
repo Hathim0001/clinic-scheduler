@@ -11,6 +11,23 @@ export interface StaffAccount {
   active: boolean;
 }
 
+export type MessageStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
+
+export interface Message {
+  id: number;
+  patient_id: number;
+  appointment_id: number | null;
+  kind: string;
+  to_phone: string;
+  body: string;
+  status: MessageStatus;
+  attempts: number;
+  last_error: string | null;
+  created_at_utc: string;
+  sent_at_utc: string | null;
+  sent_via: "GATEWAY" | "MANUAL" | null;
+}
+
 export type Status = "BOOKED" | "COMPLETED" | "CANCELLED" | "LATE_CANCELLED" | "NO_SHOW";
 export type Action = "cancel" | "reschedule" | "complete" | "no-show" | "check-in" | "correct";
 export type CancelledBy = "PATIENT" | "CLINIC";

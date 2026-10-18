@@ -1,5 +1,5 @@
 import { Link, NavLink, Navigate, Route, Routes } from "react-router";
-import { useAuthStatus, useNeedsAttention } from "./api/hooks";
+import { useAuthStatus, useNeedsAttention, usePendingMessages } from "./api/hooks";
 import { setSession } from "./lib/authStore";
 import { AuthGate, useIsAdmin, useSession } from "./components/AuthGate";
 import { ClockBar } from "./components/ClockBar";
@@ -10,6 +10,7 @@ import Admin from "./pages/Admin";
 import Book from "./pages/Book";
 import DayView from "./pages/DayView";
 import { PatientDetail, PatientSearch } from "./pages/Patients";
+import Messages from "./pages/Messages";
 import Proof from "./pages/Proof";
 import Queue from "./pages/Queue";
 import Reports from "./pages/Reports";
@@ -18,6 +19,7 @@ import Staff from "./pages/Staff";
 function Header() {
   const attention = useNeedsAttention();
   const count = attention.data?.total ?? 0;
+  const messagesWaiting = usePendingMessages().data?.count ?? 0;
   const session = useSession();
   const auth = useAuthStatus();
   const isAdmin = useIsAdmin();
@@ -32,6 +34,14 @@ function Header() {
           <NavLink to="/book">Book</NavLink>
           <NavLink to="/queue">Queue</NavLink>
           <NavLink to="/patients">Patients</NavLink>
+          <NavLink to="/messages">
+            Messages
+            {messagesWaiting > 0 && (
+              <span className="badge-attention" aria-label={`${messagesWaiting} messages waiting`}>
+                {messagesWaiting}
+              </span>
+            )}
+          </NavLink>
           <NavLink to="/reports">Report</NavLink>
           {isAdmin && <NavLink to="/proof">Proof</NavLink>}
           {isAdmin && auth.data?.accounts && <NavLink to="/staff">Staff</NavLink>}
@@ -83,6 +93,7 @@ export default function App() {
             <Route path="/queue" element={<Queue />} />
             <Route path="/patients" element={<PatientSearch />} />
             <Route path="/patients/:id" element={<PatientDetail />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/proof" element={<Proof />} />
             <Route path="/staff" element={<Staff />} />

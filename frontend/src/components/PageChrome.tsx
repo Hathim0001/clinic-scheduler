@@ -7,6 +7,7 @@ const TITLES: [prefix: string, title: string][] = [
   ["/book", "Book an appointment"],
   ["/queue", "Queue"],
   ["/patients", "Patients"],
+  ["/messages", "Messages"],
   ["/reports", "Report"],
   ["/proof", "Prove the rules"],
   ["/staff", "Staff accounts"],
