@@ -269,3 +269,23 @@ def test_the_openapi_description_lists_the_endpoints(api: Api) -> None:
     assert "/healthz" in schema["paths"]
     assert api.http.get("/docs").status_code == 200
     assert set(ERROR_KEYS) == {"code", "message", "details", "request_id"}
+
+
+# ------------------------------------------------------------------------ security headers
+
+
+@pytest.mark.parametrize("path", ["/healthz", f"{BASE}/doctors", f"{BASE}/patients/99999"])
+def test_every_response_carries_the_protective_headers(api: Api, path: str) -> None:
+    """Success and error answers alike: the headers come from the middleware, not each route."""
+    response = api.http.get(path, headers=clock(NOW))
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["cache-control"] == "no-store"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert "max-age=" in response.headers["strict-transport-security"]
+
+
+def test_the_interactive_docs_are_not_locked_out_by_the_api_page_policy(api: Api) -> None:
+    response = api.http.get("/docs")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "content-security-policy" not in response.headers

@@ -32,6 +32,19 @@ log = structlog.get_logger()
 MAX_BODY_BYTES = 64 * 1024
 _REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 _QUIET_PATHS = frozenset({"/healthz"})
+_DOC_PATHS = ("/docs", "/redoc", "/openapi.json")
+
+# Sent on every response. The API only returns JSON (plus an .ics file), so the page policy is the
+# strictest possible; the interactive docs load scripts and are exempt from it. Patient data must
+# never be kept by a browser or a shared cache, hence no-store.
+_SECURITY_HEADERS = (
+    (b"x-content-type-options", b"nosniff"),
+    (b"referrer-policy", b"no-referrer"),
+    (b"cache-control", b"no-store"),
+    (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+    (b"strict-transport-security", b"max-age=63072000; includeSubDomains"),
+)
+_API_POLICY = (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'")
 
 
 def _header(scope: Scope, name: bytes) -> str | None:
@@ -46,6 +59,15 @@ def _request_id(scope: Scope) -> str:
     if supplied is not None and _REQUEST_ID.fullmatch(supplied):
         return supplied
     return uuid.uuid4().hex
+
+
+def _security_headers(path: str, existing: list[tuple[bytes, bytes]]) -> list[tuple[bytes, bytes]]:
+    """The protective headers a response does not already carry."""
+    present = {key for key, _ in existing}
+    wanted = list(_SECURITY_HEADERS)
+    if not path.startswith(_DOC_PATHS):
+        wanted.append(_API_POLICY)
+    return [(key, value) for key, value in wanted if key not in present]
 
 
 class RequestContextMiddleware:
@@ -74,6 +96,7 @@ class RequestContextMiddleware:
                 outcome["started"] = True
                 headers = [(k, v) for k, v in message.get("headers", []) if k != b"x-request-id"]
                 headers.append((b"x-request-id", request_id.encode("ascii")))
+                headers.extend(_security_headers(scope["path"], headers))
                 message = {**message, "headers": headers}
             await send(message)
 
