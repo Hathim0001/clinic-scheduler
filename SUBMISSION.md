@@ -1,57 +1,31 @@
-# SUBMISSION
+# SUBMISSION: Problem 2, Clinic Appointment Scheduler
 
-Problem 2: Clinic Appointment Scheduler. Draft written with Claude Code (see README section 12 and
-PROMPTS.md); the author is expected to read it, correct it and own it.
+Most of the code was written with Claude Code; every prompt is in `PROMPTS.md` and the disclosure is README section 12. `docs/CODE-TOUR.md` maps each rule to its code and test.
 
 ## A. What I built
 
-A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI,
-started locally with one `docker compose up --build`. All Core features are complete: doctors with
-weekly hours and date overrides, patients with unique phones, free slots, booking, cancelling,
-rescheduling, completed and no-show, patient history, a day view, today's queue and the reviewer test
-clock. All seven business rules are enforced in the backend and hold under concurrent requests, with a
-boundary test for every number. Hosted: UI on Vercel, API on Render, database on Neon (links in README section 2). Partial: the UI has component tests but no browser end-to-end tests.
-I also built the Stretch items: a per-doctor, per-day waitlist with an automatic 30-minute offer when a
-slot is cancelled or moved, recurring appointments (all or none), and calendar (.ics) export.
+A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI, started locally with `docker compose up --build`. All Core features work: doctors with weekly hours and date overrides, patients with a unique phone, free slots, booking, cancelling, rescheduling, completed and no-show, history, a day view, today's queue and the reviewer test clock. All seven business rules are enforced in the backend and hold under simultaneous requests, with a boundary test for every number. Hosted on Vercel (UI), Render (API) and Neon (database), with links in README section 2. I also built the Stretch items (waitlist with automatic offers, recurring appointments, calendar export) and three additions: nearest alternatives when a day is full, a "prove the rules" page that rolls back what it runs, and a refill metric in the report.
 
 ## B. Three design decisions
 
-**1. Lock the doctor row before every booking and every change to the hours.** *Alternative:*
-exclusion constraints alone, or SERIALIZABLE transactions with retries. *Why:* a constraint can stop
-an overlap but not a count (the daily cap), and a change to the hours must not interleave with a
-booking. Without the lock ten simultaneous bookings all passed a cap of three; with it exactly three
-did. *Cost:* writes for one doctor are serialised, and every code path must keep the lock order.
+**1. Lock the doctor row before every booking and every change to the hours.** *Alternative:* exclusion constraints alone, or SERIALIZABLE retries. *Why:* a constraint stops an overlap but not a count; without the lock ten simultaneous bookings all passed a cap of three, with it exactly three did. *Cost:* writes for one doctor are serialised, every path must take locks in the same order (appointment, doctors by id, waitlist entry, patient) to avoid deadlock, and a real deadlock is retried once.
 
-**2. One pure predicate, `first_violation`, decides both which slots are offered and which bookings
-are accepted.** *Alternative:* separate checks in the UI, the slot list and the booking endpoint.
-*Why:* the UI can never offer a slot the API refuses, and the rules need no database or clock to test,
-because "now" is an argument. *Cost:* each check loads that day's appointments into memory and copies
-rows into dataclasses.
+**2. One pure predicate, `first_violation`, decides both which slots are offered and which bookings are accepted.** *Alternative:* separate checks in the UI, the slot list and the endpoint. *Why:* the UI can never offer a time the API refuses, and "now" is an argument, so rules test without a database or clock. *Cost:* each check loads that day's appointments into memory and copies rows into dataclasses, which is fine for a two-doctor clinic but would need a query-side filter for a large one.
 
-**3. Derive the deposit flag and `needs_attention` instead of storing them.** *Alternative:* a flag
-column kept up to date by a job or a trigger. *Why:* a derived value cannot go stale, needs no
-scheduler and follows the test clock. *Cost:* it is computed on each read, so the `needs_attention`
-filter scans the matching rows.
+**3. Derive the deposit flag instead of storing it.** *Alternative:* a column kept current by a job. *Why:* a derived value cannot go stale and follows the test clock. The same applies to `needs_attention`. *Cost:* it is computed on each read, so the needs-attention list scans every matching row and would need a stored flag on a large database.
 
 ## C. The hardest part
 
-Proving the locking design instead of believing it. A same-slot race passed even with the doctor lock
-removed, because the exclusion constraint already stops overlaps, so that test said nothing about the
-lock. The tests that do need it are the daily cap under ten simultaneous bookings and a booking racing
-a leave day: without the lock both fail on every run (`59608e2`, `d2158ee`). The lock lives in
-`45fc2b5` (availability) and `0978a53` (booking). A mutation run on my rule tests then showed that
-three of ten planted bugs (a 61-day horizon, a non-strict "past" check, an exclusive 30-day look-back)
-survived random scenarios; I biased the generators toward boundary days and ages until all ten were
-caught (`ad3fd0e`). A real PostgreSQL deadlock, retried once, is tested in `0248846`.
+Proving the locking instead of believing it. A same-slot race passed even with the lock removed, because the exclusion constraint already stops overlaps, so that test proved nothing about the lock. Only the daily cap under ten simultaneous bookings and a booking racing a leave day fail without it (`ffd67af`, `846a8b4`); the ordered locks are in `a86d53f` and `6a2f532`. A mutation run then showed three of ten planted bugs (a 61-day horizon, a non-strict "past", an exclusive 30-day look-back) survived random scenarios, so I biased the generators to boundary days (`c916346`). The assistant also proposed shared phone numbers to lift a documented limit; I removed them again because the brief says phone is unique (`0e11e9d`), and the migration history (0005, then 0006) shows that detour.
 
 ## D. How I handle failure
 
-| Failure | Travels as | The user sees | Logged |
+| Failure | Travels as | User sees | Logged |
 |---|---|---|---|
-| Bad request | Pydantic schema, body guard | 400, 413 or 422 listing the fields, never the value | info |
-| Rule violation | `RuleViolation` or `ConflictError` from `domain/`, transaction rolled back | 422 or 409 with a code and details | warning, code and ids |
-| Database error | Constraint violation mapped by SQLSTATE and constraint name | The same 409 or 422 the pre-check gives; a database that is down or a lock timeout gives 503 with `Retry-After` | warning, or error for 503 |
-| Unexpected exception | Caught by the request-context middleware, inside CORS | 500 with a generic message and the request id | error with stack trace (server only) |
+| Bad request | Pydantic schema, body guard | 400, 413 or 422 naming the field, never the value | info |
+| Rule violation | `RuleViolation` / `ConflictError`, transaction rolled back | 409 or 422 with a code and details | warning, code and ids |
+| Database error | Mapped by SQLSTATE and constraint name | The same 409 or 422; database down gives 503 with `Retry-After` | warning, error for 503 |
+| Unexpected exception | Caught by the middleware, inside CORS | 500, generic message, request id | error with stack, server only |
 
 Every response has one shape: `code`, `message`, `details`, `request_id`.
 
@@ -59,34 +33,36 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 
 | Milestone | Date completed | Commit |
 |---|---|---|
-| M0 Scaffold and tooling | 2026-10-17 | `f280d09` |
-| M1 Schema, seed and rule tests | 2026-10-17 | `a3c0f93` |
-| M2 Rules and services | 2026-10-17 | `0248846` |
-| M3 API | 2026-10-17 | `e672db2` |
-| M4 UI | 2026-10-17 | `838ef7a` |
-| M5 Docker, CI, deployment config | 2026-10-17 | `b9c8181` |
-| M6 Documentation | 2026-10-17 | `573f409` |
+| M0 Scaffold and tooling | 2026-10-17 | `b2bb58a` |
+| M1 Schema, seed and rule tests | 2026-10-17 | `efff237` |
+| M2 Rules and services | 2026-10-17 | `f44da64` |
+| M3 API | 2026-10-17 | `a02efc2` |
+| M4 UI | 2026-10-17 | `ba91b44` |
+| M5 Docker, CI, deployment config | 2026-10-17 | `75ff1b1` |
+| M6 Documentation | 2026-10-17 | `334ed71` |
+
+These are the tagged `m0` to `m6` commits. Work after M6 (Stretch features, redesign, hardening) is tagged `[M2]` to `[M6]` by area, and `v1.0` is the final commit.
 
 ## F. If I had two more days
 
-1. Deploy to Render, Neon and Vercel and rehearse every edge case on the hosted instance: a missing hosted link costs the most.
-2. Playwright end-to-end tests for the booking, cancelling and conflict-dialog flows, because the UI is only component-tested.
-3. Authentication with roles and rate limiting, since the API exposes patient names and phones.
-4. Corrections of final statuses with an audit trail; today a mistaken no-show stays.
-5. A stored, indexed `needs_attention` and pagination of the patient history, for a database that is no longer tiny.
+1. Real notifications: an offered waitlist slot is only visible on the patient page, nobody is messaged.
+2. Individual staff accounts with roles; today there is one optional shared password.
+3. A person who uses a screen reader to audit the UI; axe-core passes, which is not the same.
+4. Consent records, retention and deletion on request for patient data (India's DPDP Act).
+5. A stored, indexed `needs_attention` and load tests beyond ten simultaneous connections.
 
 ## G. Self-assessment
 
 | Criterion (weight) | Score | Why |
 |---|---|---|
-| Business logic correctness (25) | 5 | All seven rules and the listed edge cases are enforced and tested, including races; the open readings are numbered assumptions |
-| Code clarity and structure (14) | 4 | Clear layers guarded by an import test, linters and strict types; a few long files such as `Admin.tsx` |
-| Error and exception handling (10) | 5 | Typed errors, one shape, transactions, no stack traces to clients, worded messages in the UI |
-| Logging and observability (8) | 4 | Structured JSON with request id and domain ids, warnings with codes, health endpoints; hosted logs are owner-only |
-| Data modelling and persistence (9) | 5 | Exclusion and CHECK constraints, migrations, realistic seed, derived versus stored documented |
-| API design (8) | 4 | Resource paths, pagination, OpenAPI checked by tests and a fuzz run; cancel and mark are action endpoints |
-| UI usability (6) | 4 | Flows work without instructions, buttons follow the server, loading, error and phone layouts; never tried by a real receptionist |
-| Testing (7) | 5 | 1,150 backend tests, 135 frontend tests with coverage measured, browser end-to-end and axe scans and Schemathesis in CI, a boundary test per number, property and race tests, 100 % on the rules layer; the UI is 90 % line-covered |
-| Deployment and operability (5) | 3 | One-command local stack, Dockerfiles, CI and blueprint committed; deployed and smoke-tested (20 simultaneous bookings give one booking); to be re-rated after rehearsing the edge cases on the hosted site |
-| Git hygiene (4) | 4 | Conventional commits, milestone tags `m0` to `m6` on the last commit of each milestone, `v1.0` on the submission commit; one working day of history, with the assistant's later changes in logical commits |
-| Documentation and write-up (4) | 4 | README follows the format with limitations stated; this write-up cites commits |
+| Business logic (25) | 5 | Seven rules and the edge cases enforced, tested at each boundary and under races; open readings are numbered assumptions |
+| Code clarity (14) | 4 | Layers guarded by an import test, strict types; `Admin.tsx` is still long |
+| Error handling (10) | 5 | Typed errors, one shape, rollback, no stack to clients |
+| Logging (8) | 4 | Structured JSON with request id and codes, no personal data; hosted logs are owner-only |
+| Data modelling (9) | 5 | Exclusion, CHECK and UNIQUE constraints, migrations, derived versus stored documented |
+| API design (8) | 4 | Resource paths, pagination, OpenAPI fuzzed; cancel and mark are action endpoints |
+| UI (6) | 4 | Flows work unaided, axe clean, phone layouts; never tried by a real receptionist |
+| Testing (7) | 5 | 1,165 backend and 141 frontend tests, 99 % backend coverage, browser and fuzz runs in CI |
+| Deployment (5) | 4 | One-command stack and CI; hosted and checked live (see README section 2) |
+| Git hygiene (4) | 3 | Conventional commits, one author, tags; but commits were made in batches (several share a minute) over two days, not a steady cadence. Timestamps are the real ones, unedited |
+| Documentation (4) | 4 | README in the required order, limitations stated, this write-up cites commits |

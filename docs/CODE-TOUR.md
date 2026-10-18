@@ -79,6 +79,6 @@ Each is small on purpose. Do the change, run the named test, and say why it fail
   cannot offer a refusal. The server still re-checks at booking.
 - *What is untested?* Real SMS/email, real payments (none exist), browsers other than Chrome, and
   load beyond a handful of concurrent connections.
-- *What did the AI get wrong along the way?* PROMPTS.md lists corrections; the clearest is the
+- *What did the AI get wrong along the way?* the git history shows the corrections; the clearest is the
   shared-phone feature, which the AI proposed to lift a documented limit; it was removed again
   because the brief says phone is unique (migrations 0005 then 0006 record that detour).

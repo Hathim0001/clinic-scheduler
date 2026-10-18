@@ -1,5 +1,7 @@
 # Clinic Appointment Scheduler
 
+## 1. Title and one-liner
+
 **Problem 2: Clinic Appointment Scheduler** (KJBN Labs software engineering internship take-home).
 A booking system for a two-doctor clinic that takes appointments by phone. It only offers slots that
 can really be booked and enforces availability, the slot grid, double booking, the daily cap,
@@ -190,11 +192,11 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,150 passing in about 5 minutes: 462 unit (no database), 354 integration and race tests (real PostgreSQL), 334 through HTTP |
-| Backend line and branch coverage, all of `app/` | 99 % (2,912 statements, 8 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 100 % (1,386 statements, none missed); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 135 passing; 90.5 % of lines, 82.5 % of branches covered (gate: 85 % lines, 75 % branches) |
-| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 21 flow checks and 28 accessibility scans (axe-core, light and dark, desktop and phone) |
+| Backend tests | 1,165 passing in about 6 minutes: 463 unit (no database), 358 integration and race tests (real PostgreSQL), 344 through HTTP |
+| Backend line and branch coverage, all of `app/` | 99 % (3,202 statements, 8 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 100 % (1,607 statements, none missed); the gate is 80 % |
+| Frontend tests (Vitest, network faked at `fetch`) | 141 passing; 90.4 % of lines, 83.3 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 25 flow checks and 32 accessibility scans (axe-core, light and dark, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one
@@ -205,17 +207,16 @@ mutation run (ten deliberate bugs, for example an exclusive look-back) is caught
 Integration tests run the services against real PostgreSQL, including races between real
 connections: ten bookings of one slot give exactly one success, a cap of three holds against ten
 simultaneous bookings, a booking racing a leave day always has one winner, and a real deadlock is
-retried. 243 tests go through HTTP: every error code, hostile input (bad JSON, NaN, huge or
+retried. 344 tests go through HTTP: every error code, hostile input (bad JSON, NaN, huge or
 deeply nested bodies, ids out of range, year 1 and 9999, control characters, wrong methods, bad test
 clocks), CORS and request ids, and logging without personal data. A test runs the burst script
 against a real uvicorn socket. The schema is tested constraint by constraint, and an
 import-scanning test keeps `domain/` free of frameworks.
 
-**What is deliberately not covered.** There are no browser end-to-end tests: the UI is tested with
-Testing Library against a faked `fetch`, and its coverage is not measured. The database-down and
+**What is deliberately not covered.** Browsers other than Chrome, real SMS or email (none is sent), and load beyond a handful of simultaneous connections. The database-down and
 deadlock paths are exercised with real failures where possible and with stand-ins for the driver's
 errors where not. [Schemathesis](https://schemathesis.readthedocs.io/) 4.31 runs in CI (the `fuzz` job)
-against the running containers with the rate limit off: all 45 operations, 4,550 generated cases in the
+against the running containers with the rate limit off: all 47 operations in the
 last local run, no server error. The browser checks in `frontend/e2e/` run in CI too (the
 `compose-smoke` job): they book through the real form, race a stale page, triple-click Book, check the
 deposit gate and the emergency warning, load every page at phone width, and scan every page with axe-core. The few lines `coverage.txt` lists as missed are defensive branches.
@@ -261,7 +262,9 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | DELETE | `/waitlist/{id}` | Leave the waitlist | 404 `WAITLIST_ENTRY_NOT_FOUND`, 409 |
 | POST | `/waitlist/{id}/decline` | Say no to an offer but keep the place; the slot goes to the next patient | 404, 409 `INVALID_TRANSITION` |
 | POST | `/waitlist/{id}/accept` | Turn an offer into a booking, with every rule checked | 409 `OFFER_EXPIRED`, `SLOT_TAKEN`, 422 `DEPOSIT_REQUIRED` |
-| GET | `/reports/summary?from&to` | Per doctor: appointments, outcomes, rates, utilisation (at most 92 days) | 422 |
+| GET | `/alternatives?doctor_id&date&patient_id?&slots?&limit?` | The nearest bookable times when a day has none: the same doctor's next days first, then other doctors (same speciality first); every option passed the booking rules for this patient and length | 404, 422 |
+| GET | `/reports/summary?from&to` | Per doctor: appointments, outcomes, rates, utilisation, and freed / refilled / refilled-by-waitlist slots with a recovery rate (at most 92 days) | 422 |
+| POST | `/proof` | Run the rule scenarios through the real services and database inside a transaction that is always rolled back; returns each scenario's expected and observed result and the row counts before and after | |
 | POST | `/triage` | Does a text describe symptoms that may need emergency care? (a hint for the form, never a block) | 422 |
 
 Lists are paginated (`limit` 1 to 100, default 20; `offset` 0 to 100,000) and return
@@ -357,6 +360,9 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-56 | The rate limit counts the address `TRUSTED_PROXY_HOPS` places from the right of `X-Forwarded-For`; with none configured it counts the socket address. Reading the left-most entry would let a caller change it on every request |
 | A-57 | Rescheduling keeps the visit's length: in slots with the same doctor, in minutes with another, and it is refused when the minutes do not divide into that doctor's slots. A freed multi-slot visit is offered to the waitlist as a visit of that length, and a patient is only offered it if the whole of it suits them |
 | A-58 | After a change the UI refreshes only the lists that change can alter (a table in `api/hooks.ts` names them), not everything on screen; changing the test clock is the one change that refreshes all |
+| A-59 | `GET /alternatives` only reads. It probes up to 14 days for the same doctor and 3 days for other accepting doctors with the same `free_slots` used for booking, returns each (doctor, day)'s first start, and keeps half the list for the patient's own doctor so a busy fortnight cannot crowd out a free colleague. Booking an alternative goes through the normal booking path |
+| A-60 | The rule proof (`POST /proof`) runs on a fixed clock with its own doctors and patients in a transaction that is rolled back (services' transactions become savepoints), so it neither reads nor keeps clinic data. It does consume database sequence numbers, so ids in the real tables may skip. Concurrency is not part of it: that is proven by the race tests, which need several real connections |
+| A-61 | Recovery counts a cancellation (not a move) as *refilled* when another active appointment of the same doctor overlaps its time and was booked, by the effective clock, at or after the cancellation. It is credited to the waitlist when that booking's `BOOKED` event says `via: WAITLIST` |
 
 ## 9. Error handling and logging
 
@@ -460,8 +466,16 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
 - The `needs_attention` list is derived from the current hours for every matching row, so on a very
   large database it would need a stored flag or an index. The patient history page loads 50
   appointments and a button shows up to 100; the needs-attention list shows the first 100.
-- There are no browser end-to-end tests, frontend coverage is not measured, and accessibility was
-  checked by hand against the basics (labels, keyboard, visible focus, text alongside colour), not audited.
+- Accessibility is checked by axe-core on every page (light and dark, desktop and phone) and by hand
+  for keyboard use, but it has not been audited by a person who uses a screen reader.
+- **Privacy.** The API returns patient names and phones to anyone who can call it unless
+  `STAFF_PASSWORD` is set. The duplicate-phone error returns only the owner's id, and logs carry
+  ids and codes, never names, phones or reasons. Every response is `no-store`, with `nosniff`,
+  `no-referrer`, HSTS and a CSP; the UI is served with a CSP that allows scripts only from itself
+  and requests only to its API. Under India's DPDP Act a real deployment would also need consent
+  records, a retention rule and deletion on request; `GET /patients/{id}/export` is the access half.
+- **The rule proof** (`POST /proof`) is open to anyone who can call the API when sign-in is off. It
+  keeps nothing, but each run holds a database connection for a few seconds and burns sequence ids.
 - The seed data is relative to the date it was created on: the flags drift as days pass, which is why
   there is a "Seed day" clock preset and a re-seed command.
 - `Idempotency-Key` is optional and applies to single bookings only (not to series, cancel or
@@ -475,6 +489,10 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
   suggests writing the business rules by hand; here they were written by the assistant from the
   plan, so the person submitting this has to read and understand them before the review call.
   Commits made with its help carry a `Co-Authored-By: Claude` trailer.
+- **To explain it live:** [docs/CODE-TOUR.md](docs/CODE-TOUR.md) maps every rule to the code that
+  decides it and the test that proves it, and lists drills (change a number, say what fails and why).
+  Market research and a reasoned answer on an LLM component are in
+  [docs/COMPETITIVE-ANALYSIS.md](docs/COMPETITIVE-ANALYSIS.md).
 - **Every prompt** given to it is logged in [PROMPTS.md](PROMPTS.md), with what was done with the
   answer. The full planning brief is in
   [docs/prompts/01-planning-brief.md](docs/prompts/01-planning-brief.md).

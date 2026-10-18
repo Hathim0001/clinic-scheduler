@@ -1,7 +1,7 @@
 == Test run ==
 ........................................................................ [ 98%]
-............                                                             [100%]
-1164 passed in 343.31s (0:05:43)
+.............                                                            [100%]
+1165 passed in 334.12s (0:05:34)
 
 == Line and branch coverage of app/ ==
 Name                                   Stmts   Miss Branch BrPart  Cover   Missing
@@ -58,14 +58,14 @@ app\services\booking_service.py          183      0     24      0   100%
 app\services\doctor_service.py            81      0     24      0   100%
 app\services\meta_service.py              18      0      0      0   100%
 app\services\patient_service.py           83      0     18      0   100%
-app\services\proof_service.py            164      2      8      0    99%   394-395
+app\services\proof_service.py            164      0      8      0   100%
 app\services\record_service.py            99      0      8      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    142      0      0      0   100%
 app\services\waitlist_offers.py           41      0     10      0   100%
 app\services\waitlist_service.py         147      0     28      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   3202     10    464      9    99%
+TOTAL                                   3202      8    464      9    99%
 
 8 empty files skipped.
 
@@ -92,13 +92,13 @@ app\services\booking_service.py          183      0     24      0   100%
 app\services\doctor_service.py            81      0     24      0   100%
 app\services\meta_service.py              18      0      0      0   100%
 app\services\patient_service.py           83      0     18      0   100%
-app\services\proof_service.py            164      2      8      0    99%   394-395
+app\services\proof_service.py            164      0      8      0   100%
 app\services\record_service.py            99      0      8      0   100%
 app\services\support.py                   14      0      2      0   100%
 app\services\views.py                    142      0      0      0   100%
 app\services\waitlist_offers.py           41      0     10      0   100%
 app\services\waitlist_service.py         147      0     28      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                   1607      2    262      0    99%
+TOTAL                                   1607      0    262      0   100%
 
 2 empty files skipped.
