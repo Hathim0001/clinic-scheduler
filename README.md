@@ -264,11 +264,20 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | POST | `/waitlist/{id}/accept` | Turn an offer into a booking, with every rule checked | 409 `OFFER_EXPIRED`, `SLOT_TAKEN`, 422 `DEPOSIT_REQUIRED` |
 | GET | `/alternatives?doctor_id&date&patient_id?&slots?&limit?` | The nearest bookable times when a day has none: the same doctor's next days first, then other doctors (same speciality first); every option passed the booking rules for this patient and length | 404, 422 |
 | GET | `/reports/summary?from&to` | Per doctor: appointments, outcomes, rates, utilisation, and freed / refilled / refilled-by-waitlist slots with a recovery rate (at most 92 days) | 422 |
-| POST | `/proof` | Run the rule scenarios through the real services and database inside a transaction that is always rolled back; returns each scenario's expected and observed result and the row counts before and after | |
+| POST | `/diagnostics/proof` | Run the rule scenarios through the real services and database inside a transaction that is always rolled back; returns each scenario's expected and observed result and the row counts before and after | |
 | POST | `/triage` | Does a text describe symptoms that may need emergency care? (a hint for the form, never a block) | 422 |
 
 Lists are paginated (`limit` 1 to 100, default 20; `offset` 0 to 100,000) and return
 `{items, total, limit, offset}`. The only unpaginated lists are bounded by construction.
+
+**API conventions.** Collections and things are resources (`/patients`, `/appointments/{id}`) with
+`GET`, `POST`, `PATCH` and `DELETE` as usual. A change of state that is more than an edit is a
+named action under the resource: `cancel`, `reschedule`, `complete`, `no-show`, `check-in`, `correct`,
+`accept`, `decline`. These are commands with rules, side effects (a waitlist offer, a strike) and
+their own errors, which a `PATCH` of `status` could not express safely. They are `POST` because they
+are not idempotent. Every list is paginated and returns `{items, total, limit, offset}`; every failure
+has the one error shape in section 9; every instant is returned as `..._utc` and `..._ist`;
+`/diagnostics/*` is for operators and is not part of the clinic workflow.
 
 ## 8. Business rules and assumptions
 
@@ -361,7 +370,7 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-57 | Rescheduling keeps the visit's length: in slots with the same doctor, in minutes with another, and it is refused when the minutes do not divide into that doctor's slots. A freed multi-slot visit is offered to the waitlist as a visit of that length, and a patient is only offered it if the whole of it suits them |
 | A-58 | After a change the UI refreshes only the lists that change can alter (a table in `api/hooks.ts` names them), not everything on screen; changing the test clock is the one change that refreshes all |
 | A-59 | `GET /alternatives` only reads. It probes up to 14 days for the same doctor and 3 days for other accepting doctors with the same `free_slots` used for booking, returns each (doctor, day)'s first start, and keeps half the list for the patient's own doctor so a busy fortnight cannot crowd out a free colleague. Booking an alternative goes through the normal booking path |
-| A-60 | The rule proof (`POST /proof`) runs on a fixed clock with its own doctors and patients in a transaction that is rolled back (services' transactions become savepoints), so it neither reads nor keeps clinic data. It does consume database sequence numbers, so ids in the real tables may skip. Concurrency is not part of it: that is proven by the race tests, which need several real connections |
+| A-60 | The rule proof (`POST /diagnostics/proof`) runs on a fixed clock with its own doctors and patients in a transaction that is rolled back (services' transactions become savepoints), so it neither reads nor keeps clinic data. It does consume database sequence numbers, so ids in the real tables may skip. Concurrency is not part of it: that is proven by the race tests, which need several real connections |
 | A-61 | Recovery counts a cancellation (not a move) as *refilled* when another active appointment of the same doctor overlaps its time and was booked, by the effective clock, at or after the cancellation. It is credited to the waitlist when that booking's `BOOKED` event says `via: WAITLIST` |
 
 ## 9. Error handling and logging
@@ -389,19 +398,33 @@ in one transaction, so a failure leaves the data as it was.
 `request_id`, which is also returned in the `X-Request-ID` header and in every error body. A
 caller's id is accepted only if it matches `[A-Za-z0-9._-]{1,64}`, otherwise a new one is made.
 
-| Level | Events |
-|---|---|
-| info | `request` (method, path, status, `duration_ms`, domain ids, `effective_now` only when the test clock is used), `appointment.booked`, `.cancelled`, `.rescheduled`, `.completed`, `.no_show`, `availability.changed`, `doctor.*`, `patient.created` |
-| warning | `request.rejected` for every rule violation and every constraint mapped from the database, with `code`, `status` and the ids |
-| error | `request.failed` (with the stack trace), `database.unavailable`, `database.error` |
-| debug | `/healthz` probes |
+| Level | Event | When | Fields (never a patient's name, phone, date of birth or reason) |
+|---|---|---|---|
+| info | `request` | Every response except `/healthz` and `/metrics` (those are debug) | method, path, status, `duration_ms`, domain ids, `effective_now` only with the test clock |
+| info | `appointment.booked`, `.replayed`, `.series_booked`, `.cancelled`, `.rescheduled`, `.completed`, `.no_show`, `.checked_in`, `.corrected` | A change to an appointment committed | appointment, doctor and patient ids and the outcome, such as whether a cancellation was late |
+| info | `patient.created`, `patient.updated`, `doctor.created`, `.updated`, `.deleted` | A directory change | the id and the names of the fields changed, not their values |
+| info | `availability.changed` | Weekly hours or an override changed | doctor id, kind, date, whether the change was acknowledged, how many bookings it left needing attention |
+| info | `waitlist.joined`, `.offered`, `.accepted`, `.declined`, `.left`, `.swept` | The waitlist moved | entry id, and doctor and patient ids where known |
+| info | `auth.login` | A staff sign-in | the staff display name (an operator, not a patient; it is also the audit actor), never the password |
+| info | `request.refused` | Bad input refused at the edge (malformed JSON, validation, 404, 405, 413, 429) | code, status |
+| warning | `request.rejected` | A rule violation, or a database constraint mapped to a rule | code, status, ids |
+| warning | `auth.login_failed` | A wrong staff password | none beyond the request id |
+| error | `request.failed` | An unhandled exception (the stack trace is logged here, never sent) | error type |
+| error | `database.unavailable`, `database.error`, `database.not_ready`, `waitlist.sweep_failed` | The database or a background task failed | error type |
+| debug | `request` for `/healthz` and `/metrics` | Probes | as `request` |
 
-Names, phone numbers, dates of birth, reasons, bodies and query strings are never logged.
+`tests/api/test_headers_and_health.py` enforces the last column: one test runs a full session of writes
+with recognisable names, phones and reasons and fails if any of them appears in any log line.
+
+**Metrics.** `GET /metrics` (root, Prometheus text format) gives request counts by method and status,
+rejections by error code and total request time. It holds no paths, ids or personal data, so it can be
+read without the host's dashboard; the counters are per process and reset on restart.
+
 [docs/sample-logs.jsonl](docs/sample-logs.jsonl) holds real lines from a scripted run (a booking, a
 double click, a booking in the past, a flagged patient, a late cancellation, malformed JSON). **On
 the hosted instance** the logs are in the Render dashboard, Logs tab (owner access). There is
 deliberately no public log endpoint, because on a deployed instance it would look like a debug
-endpoint.
+endpoint; `/metrics` is the public, privacy-safe view.
 
 ## 10. Reviewer aids
 
@@ -474,7 +497,7 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
   `no-referrer`, HSTS and a CSP; the UI is served with a CSP that allows scripts only from itself
   and requests only to its API. Under India's DPDP Act a real deployment would also need consent
   records, a retention rule and deletion on request; `GET /patients/{id}/export` is the access half.
-- **The rule proof** (`POST /proof`) is open to anyone who can call the API when sign-in is off. It
+- **The rule proof** (`POST /diagnostics/proof`) is open to anyone who can call the API when sign-in is off. It
   keeps nothing, but each run holds a database connection for a few seconds and burns sequence ids.
 - The seed data is relative to the date it was created on: the flags drift as days pass, which is why
   there is a "Seed day" clock preset and a re-seed command.

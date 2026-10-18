@@ -18,13 +18,13 @@ describe("prove the rules", () => {
   it("runs the scenarios on request and shows that nothing was kept", async () => {
     const api = installFakeApi({
       "GET /clock": { body: clockInfo() },
-      "POST /proof": {
+      "POST /diagnostics/proof": {
         body: { passed: true, rows_before: 12, rows_after: 12, cases: [caseOf("a"), caseOf("b")] },
       },
     });
     const user = userEvent.setup();
     renderPage(<Proof />);
-    expect(api.count("POST", "/proof")).toBe(0); // never runs by itself
+    expect(api.count("POST", "/diagnostics/proof")).toBe(0); // never runs by itself
 
     await user.click(screen.getByRole("button", { name: "Run the proof" }));
 
@@ -37,7 +37,7 @@ describe("prove the rules", () => {
   it("flags a scenario that did not give the documented answer", async () => {
     installFakeApi({
       "GET /clock": { body: clockInfo() },
-      "POST /proof": {
+      "POST /diagnostics/proof": {
         body: {
           passed: false,
           rows_before: 5,
@@ -56,7 +56,7 @@ describe("prove the rules", () => {
   it("shows the error when the server cannot run it", async () => {
     installFakeApi({
       "GET /clock": { body: clockInfo() },
-      "POST /proof": apiError(503, "SERVICE_UNAVAILABLE", "The database is busy."),
+      "POST /diagnostics/proof": apiError(503, "SERVICE_UNAVAILABLE", "The database is busy."),
     });
     const user = userEvent.setup();
     renderPage(<Proof />);

@@ -68,6 +68,8 @@ def test_every_operation_has_a_summary_and_a_success_response(api: Api) -> None:
 def test_the_api_is_versioned_in_its_paths(api: Api) -> None:
     paths = api.http.get("/openapi.json").json()["paths"]
     outside = [
-        p for p in paths if not p.startswith("/api/v1/") and p not in ("/healthz", "/readyz")
+        p
+        for p in paths
+        if not p.startswith("/api/v1/") and p not in ("/healthz", "/readyz", "/metrics")
     ]
     assert outside == []

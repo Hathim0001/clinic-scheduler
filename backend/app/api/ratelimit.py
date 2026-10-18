@@ -23,7 +23,7 @@ from app.api.errors import error_response
 from app.domain.errors import ErrorCode
 
 WINDOW_SECONDS = 60.0
-EXEMPT_PATHS = frozenset({"/healthz", "/readyz"})
+EXEMPT_PATHS = frozenset({"/healthz", "/readyz", "/metrics"})
 MAX_TRACKED_CLIENTS = 10_000
 LOGIN_PATH = "/api/v1/auth/login"
 LOGIN_PER_MINUTE = 10

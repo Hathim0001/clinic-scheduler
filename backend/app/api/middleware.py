@@ -25,13 +25,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.api.errors import error_response, internal_error_response
+from app.core import metrics
 from app.domain.errors import ErrorCode
 
 log = structlog.get_logger()
 
 MAX_BODY_BYTES = 64 * 1024
 _REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
-_QUIET_PATHS = frozenset({"/healthz"})
+_QUIET_PATHS = frozenset({"/healthz", "/metrics"})
 _DOC_PATHS = ("/docs", "/redoc", "/openapi.json")
 
 # Sent on every response. The API only returns JSON (plus an .ics file), so the page policy is the
@@ -138,11 +139,14 @@ class RequestContextMiddleware:
             if "effective_now" in state:
                 fields["effective_now"] = state["effective_now"]
             emit = log.debug if scope["path"] in _QUIET_PATHS else log.info
+            duration_ms = round((time.perf_counter() - started) * 1000, 1)
+            if scope["path"] not in _QUIET_PATHS:
+                metrics.count_request(scope["method"], outcome["status"], duration_ms)
             emit(
                 "request",
                 method=scope["method"],
                 path=scope["path"],
                 status=outcome["status"],
-                duration_ms=round((time.perf_counter() - started) * 1000, 1),
+                duration_ms=duration_ms,
                 **fields,
             )

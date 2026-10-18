@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core import metrics
 from app.main import create_app
 from tests.api.conftest import BASE, ORIGIN, Api, clock, make_settings
 from tests.api.test_hostile_input import ERROR_KEYS, assert_error, book_body
@@ -289,3 +290,51 @@ def test_the_interactive_docs_are_not_locked_out_by_the_api_page_policy(api: Api
     response = api.http.get("/docs")
     assert response.headers["x-content-type-options"] == "nosniff"
     assert "content-security-policy" not in response.headers
+
+
+# ------------------------------------------------------------------------------ metrics, privacy
+
+
+def test_metrics_count_requests_and_rejections_without_any_personal_data(api: Api) -> None:
+    metrics.reset()
+    api.post("/appointments", book_body(api, reason="Secret symptoms"))
+    api.post("/appointments", book_body(api, reason="Secret symptoms"))  # SLOT_TAKEN
+    api.get("/patients", params={"q": "Asha", "phone": "9000000001"})
+    text = api.http.get("/metrics")
+    assert text.status_code == 200
+    assert text.headers["content-type"].startswith("text/plain")
+    body = text.text
+    assert 'clinic_requests_total{method="POST",status="201"} 1' in body
+    assert 'clinic_requests_total{method="POST",status="409"} 1' in body
+    assert 'clinic_rejections_total{code="SLOT_TAKEN"} 1' in body
+    for private in ("Asha", "9000000001", "Secret", "appointments", "patients"):
+        assert private not in body
+
+
+def test_the_metrics_endpoint_does_not_count_itself(api: Api) -> None:
+    metrics.reset()
+    api.http.get("/metrics")
+    assert "clinic_requests_total{" not in api.http.get("/metrics").text
+
+
+def test_no_log_line_in_a_full_session_contains_personal_data(
+    api: Api, logged: pytest.LogCaptureFixture
+) -> None:
+    """One pass over the write paths with recognisable values; none may appear in any log line."""
+    name, phone, reason = "Zebulon Quillfeather", "9123456780", "Sciatica flare-up"
+    created = api.post("/patients", {"name": name, "phone": phone, "date_of_birth": "1991-05-06"})
+    patient_id = created.json()["id"]
+    api.post("/patients", {"name": "Someone Else", "phone": phone, "date_of_birth": "1992-01-01"})
+    api.patch(f"/patients/{patient_id}", {"name": "Zebulon Quillfeather Jr"})
+    booked = api.post("/appointments", book_body(api, patient_id=patient_id, reason=reason))
+    api.post("/appointments", book_body(api, patient_id=patient_id, reason=reason))
+    api.post(f"/appointments/{booked.json()['id']}/cancel", {"by": "PATIENT"})
+    api.post(
+        f"/doctors/{api.clinic.rao}/waitlist", {"patient_id": patient_id, "date": "2026-11-03"}
+    )
+    api.get(f"/patients/{patient_id}/export")
+    api.http.post(f"{BASE}/auth/login", json={"name": "Zebulon Quillfeather", "password": "x"})
+
+    everything = json.dumps(events(logged))
+    for private in ("Zebulon", "Quillfeather", phone, "Sciatica", "1991-05-06"):
+        assert private not in everything

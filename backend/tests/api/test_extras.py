@@ -138,7 +138,7 @@ def test_alternatives_for_an_unknown_doctor_is_404(api: Api) -> None:
 
 def test_the_rule_proof_passes_over_http_and_leaves_the_clinic_untouched(api: Api) -> None:
     before = api.get("/patients", params={"q": "A"}).json()["total"]
-    response = api.post("/proof")
+    response = api.post("/diagnostics/proof")
     assert response.status_code == 200
     body = response.json()
     assert body["passed"] is True

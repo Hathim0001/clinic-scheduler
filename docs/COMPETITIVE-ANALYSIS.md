@@ -37,7 +37,7 @@ compare against them; nothing here is said about a product I did not find eviden
 | Addition | The gap it answers | Where |
 |---|---|---|
 | **Nearest alternatives** when a day is full | The moment of refusal is where a phone call is lost; the MedicalMet-style "best match" idea, but only ever from times the booking rules accept for this patient and visit length | `GET /alternatives`, `Alternatives.tsx` |
-| **Prove the rules** page | Vendors ask to be trusted; this runs the boundary scenarios on the real services and database, then rolls back, and shows the row counts before and after | `POST /proof`, `proof_service.py`, `/proof` |
+| **Prove the rules** page | Vendors ask to be trusted; this runs the boundary scenarios on the real services and database, then rolls back, and shows the row counts before and after | `POST /diagnostics/proof`, `proof_service.py`, `/proof` |
 | **Recovery metric** in the report | "Waitlist fills cancellations" is the standard claim; the report counts freed slots, how many were refilled, and how many by the waitlist | `record_service._recovery`, Report page |
 
 ## Could an LLM component help? A reasoned answer, not an implementation

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import structlog
 from fastapi import APIRouter, Request
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.errors import ServiceUnavailable
 from app.api.schemas.responses import HealthOut
+from app.core import metrics
 
 router = APIRouter(tags=["health"])
 log = structlog.get_logger()
@@ -29,3 +31,13 @@ def readyz(request: Request) -> HealthOut:
         log.error("database.not_ready", error_type=type(exc).__name__)
         raise ServiceUnavailable("The database is not reachable.") from None
     return HealthOut(status="ready")
+
+
+@router.get(
+    "/metrics",
+    response_class=PlainTextResponse,
+    summary="Request and rejection counters, Prometheus text format",
+)
+def prometheus_metrics() -> PlainTextResponse:
+    """Aggregates only (see `app.core.metrics`): no paths, ids, names or phone numbers."""
+    return PlainTextResponse(metrics.render(), media_type="text/plain; version=0.0.4")

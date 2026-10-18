@@ -18,6 +18,7 @@ from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Match
 
+from app.core import metrics
 from app.domain.errors import DomainError, ErrorCode
 from app.persistence.db_errors import is_unavailable
 
@@ -134,6 +135,7 @@ def _log_fields(request: Request) -> dict[str, Any]:
 async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, DomainError)  # noqa: S101 - narrows the type for the checker
     status = STATUS_BY_CODE[exc.code]
+    metrics.count_rejection(exc.code.value)
     log.warning(
         "request.rejected",
         code=exc.code.value,

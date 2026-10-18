@@ -13,7 +13,11 @@ router = APIRouter(tags=["proof"])
 _one_at_a_time = threading.Lock()  # each run holds a connection and a transaction for a moment
 
 
-@router.post("/proof", response_model=ProofOut, summary="Run the rule scenarios and roll them back")
+@router.post(
+    "/diagnostics/proof",
+    response_model=ProofOut,
+    summary="Run the rule scenarios and roll them back",
+)
 def run_rule_proof(request: Request) -> ProofOut:
     """Runs fixed scenarios (the 2-hour boundary, the 60-day limit, the deposit flag, an atomic
     move, and more) through the real services and PostgreSQL constraints inside a transaction that
