@@ -7,7 +7,7 @@ PROMPTS.md); the author is expected to read it, correct it and own it.
 
 A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI,
 started locally with one `docker compose up --build`. All Core features are complete: doctors with
-weekly hours and date overrides, patients with unique phones, free slots, booking, cancelling,
+weekly hours and date overrides, patients (a number may be shared by a family, with confirmation), free slots, booking, cancelling,
 rescheduling, completed and no-show, patient history, a day view, today's queue and the reviewer test
 clock. All seven business rules are enforced in the backend and hold under concurrent requests, with a
 boundary test for every number. Hosted: UI on Vercel, API on Render, database on Neon (links in README section 2). Partial: the UI has component tests but no browser end-to-end tests.
@@ -86,7 +86,7 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 | Data modelling and persistence (9) | 5 | Exclusion and CHECK constraints, migrations, realistic seed, derived versus stored documented |
 | API design (8) | 4 | Resource paths, pagination, OpenAPI checked by tests and a fuzz run; cancel and mark are action endpoints |
 | UI usability (6) | 4 | Flows work without instructions, buttons follow the server, loading, error and phone layouts; never tried by a real receptionist |
-| Testing (7) | 5 | 1,071 backend tests, 122 frontend tests with coverage measured, browser end-to-end and axe scans and Schemathesis in CI, a boundary test per number, property and race tests, 100 % on the rules layer; the UI is 90 % line-covered |
+| Testing (7) | 5 | 1,150 backend tests, 135 frontend tests with coverage measured, browser end-to-end and axe scans and Schemathesis in CI, a boundary test per number, property and race tests, 100 % on the rules layer; the UI is 90 % line-covered |
 | Deployment and operability (5) | 3 | One-command local stack, Dockerfiles, CI and blueprint committed; deployed and smoke-tested (20 simultaneous bookings give one booking); to be re-rated after rehearsing the edge cases on the hosted site |
 | Git hygiene (4) | 4 | Conventional commits, milestone tags `m0` to `m6` on the last commit of each milestone, `v1.0` on the submission commit; one working day of history, with the assistant's later changes in logical commits |
 | Documentation and write-up (4) | 4 | README follows the format with limitations stated; this write-up cites commits |

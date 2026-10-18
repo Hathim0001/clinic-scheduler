@@ -114,3 +114,36 @@ export async function buttonDisabled(page, label) {
     return button ? button.disabled : null;
   }, label);
 }
+
+/** Choose an option of the <select> inside the label with this text, the way a person would. */
+export async function chooseOption(page, labelText, value) {
+  return page.evaluate(
+    (label, wanted) => {
+      const field = [...document.querySelectorAll("label")].find((candidate) =>
+        candidate.innerText.trim().startsWith(label),
+      );
+      const select = field?.querySelector("select");
+      if (!select) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+      setter.call(select, wanted);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    },
+    labelText,
+    String(value),
+  );
+}
+
+/** Set a text or date field the way React notices (a plain `.value =` would be ignored). */
+export async function setField(page, selector, value) {
+  await page.evaluate(
+    (css, wanted) => {
+      const input = document.querySelector(css);
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, wanted);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    selector,
+    value,
+  );
+}

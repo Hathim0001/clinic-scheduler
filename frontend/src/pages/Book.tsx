@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
+import { ApiError } from "../api/client";
 import {
   useAppointment,
   useBook,
@@ -42,6 +43,8 @@ export default function Book() {
   const [repeat, setRepeat] = useState(false);
   const [everyDays, setEveryDays] = useState(7);
   const [count, setCount] = useState(4);
+  const [visitSlots, setVisitSlots] = useState(1);
+  const [mover, setMover] = useState<"PATIENT" | "CLINIC">("PATIENT");
 
   const doctorId =
     pickedDoctor ??
@@ -53,8 +56,17 @@ export default function Book() {
   const patientId = rescheduleId ? (original.data?.patient_id ?? null) : pickedPatient;
 
   const patient = usePatient(patientId);
-  const slots = useSlots(doctorId, date, patientId ?? undefined);
   const doctor = doctors.data?.find((d) => d.id === doctorId);
+  // A moved visit keeps its length in minutes: that is a whole number of this doctor's slots or it
+  // cannot be moved to them. A new booking uses the length the person chose.
+  const movedMinutes = original.data?.duration_min ?? null;
+  const lengthInSlots =
+    rescheduleId !== null && movedMinutes !== null && doctor
+      ? movedMinutes % doctor.slot_length_min === 0
+        ? movedMinutes / doctor.slot_length_min
+        : null
+      : visitSlots;
+  const slots = useSlots(doctorId, date, patientId ?? undefined, lengthInSlots ?? 1);
   const book = useBook();
   const reschedule = useReschedule();
   const series = useBookSeries();
@@ -63,7 +75,7 @@ export default function Book() {
   // same key, so the server returns the first appointment instead of booking twice.
   const attempt = useRef<{ signature: string; key: string } | null>(null);
 
-  const offered = slots.data?.slots ?? [];
+  const offered = lengthInSlots === null ? [] : (slots.data?.slots ?? []);
   const start =
     pickedStart && offered.some((slot) => slot.start_at_ist === pickedStart) ? pickedStart : null;
   const deposit = patient.data?.deposit ?? null;
@@ -77,21 +89,35 @@ export default function Book() {
     doctorId !== null &&
     patientId !== null &&
     start !== null &&
+    lengthInSlots !== null &&
     (rescheduleId !== null || reason.trim() !== "") &&
     (!depositRequired || depositAcknowledged);
+
+  // A patient's move inside 2 hours is recorded as a late cancellation. The server asks first; this
+  // shows what it said and lets the person go ahead (or have the clinic make the move instead).
+  const needsLateConfirmation =
+    reschedule.error instanceof ApiError &&
+    reschedule.error.code === "LATE_RESCHEDULE_NEEDS_CONFIRMATION";
+
+  const move = (acknowledgeLate: boolean) => {
+    if (rescheduleId === null || doctorId === null || start === null) return;
+    reschedule.mutate({
+      id: rescheduleId,
+      body: {
+        start_at: start,
+        doctor_id: doctorId,
+        by: mover,
+        ...(acknowledgeLate ? { acknowledge_late: true } : {}),
+        ...(depositRequired ? { deposit_confirmed: depositAcknowledged } : {}),
+      },
+    });
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!ready || doctorId === null || patientId === null || start === null) return;
     if (rescheduleId !== null) {
-      reschedule.mutate({
-        id: rescheduleId,
-        body: {
-          start_at: start,
-          doctor_id: doctorId,
-          ...(depositRequired ? { deposit_confirmed: depositAcknowledged } : {}),
-        },
-      });
+      move(false);
     } else if (repeat) {
       series.mutate({
         doctor_id: doctorId,
@@ -99,11 +125,19 @@ export default function Book() {
         start_at: start,
         reason,
         deposit_confirmed: depositRequired && depositAcknowledged,
+        slots: visitSlots,
         every_days: everyDays,
         count,
       });
     } else {
-      const signature = JSON.stringify([doctorId, patientId, start, reason, depositAcknowledged]);
+      const signature = JSON.stringify([
+        doctorId,
+        patientId,
+        start,
+        reason,
+        depositAcknowledged,
+        visitSlots,
+      ]);
       if (attempt.current?.signature !== signature) {
         attempt.current = {
           signature,
@@ -116,6 +150,7 @@ export default function Book() {
         start_at: start,
         reason,
         deposit_confirmed: depositRequired && depositAcknowledged,
+        slots: visitSlots,
         idempotencyKey: attempt.current.key,
       });
     }
@@ -183,7 +218,29 @@ export default function Book() {
                 onChange={(event) => setPickedDate(event.target.value)}
               />
             </label>
+            {!rescheduleId && doctor && (
+              <label>
+                Length of the visit
+                <select
+                  value={visitSlots}
+                  onChange={(event) => setVisitSlots(Number(event.target.value))}
+                >
+                  {[1, 2, 3, 4].map((count) => (
+                    <option key={count} value={count}>
+                      {count * doctor.slot_length_min} minutes
+                      {count > 1 ? ` (${count} slots)` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
+          {rescheduleId !== null && lengthInSlots === null && doctor && (
+            <Banner kind="error">
+              This visit lasts {movedMinutes} minutes, which does not fit {doctor.name}&apos;s{" "}
+              {doctor.slot_length_min}-minute slots. Choose another doctor.
+            </Banner>
+          )}
         </section>
 
         <section className="card" aria-label="Choose a time">
@@ -284,7 +341,44 @@ export default function Book() {
           </section>
         )}
 
-        {error && <ErrorBanner error={error} doctorName={doctor?.name} />}
+        {rescheduleId !== null && (
+          <fieldset>
+            <legend>Who is moving it?</legend>
+            <label className="check">
+              <input
+                type="radio"
+                name="mover"
+                checked={mover === "PATIENT"}
+                onChange={() => setMover("PATIENT")}
+              />
+              The patient (a move inside 2 hours is recorded as a late cancellation)
+            </label>
+            <label className="check">
+              <input
+                type="radio"
+                name="mover"
+                checked={mover === "CLINIC"}
+                onChange={() => setMover("CLINIC")}
+              />
+              The clinic (never counts against the patient)
+            </label>
+          </fieldset>
+        )}
+
+        {needsLateConfirmation && reschedule.error instanceof ApiError && (
+          <Banner kind="warn">
+            <p>{reschedule.error.message}</p>
+            <div className="actions">
+              <button type="button" onClick={() => move(true)} disabled={pending}>
+                Move it anyway (late cancellation)
+              </button>
+              <button type="button" onClick={() => setMover("CLINIC")}>
+                Have the clinic make the move
+              </button>
+            </div>
+          </Banner>
+        )}
+        {error && !needsLateConfirmation && <ErrorBanner error={error} doctorName={doctor?.name} />}
         {result && (
           <Banner kind="success">
             Booked: {result.patient_name} with {result.doctor_name} on{" "}

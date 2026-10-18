@@ -94,6 +94,8 @@ export const appointment = (overrides: Partial<Appointment> = {}): Appointment =
   checked_in_at_utc: null,
   checked_in_at_ist: null,
   urgent_symptoms: false,
+  slots: 1,
+  duration_min: 30,
   ...overrides,
 });
 

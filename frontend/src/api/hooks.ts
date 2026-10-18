@@ -26,10 +26,10 @@ export const useAuthStatus = () =>
 
 export const useDoctors = () => useQuery({ queryKey: ["doctors"], queryFn: api.doctors });
 
-export const useSlots = (doctorId: number | null, date: string, patientId?: number) =>
+export const useSlots = (doctorId: number | null, date: string, patientId?: number, slots = 1) =>
   useQuery({
-    queryKey: ["slots", doctorId, date, patientId ?? null],
-    queryFn: () => api.slots(doctorId as number, date, patientId),
+    queryKey: ["slots", doctorId, date, patientId ?? null, slots],
+    queryFn: () => api.slots(doctorId as number, date, patientId, slots),
     enabled: doctorId !== null && date !== "",
   });
 
@@ -143,45 +143,106 @@ export const useTriage = (text: string) =>
     retry: false,
   });
 
-// Mutations. Anything that changes a booking or the hours can change every list on screen, and the
-// server decides what is now offered, so the simple and safe choice is to refresh all queries.
-function useRefreshingMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>) {
+// Mutations. Each one refreshes only the queries it can change, listed below by the first part of
+// their key, instead of everything on screen. The server still decides what is now offered, so the
+// lists are refetched rather than patched in place. Changing the test clock is the one change that
+// affects every query, and it refreshes them all (see lib/clock.tsx).
+const AFFECTS = {
+  // a booking, a cancellation, a move, an outcome, a check-in or an accepted offer
+  appointments: [
+    "slots",
+    "schedule",
+    "queue",
+    "patientAppointments",
+    "appointment",
+    "appointmentHistory",
+    "needsAttention",
+    "waitlist",
+    "patient", // the deposit flag
+    "report",
+  ],
+  // weekly hours and days off: what is free, and which bookings no longer fit
+  hours: [
+    "slots",
+    "schedule",
+    "queue",
+    "needsAttention",
+    "weekly",
+    "overrides",
+    "doctors",
+    "appointment",
+    "patientAppointments",
+    "report",
+  ],
+  // a doctor's own details
+  doctors: ["doctors", "slots", "schedule", "weekly", "overrides", "needsAttention"],
+  // a patient's name, phone or birth date shows on appointments and queues too
+  patients: [
+    "patients",
+    "patient",
+    "patientAppointments",
+    "queue",
+    "schedule",
+    "appointment",
+    "waitlist",
+  ],
+  // joining or leaving the waitlist touches nothing else
+  waitlist: ["waitlist"],
+} as const;
+
+type Change = keyof typeof AFFECTS;
+
+function useRefreshingMutation<TArgs, TResult>(
+  change: Change,
+  run: (args: TArgs) => Promise<TResult>,
+) {
   const queryClient = useQueryClient();
+  const affected: readonly string[] = AFFECTS[change];
   return useMutation({
     mutationFn: run,
-    onSettled: () => queryClient.invalidateQueries(),
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        predicate: (query) => affected.includes(String(query.queryKey[0])),
+      }),
   });
 }
 
-export const useBook = () => useRefreshingMutation((body: BookBody) => api.book(body));
+export const useBook = () =>
+  useRefreshingMutation("appointments", (body: BookBody) => api.book(body));
 
 export const useCancel = () =>
-  useRefreshingMutation((args: { id: number; by: CancelledBy }) => api.cancel(args.id, args.by));
+  useRefreshingMutation("appointments", (args: { id: number; by: CancelledBy }) =>
+    api.cancel(args.id, args.by),
+  );
 
 export const useReschedule = () =>
-  useRefreshingMutation((args: { id: number; body: RescheduleBody }) =>
+  useRefreshingMutation("appointments", (args: { id: number; body: RescheduleBody }) =>
     api.reschedule(args.id, args.body),
   );
 
-export const useComplete = () => useRefreshingMutation((id: number) => api.complete(id));
-export const useNoShow = () => useRefreshingMutation((id: number) => api.noShow(id));
+export const useComplete = () =>
+  useRefreshingMutation("appointments", (id: number) => api.complete(id));
+export const useNoShow = () =>
+  useRefreshingMutation("appointments", (id: number) => api.noShow(id));
 
 export const useCreatePatient = () =>
-  useRefreshingMutation((body: NewPatient) => api.createPatient(body));
+  useRefreshingMutation("patients", (body: NewPatient) => api.createPatient(body));
 
 export const useUpdateDoctor = () =>
-  useRefreshingMutation((args: { id: number; changes: DoctorChanges }) =>
+  useRefreshingMutation("doctors", (args: { id: number; changes: DoctorChanges }) =>
     api.updateDoctor(args.id, args.changes),
   );
 
 export const useSaveWeekly = () =>
   useRefreshingMutation(
+    "hours",
     (args: { doctorId: number; windows: WeeklyWindow[]; acknowledge: boolean }) =>
       api.saveWeeklyWindows(args.doctorId, args.windows, args.acknowledge),
   );
 
 export const useSaveOverride = () =>
   useRefreshingMutation(
+    "hours",
     (args: {
       doctorId: number;
       date: string;
@@ -192,43 +253,49 @@ export const useSaveOverride = () =>
   );
 
 export const useDeleteOverride = () =>
-  useRefreshingMutation((args: { doctorId: number; date: string; acknowledge: boolean }) =>
+  useRefreshingMutation("hours", (args: { doctorId: number; date: string; acknowledge: boolean }) =>
     api.deleteOverride(args.doctorId, args.date, args.acknowledge),
   );
 
 export const useBookSeries = () =>
-  useRefreshingMutation((body: SeriesBody) => api.bookSeries(body));
+  useRefreshingMutation("appointments", (body: SeriesBody) => api.bookSeries(body));
 
 export const useCreateDoctor = () =>
-  useRefreshingMutation((body: NewDoctor) => api.createDoctor(body));
+  useRefreshingMutation("doctors", (body: NewDoctor) => api.createDoctor(body));
 
-export const useDeleteDoctor = () => useRefreshingMutation((id: number) => api.deleteDoctor(id));
+export const useDeleteDoctor = () =>
+  useRefreshingMutation("doctors", (id: number) => api.deleteDoctor(id));
 
 export const useJoinWaitlist = () =>
-  useRefreshingMutation((args: { doctorId: number; patientId: number; date: string }) =>
+  useRefreshingMutation("waitlist", (args: { doctorId: number; patientId: number; date: string }) =>
     api.joinWaitlist(args.doctorId, args.patientId, args.date),
   );
 
-export const useLeaveWaitlist = () => useRefreshingMutation((id: number) => api.leaveWaitlist(id));
+export const useLeaveWaitlist = () =>
+  useRefreshingMutation("waitlist", (id: number) => api.leaveWaitlist(id));
 
 export const useAcceptOffer = () =>
-  useRefreshingMutation((args: { id: number; reason: string; depositConfirmed: boolean }) =>
-    api.acceptOffer(args.id, args.reason, args.depositConfirmed),
+  useRefreshingMutation(
+    "appointments",
+    (args: { id: number; reason: string; depositConfirmed: boolean }) =>
+      api.acceptOffer(args.id, args.reason, args.depositConfirmed),
   );
 
-export const useCheckIn = () => useRefreshingMutation((id: number) => api.checkIn(id));
+export const useCheckIn = () =>
+  useRefreshingMutation("appointments", (id: number) => api.checkIn(id));
 
 export const useCorrect = () =>
-  useRefreshingMutation((args: { id: number; status: Status; note: string }) =>
+  useRefreshingMutation("appointments", (args: { id: number; status: Status; note: string }) =>
     api.correct(args.id, args.status, args.note),
   );
 
 export const useUpdatePatient = () =>
-  useRefreshingMutation((args: { id: number; changes: PatientChanges }) =>
+  useRefreshingMutation("patients", (args: { id: number; changes: PatientChanges }) =>
     api.updatePatient(args.id, args.changes),
   );
 
-export const useDeclineOffer = () => useRefreshingMutation((id: number) => api.declineOffer(id));
+export const useDeclineOffer = () =>
+  useRefreshingMutation("waitlist", (id: number) => api.declineOffer(id));
 
 export const useLogin = () =>
   useMutation({

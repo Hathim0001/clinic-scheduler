@@ -132,6 +132,10 @@ function EditPatient({ patient }: { patient: Patient }) {
     ...(birth !== patient.date_of_birth ? { date_of_birth: birth } : {}),
   };
   const dirty = Object.keys(changes).length > 0;
+  const phoneOwners =
+    update.error instanceof ApiError && update.error.code === "PHONE_TAKEN"
+      ? ((update.error.details.patients as { patient_id: number; name: string }[]) ?? [])
+      : null;
   const duplicates =
     update.error instanceof ApiError && update.error.code === "POSSIBLE_DUPLICATE"
       ? ((update.error.details.candidates as { patient_id: number; name: string }[]) ?? [])
@@ -174,6 +178,23 @@ function EditPatient({ patient }: { patient: Patient }) {
           Save changes
         </button>
       </div>
+      {phoneOwners && (
+        <Banner kind="warn">
+          This number is already registered to{" "}
+          {phoneOwners.map((owner) => `${owner.name} (#${owner.patient_id})`).join(", ")}. If they
+          share it,{" "}
+          <button
+            type="button"
+            className="link"
+            onClick={() =>
+              update.mutate({ id: patient.id, changes: { ...changes, shares_phone: true } })
+            }
+          >
+            save it on this number anyway
+          </button>
+          .
+        </Banner>
+      )}
       {duplicates ? (
         <Banner kind="warn">
           Another patient has this name and date of birth (
@@ -191,7 +212,7 @@ function EditPatient({ patient }: { patient: Patient }) {
           .
         </Banner>
       ) : (
-        update.error && <ErrorBanner error={update.error} />
+        update.error && !phoneOwners && <ErrorBanner error={update.error} />
       )}
       {update.isSuccess && !dirty && <Banner kind="success">Saved.</Banner>}
     </form>

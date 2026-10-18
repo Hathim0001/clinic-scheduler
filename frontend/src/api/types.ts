@@ -99,6 +99,8 @@ export interface Appointment {
   checked_in_at_utc: string | null;
   checked_in_at_ist: string | null;
   urgent_symptoms: boolean;
+  slots: number; // how many of the doctor's slots the visit lasts
+  duration_min: number;
 }
 
 export interface Page<T> {
@@ -128,6 +130,7 @@ export interface SlotsResponse {
   windows: TimeWindow[];
   slots: Slot[];
   unavailable_reason: UnavailableReason | null;
+  duration_min: number; // the visit length each listed start is free for
 }
 
 export type SlotState = "FREE" | "BOOKED" | "PAST" | "CAPPED" | "CLOSED" | "BUSY";

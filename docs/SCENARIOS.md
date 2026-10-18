@@ -49,6 +49,8 @@ numbering several times.
 | A cancelled appointment is mistakenly restored | **Out of scope** | Restoring would silently take a slot someone else may already hold. The safe route is to book again, which re-checks every rule |
 | A patient repeatedly postpones or changes their mind | **Partly** | Every move is in the audit history; no limit on the number of moves is enforced |
 | A patient requests a different doctor after check-in | **Covered** | The clinic cancels and rebooks, or reschedules before check-in |
+| Appointments have different durations; a free slot cannot accommodate the required duration; a patient requests a visit longer than the slot | **Added** | A visit lasts one to four of the doctor's slots. Free times are listed per length, a long visit must fit inside one window and not touch anything of the doctor's or the patient's, rescheduling keeps the length, and a freed long visit is offered as a long visit (A-04, A-57) |
+| A patient reschedules at the last minute and is penalised unfairly; the clinic moves an appointment and the patient is penalised | **Added** | A patient move inside 2 hours is refused until confirmed, so the penalty is never a surprise. A clinic move is never a late cancellation (A-10) |
 | The audit log is modified or lost; an audit event is written but the booking transaction fails; an audit report must separate the original time from later changes; a copy of the historical timeline | **Added** | `appointment_events`, written in the same transaction as each change (so it cannot describe a rolled-back change), append-only in the code. `GET /appointments/{id}/history` and `GET /patients/{id}/export` |
 
 ## 4. Arrival and the waiting room
@@ -66,7 +68,7 @@ numbering several times.
 |---|---|---|
 | A patient changes their phone number; their name changes; an incorrect date of birth | **Added** | `PATCH /patients/{id}`; appointments follow the patient; a phone already used by someone else is `PHONE_TAKEN` |
 | Two profiles exist for one person; a receptionist picks the wrong similar patient; a parent with two similar children | **Added** | Registering or renaming into the same name and date of birth is refused with the matching patients listed (`POSSIBLE_DUPLICATE`); "Use that patient" or "Register anyway" are both one click, so twins are still possible. The picker shows phone numbers to tell similar names apart |
-| Two different patients share a phone number (family) | **Covered, by design** | A phone is unique (A-15), so a family sharing one mobile registers one person per number. A guardian model would be needed to share one |
+| Two different patients share a phone number (family) | **Added** | A number can be shared on purpose: the form names who already has it and asks whether the new patient is a family member who shares it (A-15). Each patient keeps their own history and deposit flag, and a lookup by phone lists everyone on it. There is still no guardian model |
 | A parent or relative books for someone; a guardian loses authority; consent of the person booked | **Out of scope** | Needs accounts and relationships. Without authentication (A-20) there is no "who is booking" to check |
 | Several accounts with different phones to bypass limits | **Partly** | The duplicate guard catches the same name and birth date; deliberate evasion is not detectable without identity checks |
 | Duplicate profiles merged or merged wrongly; a merge during a booking | **Out of scope** | No merge tool; a merge touches every table that references a patient |
@@ -134,7 +136,7 @@ slots, and an audit table the database itself refuses to change or delete.
 
 ## 11. Rules and policy beyond the seven in the brief
 
-Out of scope: appointment types and different durations or cleanup times, rooms, equipment, nurses
+Out of scope: appointment types with their own durations or cleanup times (a visit can last one to four of the doctor's slots, A-04), rooms, equipment, nurses
 and shared resources, referrals, prerequisites and care pathways, lab results, eligibility, age
 limits, insurance, authorisation codes, subsidies, payments, refunds, discounts, interpreters,
 accessibility needs, infection precautions, preparation instructions, consent forms and chaperones,

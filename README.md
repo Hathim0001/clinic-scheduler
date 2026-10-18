@@ -190,11 +190,11 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,071 passing in about 4 minutes: 450 unit (no database), 312 integration and race tests (real PostgreSQL), 309 through HTTP |
-| Backend line and branch coverage, all of `app/` | 99 % (2,881 statements, 8 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 100 % (1,366 statements, none missed); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 122 passing; 90.6 % of lines, 81.6 % of branches covered (gate: 85 % lines, 75 % branches) |
-| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 19 flow checks and 28 accessibility scans (axe-core, light and dark, desktop and phone) |
+| Backend tests | 1,150 passing in about 5 minutes: 462 unit (no database), 354 integration and race tests (real PostgreSQL), 334 through HTTP |
+| Backend line and branch coverage, all of `app/` | 99 % (2,912 statements, 8 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 100 % (1,386 statements, none missed); the gate is 80 % |
+| Frontend tests (Vitest, network faked at `fetch`) | 135 passing; 90.5 % of lines, 82.5 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 21 flow checks and 28 accessibility scans (axe-core, light and dark, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one
@@ -238,9 +238,9 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET, PUT | `/doctors/{id}/weekly-windows` | Weekly pattern (replace) | 409 `AVAILABILITY_CONFLICTS`, 422 `WINDOW_OVERLAP`, `WINDOW_OFF_GRID` |
 | GET | `/doctors/{id}/overrides?from&to` | Date overrides in a range (at most 90 days) | 422 |
 | PUT, DELETE | `/doctors/{id}/overrides/{date}` | Leave, special hours or an extra day; remove | 409 `AVAILABILITY_CONFLICTS`, 422 |
-| GET | `/doctors/{id}/slots?date&patient_id?` | Free slots, with `unavailable_reason` | 404, 422 |
+| GET | `/doctors/{id}/slots?date&patient_id?&slots?` | Free starts for a visit of `slots` slots (1 to 4, default 1), with `unavailable_reason` | 404, 422 |
 | GET | `/doctors/{id}/schedule?date&patient_id?` | Every grid slot of a day with its state | 404, 422 |
-| GET, POST | `/patients` | Search by phone or name prefix; register (`allow_duplicate` to register despite a likely duplicate) | 409 `PHONE_TAKEN`, `POSSIBLE_DUPLICATE`, 422 |
+| GET, POST | `/patients` | Search by phone or name prefix; register (`allow_duplicate` despite a likely duplicate; `shares_phone` for a family member on a number in use) | 409 `PHONE_TAKEN` (with the owners), `POSSIBLE_DUPLICATE`, 422 |
 | GET, PATCH | `/patients/{id}` | Patient with the deposit status and a literal `deposit_required` flag; correct name, phone or date of birth | 404, 409 `PHONE_TAKEN`, `POSSIBLE_DUPLICATE` |
 | GET | `/patients/{id}/export` | Everything held about a patient: details, every appointment and its history | 404 |
 | GET | `/patients/{id}/appointments` | History, newest first | 404 |
@@ -250,7 +250,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | GET | `/appointments/{id}/calendar.ics`, `/patients/{id}/calendar.ics` | Download an appointment, or a patient's upcoming ones, as an iCalendar file | 404 |
 | POST | `/appointments/recurring` | Book a series (every 1 to 60 days, 2 to 12 appointments), all or none; `details.occurrence` says which one failed | 409 `SLOT_TAKEN`, 422 as for a booking |
 | POST | `/appointments/{id}/cancel` | Cancel (patient or clinic); after the start a patient cancel is a late cancel | 409 `INVALID_TRANSITION` |
-| POST | `/appointments/{id}/reschedule` | Cancel and rebook atomically (before the start only) | 409 `APPOINTMENT_ALREADY_STARTED`, 422 `RESCHEDULE_NO_CHANGE`, `DEPOSIT_REQUIRED` |
+| POST | `/appointments/{id}/reschedule` | Cancel and rebook atomically (before the start only). `by` is `PATIENT` (default) or `CLINIC`; a patient move inside 2 hours needs `acknowledge_late` | 409 `APPOINTMENT_ALREADY_STARTED`, `LATE_RESCHEDULE_NEEDS_CONFIRMATION`, 422 `RESCHEDULE_NO_CHANGE`, `DEPOSIT_REQUIRED` |
 | POST | `/appointments/{id}/complete`, `/no-show` | Mark after the start | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/check-in` | Patient arrived (on the day; repeating it changes nothing) | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/correct` | Fix a wrong outcome: completed and no-show swap, a late cancel is waived; a note is required | 409 `INVALID_CORRECTION` |
@@ -302,18 +302,18 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-01 | The slot grid is anchored at midnight India time: a valid start has zero seconds and minutes since midnight divisible by the slot length |
 | A-02 | A date override replaces that date's weekly windows entirely (it is not merged); no windows at all means leave |
 | A-03 | An appointment must fit inside one window |
-| A-04 | Each appointment is exactly one slot long; the server computes `end_at` and a database CHECK pins it to 15 or 30 minutes |
+| A-04 | A visit lasts one to four of the doctor's slots (`slots`, default 1). The server computes `end_at` from the doctor's slot length, the start must be on the grid, the whole visit must fit inside one availability window, and nothing of the doctor's or the patient's may overlap any part of it. A database CHECK ties `end_at - start_at` to `slots`. The daily cap counts visits, not slots, and the report counts the slots a visit took |
 | A-05 | "Not more than 60 days ahead" means the India date of the start is at most today plus 60 days (calendar days, not 60 x 24 hours) |
 | A-06 | The slot length cannot change while future booked appointments exist, or if existing windows would leave the new grid |
 | A-07 | "Past" is a start at or before now; a slot starting exactly now cannot be booked |
 | A-08 | A patient cancel at or after the start is a Late-Cancel (it is less than 2 hours ahead, as the problem statement says); a clinic cancel never is. Only a reschedule is refused once the appointment has started, because it would book a new slot while leaving a started one |
 | A-09 | A cancellation by the clinic is always a normal cancel and never counts against the patient |
-| A-10 | A reschedule is a cancel (following the 2-hour rule) plus a booking, so a reschedule inside 2 hours records a late cancellation |
+| A-10 | A reschedule is a cancel of the old slot (following the 2-hour rule) plus a booking. When the clinic moves it that is never a late cancellation (as with A-09). When the patient moves it inside 2 hours it is one, which counts toward the deposit flag, so the server refuses until the move is confirmed with `acknowledge_late`; the question is asked last, after the new slot has been checked, so nobody is asked to accept a penalty for a move that could not happen. The old slot is offered to the waitlist either way |
 | A-11 | Deposit eligibility for a reschedule uses the patient's status before that reschedule's own cancellation |
 | A-12 | An availability change that would leave booked appointments outside the new hours is refused with the list (409) unless `acknowledge_conflicts` is true; acknowledged appointments stay booked and are listed as needing attention. Nothing is silently cancelled |
 | A-13 | A late cancel counts from the time it was made; a no-show counts from the appointment's start |
 | A-14 | `deposit_confirmed` is a staff acknowledgement only; no amount or payment is stored |
-| A-15 | Phones are Indian mobile numbers, ASCII digits only, stored as `+91XXXXXXXXXX`, and unique |
+| A-15 | Phones are Indian mobile numbers, ASCII digits only, stored as `+91XXXXXXXXXX`. A number may be shared by several patients (a family on one mobile) but only on purpose: registering or editing onto a number that is in use is refused with `PHONE_TAKEN`, naming who has it, unless `shares_phone` confirms it. An advisory lock on the number keeps two simultaneous registrations from both getting past the check. Each patient keeps their own history and deposit flag |
 | A-16 | The daily cap counts booked, completed and no-show appointments; cancelled and late-cancelled ones do not |
 | A-17 | The API returns UTC and India time, accepts any explicit offset and refuses a time without one |
 | A-18 | Completed and no-show can only be marked at or after the start |
@@ -355,6 +355,8 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-54 | Every audit row records its actor: the signed-in name, `anonymous` when login is off, `system` for work the server does itself. The audit table is append-only in the database (a trigger refuses UPDATE and DELETE), not just in the code |
 | A-55 | Waitlist reads take no lock and write nothing: an offer whose time has run out is simply not shown. A server-side sweep (every 30 seconds, and safe to run on several instances) passes each lapsed slot to the next patient. Changing a doctor's waitlist does the same immediately |
 | A-56 | The rate limit counts the address `TRUSTED_PROXY_HOPS` places from the right of `X-Forwarded-For`; with none configured it counts the socket address. Reading the left-most entry would let a caller change it on every request |
+| A-57 | Rescheduling keeps the visit's length: in slots with the same doctor, in minutes with another, and it is refused when the minutes do not divide into that doctor's slots. A freed multi-slot visit is offered to the waitlist as a visit of that length, and a patient is only offered it if the whole of it suits them |
+| A-58 | After a change the UI refreshes only the lists that change can alter (a table in `api/hooks.ts` names them), not everything on screen; changing the test clock is the one change that refreshes all |
 
 ## 9. Error handling and logging
 
@@ -449,8 +451,9 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
   off by default everywhere else.
 - An outcome can be corrected, but a cancelled appointment cannot be restored and the audit trail
   is a table the application only appends to, not a tamper-proof ledger.
-- One clinic, India Standard Time only, appointments exactly one slot long. The Stretch items are
-  built (waitlist with auto-offer, recurring appointments, calendar export). Not built:
+- One clinic, India Standard Time only. A visit may last one to four of the doctor's slots, but every
+  appointment still has one doctor, one patient and one length: there are no appointment types with
+  their own durations or preparation time. The Stretch items are built (waitlist with auto-offer, recurring appointments, calendar export). Not built:
   notifications (an offer is only visible on the patient page, nobody is messaged), branches, rooms
   and equipment, appointment types, and a guardian model. [docs/SCENARIOS.md](docs/SCENARIOS.md) sorts
   about 400 edge-case scenarios into covered, added and out of scope, with the reason for each.

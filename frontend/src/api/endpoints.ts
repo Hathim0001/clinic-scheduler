@@ -29,6 +29,7 @@ export interface BookBody {
   start_at: string;
   reason: string;
   deposit_confirmed?: boolean;
+  slots?: number; // the visit's length in the doctor's slots (1 to 4)
   /** Sent as the Idempotency-Key header, so a retry cannot book twice. */
   idempotencyKey?: string;
 }
@@ -49,6 +50,8 @@ export interface RescheduleBody {
   start_at: string;
   doctor_id?: number;
   deposit_confirmed?: boolean;
+  by?: CancelledBy; // who is moving it; a clinic move is never a late cancellation
+  acknowledge_late?: boolean; // accept that a patient move inside 2 hours counts as a late cancel
 }
 
 export interface NewPatient {
@@ -56,6 +59,7 @@ export interface NewPatient {
   phone: string;
   date_of_birth: string;
   allow_duplicate?: boolean;
+  shares_phone?: boolean;
 }
 
 export interface PatientChanges {
@@ -63,6 +67,7 @@ export interface PatientChanges {
   phone?: string;
   date_of_birth?: string;
   allow_duplicate?: boolean;
+  shares_phone?: boolean;
 }
 
 export interface DoctorChanges {
@@ -117,9 +122,9 @@ export const api = {
       query: { acknowledge_conflicts: acknowledge },
     }),
 
-  slots: (doctorId: number, date: string, patientId?: number) =>
+  slots: (doctorId: number, date: string, patientId?: number, slots = 1) =>
     request<SlotsResponse>("GET", `/doctors/${doctorId}/slots`, {
-      query: { date, patient_id: patientId },
+      query: { date, patient_id: patientId, slots },
     }),
   schedule: (doctorId: number, date: string) =>
     request<ScheduleResponse>("GET", `/doctors/${doctorId}/schedule`, {

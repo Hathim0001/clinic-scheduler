@@ -6,6 +6,8 @@ import {
   apiClient,
   buttonDisabled,
   check,
+  chooseOption,
+  setField,
   clickButton,
   finish,
   launch,
@@ -150,6 +152,58 @@ try {
     "a flagged patient cannot book until the deposit is acknowledged",
     before === true && after === false,
     `before=${before} after=${after}`,
+  );
+
+  // 4b a visit of two slots, chosen from the length menu
+  const longVisit = await newPatient("long");
+  const tall = await openPage(browser, clock);
+  await tall.goto(bookUrl(longVisit.id), { waitUntil: "domcontentloaded" });
+  await tall.waitForSelector(".slot-list button");
+  await chooseOption(tall, "Length of the visit", 2);
+  await tall
+    .waitForFunction(() => document.body.innerText.includes("30 minutes (2 slots)"), {
+      timeout: 15000,
+    })
+    .catch(() => undefined);
+  await sleep(1500);
+  await clickButton(tall, "12:00");
+  await tall.type("textarea", "Physiotherapy");
+  await clickButton(tall, "Book the appointment");
+  await tall
+    .waitForFunction(() => document.body.innerText.includes("Booked:"), { timeout: 20000 })
+    .catch(() => undefined);
+  const [, longList] = await api("GET", `/patients/${longVisit.id}/appointments`);
+  const booked = longList.items[0];
+  check(
+    "a two-slot visit is booked with its length",
+    booked?.slots === 2 && booked?.duration_min === 30,
+    JSON.stringify(booked && [booked.slots, booked.duration_min]),
+  );
+
+  // 4c a family member registered on a number that is already in use
+  const family = await openPage(browser, clock);
+  await family.goto(`${BASE_URL}/patients`, { waitUntil: "domcontentloaded" });
+  await family.waitForSelector('[role="search"] input');
+  await clickButton(family, "New patient");
+  await family.waitForSelector('form[aria-label="New patient"]');
+  const sharedPhone = "9000000001"; // the seeded patient Kavita Nair
+  await family.type('form[aria-label="New patient"] label:nth-of-type(1) input', `Family ${tag}`);
+  await family.type('form[aria-label="New patient"] label:nth-of-type(2) input', sharedPhone);
+  await setField(family, 'form[aria-label="New patient"] label:nth-of-type(3) input', "2012-04-04");
+  await clickButton(family, "Register patient");
+  await family
+    .waitForFunction(() => document.body.innerText.includes("already registered to"), {
+      timeout: 20000,
+    })
+    .catch(() => undefined);
+  const warned = (await family.evaluate(() => document.body.innerText)).includes("Kavita Nair");
+  await clickButton(family, "Register as a family member");
+  await sleep(3000);
+  const [, shared] = await api("GET", `/patients?phone=${sharedPhone}`);
+  check(
+    "a taken number names its owner and a confirmed family member shares it",
+    warned && shared.total >= 2,
+    `warned=${warned} total=${shared.total}`,
   );
 
   // 5 search, unknown patient, unknown route

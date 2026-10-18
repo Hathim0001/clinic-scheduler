@@ -88,7 +88,15 @@ describe("finding patients", () => {
     installFakeApi(
       routes({
         "GET /patients": page([]),
-        "POST /patients": apiError(409, "PHONE_TAKEN", "taken", { patient_id: 3 }),
+        "POST /patients": apiError(
+          409,
+          "PHONE_TAKEN",
+          "This phone number is already registered to Asha Iyer. Confirm to share it.",
+          {
+            patient_id: 3,
+            patients: [{ patient_id: 3, name: "Asha Iyer", date_of_birth: "1985-04-02" }],
+          },
+        ),
       }),
     );
     const user = userEvent.setup();
@@ -99,9 +107,11 @@ describe("finding patients", () => {
     await user.type(within(form).getByLabelText("Phone"), "9876543210");
     await user.type(within(form).getByLabelText("Date of birth"), "1985-04-02");
     await user.click(within(form).getByRole("button", { name: "Register patient" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "A patient with this phone number is already registered.",
-    );
+    expect(await screen.findByText(/already registered to:/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use Asha Iyer" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Register as a family member on this number" }),
+    ).toBeInTheDocument();
   });
 });
 

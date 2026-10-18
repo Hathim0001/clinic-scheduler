@@ -24,6 +24,7 @@ const slots: SlotsResponse = {
     slot("10:30", "2026-11-02T05:00:00Z", "2026-11-02T05:30:00Z", "11:00"),
   ],
   unavailable_reason: null,
+  duration_min: 30,
 };
 
 const routes = (extra = {}) => ({
@@ -55,6 +56,7 @@ describe("booking an appointment", () => {
       start_at: "2026-11-02T10:00:00+05:30",
       reason: "Fever, 3 days",
       deposit_confirmed: false,
+      slots: 1,
     });
     expect(await screen.findByText(/Booked: Kavita Nair with Dr. Rao/)).toBeInTheDocument();
   });
@@ -197,6 +199,7 @@ describe("booking an appointment", () => {
     expect(api.last("POST", "/appointments/41/reschedule")?.body).toEqual({
       start_at: "2026-11-02T10:30:00+05:30",
       doctor_id: 1,
+      by: "PATIENT",
     });
   });
 });
