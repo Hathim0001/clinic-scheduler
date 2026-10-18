@@ -8,6 +8,7 @@ import {
   LateMoveQuestion,
   MoverFieldset,
 } from "../components/booking/RescheduleNotices";
+import { SameDayNotice } from "../components/booking/SameDayNotice";
 import { SlotPicker } from "../components/booking/SlotPicker";
 import { useBookingForm } from "../components/booking/useBookingForm";
 import { Banner, ErrorBanner } from "../components/common";
@@ -81,6 +82,7 @@ export default function Book() {
                 : undefined
             }
           />
+          <SameDayNotice patientId={patientId} date={form.date} ignoreId={rescheduleId} />
           {rescheduleId !== null && form.lengthInSlots === null && doctor && (
             <Banner kind="error">
               This visit lasts {form.movedMinutes} minutes, which does not fit {doctor.name}&apos;s{" "}

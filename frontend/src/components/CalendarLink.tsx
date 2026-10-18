@@ -1,6 +1,6 @@
-import { API_BASE } from "../api/client";
+import { DownloadButton } from "./DownloadButton";
 
-/** A plain download link: the server sends the .ics file, so there is nothing to fetch here. */
+/** Download an appointment, or a patient's upcoming ones, as a calendar (.ics) file. */
 export function CalendarLink({
   path,
   label = "Add to calendar",
@@ -8,9 +8,5 @@ export function CalendarLink({
   path: string;
   label?: string;
 }) {
-  return (
-    <a href={`${API_BASE}${path}`} download>
-      {label}
-    </a>
-  );
+  return <DownloadButton path={path} fallbackName="appointment.ics" label={label} />;
 }

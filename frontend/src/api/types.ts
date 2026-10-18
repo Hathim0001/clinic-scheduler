@@ -73,6 +73,7 @@ export interface Patient {
   deposit_required: boolean | null; // null in search results
   deposit: Deposit | null; // null in search results
   consent_at_utc: string | null; // when the privacy notice was accepted, if recorded
+  consent_by: "PATIENT" | "GUARDIAN" | null; // a child's consent comes from a guardian
   erased: boolean; // personal data erased on request
 }
 
@@ -127,6 +128,7 @@ export interface Appointment {
   allowed_actions: Action[];
   checked_in_at_utc: string | null;
   checked_in_at_ist: string | null;
+  confirmed_by_phone_at_utc: string | null; // reception rang and the patient confirmed
   urgent_symptoms: boolean;
   slots: number; // how many of the doctor's slots the visit lasts
   duration_min: number;

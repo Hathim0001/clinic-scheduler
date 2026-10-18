@@ -4,6 +4,7 @@ import {
   formatDayIST,
   formatIST,
   formatTimeIST,
+  isChild,
   isoToIstInput,
   istDate,
   istInputToIso,
@@ -48,5 +49,15 @@ describe("adding days to a date", () => {
     ["2026-11-02", 89, "2027-01-30"],
   ])("%s plus %i days is %s", (date, days, expected) => {
     expect(addDays(date, days)).toBe(expected);
+  });
+});
+
+describe("isChild", () => {
+  it("is under 18 until the 18th birthday, inclusive of the day itself", () => {
+    expect(isChild("2008-11-02", "2026-11-02")).toBe(false); // exactly 18 today
+    expect(isChild("2008-11-03", "2026-11-02")).toBe(true); // 18 tomorrow
+    expect(isChild("2008-12-01", "2026-11-02")).toBe(true);
+    expect(isChild("2007-12-31", "2026-11-02")).toBe(false);
+    expect(isChild("2015-06-01", "2026-11-02")).toBe(true);
   });
 });

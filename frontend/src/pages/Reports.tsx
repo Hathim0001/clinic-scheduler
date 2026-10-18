@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useReport } from "../api/hooks";
 import type { DoctorReport } from "../api/types";
 import { ErrorBanner, Skeleton } from "../components/common";
+import { DownloadButton } from "../components/DownloadButton";
 import { addDays } from "../lib/formatIST";
 import { useToday } from "../lib/useToday";
 
@@ -54,6 +55,14 @@ export default function Reports() {
           <input type="date" value={end} onChange={(event) => setTo(event.target.value)} />
         </label>
       </div>
+      <p>
+        <DownloadButton
+          path="/reports/summary.csv"
+          query={{ from: start, to: end }}
+          fallbackName={`report-${start}-${end}.csv`}
+          label="Download as CSV"
+        />
+      </p>
       <p className="muted">
         A moved appointment counts once, as rescheduled: not as a cancellation, and its replacement
         is not a new booking. The no-show rate is no-shows out of completed plus no-shows.

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ApiError, API_BASE } from "../api/client";
+import { ApiError } from "../api/client";
 import { usePatient, usePatientAppointments, useUpdatePatient } from "../api/hooks";
 import type { Patient } from "../api/types";
 import { ActionButtons } from "../components/ActionButtons";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
 import { CalendarLink } from "../components/CalendarLink";
 import { DepositExplanation } from "../components/DepositNotice";
+import { DownloadButton } from "../components/DownloadButton";
 import { PatientPicker } from "../components/PatientPicker";
 import { PrivacyPanel } from "../components/PrivacyPanel";
 import { PatientWaitlist } from "../components/Waitlist";
@@ -54,9 +55,11 @@ export function PatientDetail() {
               Book an appointment for this patient
             </Link>
           )}{" "}
-          <a href={`${API_BASE}/patients/${p.id}/export`} download={`patient-${p.id}.json`}>
-            Download all their records
-          </a>
+          <DownloadButton
+            path={`/patients/${p.id}/export`}
+            fallbackName={`patient-${p.id}.json`}
+            label="Download all their records"
+          />
         </p>
       </div>
 

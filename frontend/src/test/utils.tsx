@@ -66,6 +66,7 @@ export const patient = (overrides: Partial<Patient> = {}): Patient => ({
   deposit_required: false,
   deposit: noDeposit,
   consent_at_utc: null,
+  consent_by: null,
   erased: false,
   ...overrides,
 });
@@ -95,6 +96,7 @@ export const appointment = (overrides: Partial<Appointment> = {}): Appointment =
   allowed_actions: ["cancel", "reschedule"],
   checked_in_at_utc: null,
   checked_in_at_ist: null,
+  confirmed_by_phone_at_utc: null,
   urgent_symptoms: false,
   slots: 1,
   duration_min: 30,

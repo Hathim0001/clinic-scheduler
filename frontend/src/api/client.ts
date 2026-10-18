@@ -61,6 +61,41 @@ function buildUrl(path: string, query?: Query): string {
   return url.toString();
 }
 
+/** A file from the API (calendar, export, CSV), fetched with the sign-in token and the test clock. */
+export async function download(
+  path: string,
+  query?: Query,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const headers: Record<string, string> = {};
+  if (testClock) headers["X-Test-Clock"] = testClock;
+  const session = getSession();
+  if (session) headers["Authorization"] = `Bearer ${session.token}`;
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, query), { headers });
+  } catch {
+    throw new ApiError(0, "NETWORK_ERROR", "Cannot reach the server.");
+  }
+  if (!response.ok) {
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // not JSON
+    }
+    const error = (payload as ApiErrorBody | null)?.error;
+    throw new ApiError(
+      response.status,
+      error?.code ?? "UNEXPECTED_RESPONSE",
+      error?.message ?? `The server answered ${response.status}.`,
+      error?.details ?? {},
+      error?.request_id ?? response.headers.get("x-request-id") ?? null,
+    );
+  }
+  const named = /filename="?([^";]+)"?/.exec(response.headers.get("content-disposition") ?? "");
+  return { blob: await response.blob(), filename: named?.[1] ?? null };
+}
+
 export async function request<T>(
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,

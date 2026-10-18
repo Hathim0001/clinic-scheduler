@@ -57,6 +57,14 @@ export function isoToIstInput(iso: string): string {
 }
 
 /** The date a given number of days after an India date (both as YYYY-MM-DD). */
+/** Is someone born on `born` (YYYY-MM-DD) under 18 on the India date `today`? */
+export function isChild(born: string, today: string): boolean {
+  const [by = 0, bm = 0, bd = 0] = born.split("-").map(Number);
+  const [ty = 0, tm = 0, td = 0] = today.split("-").map(Number);
+  const birthdayPassed = tm > bm || (tm === bm && td >= bd);
+  return ty - by - (birthdayPassed ? 0 : 1) < 18;
+}
+
 export function addDays(date: string, days: number): string {
   const moment = new Date(`${date}T00:00:00Z`);
   moment.setUTCDate(moment.getUTCDate() + days);

@@ -310,7 +310,12 @@ export const useCorrect = () =>
   );
 
 export const useRecordConsent = () =>
-  useRefreshingMutation("patients", (id: number) => api.recordConsent(id));
+  useRefreshingMutation("patients", (args: { id: number; consentBy: "PATIENT" | "GUARDIAN" }) =>
+    api.recordConsent(args.id, args.consentBy),
+  );
+
+export const useConfirmByPhone = () =>
+  useRefreshingMutation("appointments", (id: number) => api.confirmByPhone(id));
 
 export const useErasePatient = () =>
   useRefreshingMutation("patients", (id: number) => api.erasePatient(id));

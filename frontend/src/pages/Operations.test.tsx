@@ -279,8 +279,9 @@ describe("patients", () => {
       </Routes>,
       "/patients/7",
     );
-    const link = await screen.findByRole("link", { name: "Download all their records" });
-    expect(link.getAttribute("href")).toMatch(/\/patients\/7\/export$/);
+    expect(
+      await screen.findByRole("button", { name: "Download all their records" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps a place in the queue when an offer is turned down", async () => {

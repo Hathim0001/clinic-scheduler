@@ -10,6 +10,7 @@ import Admin from "./pages/Admin";
 import Book from "./pages/Book";
 import DayView from "./pages/DayView";
 import { PatientDetail, PatientSearch } from "./pages/Patients";
+import Calls from "./pages/Calls";
 import Messages from "./pages/Messages";
 import Proof from "./pages/Proof";
 import Queue from "./pages/Queue";
@@ -33,6 +34,7 @@ function Header() {
           <NavLink to="/day">Day view</NavLink>
           <NavLink to="/book">Book</NavLink>
           <NavLink to="/queue">Queue</NavLink>
+          <NavLink to="/calls">Calls</NavLink>
           <NavLink to="/patients">Patients</NavLink>
           <NavLink to="/messages">
             Messages
@@ -91,6 +93,7 @@ export default function App() {
             <Route path="/day" element={<DayView />} />
             <Route path="/book" element={<Book />} />
             <Route path="/queue" element={<Queue />} />
+            <Route path="/calls" element={<Calls />} />
             <Route path="/patients" element={<PatientSearch />} />
             <Route path="/patients/:id" element={<PatientDetail />} />
             <Route path="/messages" element={<Messages />} />

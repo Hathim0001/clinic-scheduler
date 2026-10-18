@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useErasePatient, useRecordConsent } from "../api/hooks";
 import type { Patient } from "../api/types";
-import { formatIST } from "../lib/formatIST";
+import { formatIST, isChild } from "../lib/formatIST";
+import { useToday } from "../lib/useToday";
 import { Banner, ErrorBanner } from "./common";
 
 /**
@@ -12,6 +13,8 @@ export function PrivacyPanel({ patient }: { patient: Patient }) {
   const consent = useRecordConsent();
   const erase = useErasePatient();
   const [confirming, setConfirming] = useState(false);
+  const today = useToday();
+  const child = today !== "" && isChild(patient.date_of_birth, today);
 
   if (patient.erased) {
     return (
@@ -30,14 +33,22 @@ export function PrivacyPanel({ patient }: { patient: Patient }) {
       <h2>Privacy</h2>
       <p>
         {patient.consent_at_utc
-          ? `Accepted the privacy notice on ${formatIST(patient.consent_at_utc)}.`
-          : "The patient's acceptance of the privacy notice has not been recorded."}{" "}
+          ? `Accepted the privacy notice${patient.consent_by === "GUARDIAN" ? " by a parent or guardian" : ""} on ${formatIST(patient.consent_at_utc)}.`
+          : child
+            ? "This patient is under 18: a parent or guardian must accept the privacy notice, and it has not been recorded."
+            : "The patient's acceptance of the privacy notice has not been recorded."}{" "}
         <button
           type="button"
-          onClick={() => consent.mutate(patient.id)}
+          onClick={() =>
+            consent.mutate({ id: patient.id, consentBy: child ? "GUARDIAN" : "PATIENT" })
+          }
           disabled={consent.isPending}
         >
-          {patient.consent_at_utc ? "Record again" : "Record consent"}
+          {patient.consent_at_utc
+            ? "Record again"
+            : child
+              ? "Record guardian's consent"
+              : "Record consent"}
         </button>
       </p>
       {consent.error && <ErrorBanner error={consent.error} />}

@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { usePatientSearch, useCreatePatient } from "../api/hooks";
 import type { Patient } from "../api/types";
 import { ApiError } from "../api/client";
+import { isChild } from "../lib/formatIST";
+import { useToday } from "../lib/useToday";
 import { Banner, ErrorBanner, Skeleton } from "./common";
 
 interface Props {
@@ -122,6 +124,8 @@ function NewPatientForm({
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [birth, setBirth] = useState("");
   const [consent, setConsent] = useState(false);
+  const today = useToday();
+  const child = birth !== "" && today !== "" && isChild(birth, today);
 
   const register = (allowDuplicate = false) =>
     create.mutate(
@@ -130,7 +134,7 @@ function NewPatientForm({
         phone,
         date_of_birth: birth,
         ...(allowDuplicate ? { allow_duplicate: true } : {}),
-        ...(consent ? { consent: true } : {}),
+        ...(consent ? { consent: true, consent_by: child ? "GUARDIAN" : "PATIENT" } : {}),
       },
       { onSuccess: onCreated },
     );
@@ -190,7 +194,9 @@ function NewPatientForm({
           checked={consent}
           onChange={(event) => setConsent(event.target.checked)}
         />
-        The patient has accepted the privacy notice
+        {child
+          ? "A parent or guardian has accepted the privacy notice for this child"
+          : "The patient has accepted the privacy notice"}
       </label>
       {duplicates ? (
         <Banner kind="warn">
