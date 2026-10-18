@@ -188,7 +188,7 @@ cd frontend && npm test -- --run             # all UI tests
 | Backend tests | 1,008 passing in about 4 minutes: 427 unit (no database), 302 integration and race tests (real PostgreSQL), 279 through HTTP |
 | Backend line and branch coverage, all of `app/` | 99 % (2,741 statements, 8 missed, branches included) |
 | Rules layer (`app/domain` + `app/services`) | 100 % (1,359 statements, none missed); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 103 passing |
+| Frontend tests (Vitest, network faked at `fetch`) | 107 passing |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one

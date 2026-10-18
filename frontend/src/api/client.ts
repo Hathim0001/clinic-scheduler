@@ -1,9 +1,13 @@
 import type { ApiErrorBody } from "./types";
 
 // Vite inlines this at build time (see .env.example), so changing it means rebuilding.
-export const API_BASE = (
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1"
+// The path is added when only the server address was given, so a hosting dashboard that holds
+// "https://api.example.com" works as well as "https://api.example.com/api/v1".
+const API_PREFIX = "/api/v1";
+const configured = (
+  import.meta.env.VITE_API_BASE_URL ?? `http://localhost:8000${API_PREFIX}`
 ).replace(/\/+$/, "");
+export const API_BASE = configured.endsWith(API_PREFIX) ? configured : `${configured}${API_PREFIX}`;
 
 // The health checks live at the server root, outside /api/v1.
 export const SERVER_ROOT = API_BASE.replace(/\/api\/v1$/, "");

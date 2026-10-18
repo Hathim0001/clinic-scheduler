@@ -62,3 +62,23 @@ describe("the API client", () => {
     expect(api.calls[0]?.body).toEqual({ name: "A" });
   });
 });
+
+describe("the API address", () => {
+  const load = async (value: string | undefined) => {
+    vi.resetModules();
+    vi.stubEnv("VITE_API_BASE_URL", value as string);
+    return import("./client");
+  };
+
+  it.each([
+    ["https://api.example.com", "https://api.example.com/api/v1"],
+    ["https://api.example.com/", "https://api.example.com/api/v1"],
+    ["https://api.example.com/api/v1", "https://api.example.com/api/v1"],
+    ["https://api.example.com/api/v1/", "https://api.example.com/api/v1"],
+  ])("%s becomes %s", async (given, expected) => {
+    const client = await load(given);
+    expect(client.API_BASE).toBe(expected);
+    expect(client.SERVER_ROOT).toBe("https://api.example.com");
+    vi.unstubAllEnvs();
+  });
+});
