@@ -7,7 +7,7 @@ PROMPTS.md); the author is expected to read it, correct it and own it.
 
 A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI,
 started locally with one `docker compose up --build`. All Core features are complete: doctors with
-weekly hours and date overrides, patients (a number may be shared by a family, with confirmation), free slots, booking, cancelling,
+weekly hours and date overrides, patients with unique phones, free slots, booking, cancelling,
 rescheduling, completed and no-show, patient history, a day view, today's queue and the reviewer test
 clock. All seven business rules are enforced in the backend and hold under concurrent requests, with a
 boundary test for every number. Hosted: UI on Vercel, API on Render, database on Neon (links in README section 2). Partial: the UI has component tests but no browser end-to-end tests.

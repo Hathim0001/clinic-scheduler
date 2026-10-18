@@ -240,7 +240,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | PUT, DELETE | `/doctors/{id}/overrides/{date}` | Leave, special hours or an extra day; remove | 409 `AVAILABILITY_CONFLICTS`, 422 |
 | GET | `/doctors/{id}/slots?date&patient_id?&slots?` | Free starts for a visit of `slots` slots (1 to 4, default 1), with `unavailable_reason` | 404, 422 |
 | GET | `/doctors/{id}/schedule?date&patient_id?` | Every grid slot of a day with its state | 404, 422 |
-| GET, POST | `/patients` | Search by phone or name prefix; register (`allow_duplicate` despite a likely duplicate; `shares_phone` for a family member on a number in use) | 409 `PHONE_TAKEN` (with the owners), `POSSIBLE_DUPLICATE`, 422 |
+| GET, POST | `/patients` | Search by phone or name prefix; register (`allow_duplicate` despite a likely duplicate) | 409 `PHONE_TAKEN` (only the owner's id), `POSSIBLE_DUPLICATE`, 422 |
 | GET, PATCH | `/patients/{id}` | Patient with the deposit status and a literal `deposit_required` flag; correct name, phone or date of birth | 404, 409 `PHONE_TAKEN`, `POSSIBLE_DUPLICATE` |
 | GET | `/patients/{id}/export` | Everything held about a patient: details, every appointment and its history | 404 |
 | GET | `/patients/{id}/appointments` | History, newest first | 404 |
@@ -313,7 +313,7 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-12 | An availability change that would leave booked appointments outside the new hours is refused with the list (409) unless `acknowledge_conflicts` is true; acknowledged appointments stay booked and are listed as needing attention. Nothing is silently cancelled |
 | A-13 | A late cancel counts from the time it was made; a no-show counts from the appointment's start |
 | A-14 | `deposit_confirmed` is a staff acknowledgement only; no amount or payment is stored |
-| A-15 | Phones are Indian mobile numbers, ASCII digits only, stored as `+91XXXXXXXXXX`. A number may be shared by several patients (a family on one mobile) but only on purpose: registering or editing onto a number that is in use is refused with `PHONE_TAKEN`, naming who has it, unless `shares_phone` confirms it. An advisory lock on the number keeps two simultaneous registrations from both getting past the check. Each patient keeps their own history and deposit flag |
+| A-15 | Phones are Indian mobile numbers, ASCII digits only, stored as `+91XXXXXXXXXX`. A phone number is unique, as the problem statement defines the patient: a `UNIQUE` constraint (migration 0006) is the final guard, and registering or editing onto a number in use is refused with `PHONE_TAKEN`. The error carries only the owner's id, not their name or birth date, so the API does not disclose who a number belongs to; search by phone finds them |
 | A-16 | The daily cap counts booked, completed and no-show appointments; cancelled and late-cancelled ones do not |
 | A-17 | The API returns UTC and India time, accepts any explicit offset and refuses a time without one |
 | A-18 | Completed and no-show can only be marked at or after the start |
