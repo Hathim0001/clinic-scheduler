@@ -18,7 +18,7 @@ from sqlalchemy import ColumnElement, Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.actor import current_actor
-from app.domain.availability import resolve_windows
+from app.domain.availability import fits_in_windows, resolve_windows
 from app.domain.errors import ErrorCode, NotFoundError
 from app.domain.model import (
     AppointmentFacts,
@@ -30,7 +30,7 @@ from app.domain.model import (
     Window,
 )
 from app.domain.penalties import LOOKBACK
-from app.domain.timeutil import ist_day_bounds
+from app.domain.timeutil import ist_date, ist_day_bounds
 from app.persistence.models import (
     Appointment,
     AppointmentEvent,
@@ -298,6 +298,7 @@ class AppointmentFilter:
     day: date | None = None  # the IST calendar day of the start
     statuses: frozenset[Status] | None = None
     start_from: datetime | None = None  # start at or after this instant
+    outside_hours: bool | None = None  # only bookings stored as outside the doctor's hours
     newest_first: bool = False
 
 
@@ -318,6 +319,8 @@ def _filtered(flt: AppointmentFilter) -> Select[Appointment, str, str, str]:
         statement = statement.where(Appointment.status.in_(sorted(s.value for s in flt.statuses)))
     if flt.start_from is not None:
         statement = statement.where(Appointment.start_at >= flt.start_from)
+    if flt.outside_hours is not None:
+        statement = statement.where(Appointment.outside_hours.is_(flt.outside_hours))
     return statement
 
 
@@ -446,6 +449,30 @@ def patients_like(
     if exclude_id is not None:
         statement = statement.where(Patient.id != exclude_id)
     return list(session.scalars(statement.order_by(Patient.id)))
+
+
+def refresh_outside_hours(session: Session, doctor_id: int | None = None) -> int:
+    """Recompute `outside_hours` for BOOKED appointments (one doctor's, or everyone's).
+
+    Called in the same transaction as every change to hours, and once by the migration. Returns how
+    many rows changed. It is the only writer of the column apart from the default (false) a new
+    booking gets, which is right because a booking is checked against the hours before it is made.
+    """
+    statement = select(Appointment).where(Appointment.status == Status.BOOKED.value)
+    if doctor_id is not None:
+        statement = statement.where(Appointment.doctor_id == doctor_id)
+    booked = list(session.scalars(statement))
+    lookup = WindowsLookup(session)
+    lookup.preload((a.doctor_id, ist_date(a.start_at)) for a in booked)
+    changed = 0
+    for appointment in booked:
+        windows = lookup.windows(appointment.doctor_id, ist_date(appointment.start_at))
+        outside = not fits_in_windows(appointment.start_at, appointment.end_at, windows)
+        if appointment.outside_hours != outside:
+            appointment.outside_hours = outside
+            changed += 1
+    session.flush()
+    return changed
 
 
 def count_rows(session: Session) -> int:

@@ -275,6 +275,7 @@ class AvailabilityService:
                 for w in ordered
             )
             session.flush()
+            repo.refresh_outside_hours(session, doctor.id)
             return WeeklyView(tuple(ordered), tuple(_views_of(session, orphans, now)))
 
         return run(self._factory, work)
@@ -308,6 +309,7 @@ class AvailabilityService:
             ]
             session.add(row)
             session.flush()
+            repo.refresh_outside_hours(session, doctor.id)
             return OverrideChange(day, note, ordered, tuple(_views_of(session, orphans, now)))
 
         return run(self._factory, work)
@@ -326,6 +328,8 @@ class AvailabilityService:
             if existing is not None:
                 session.delete(existing)
                 session.flush()
+            session.flush()
+            repo.refresh_outside_hours(session, doctor.id)
             return OverrideChange(day, None, (), tuple(_views_of(session, orphans, now)))
 
         return run(self._factory, work)

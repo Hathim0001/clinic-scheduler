@@ -16,6 +16,7 @@ from app.persistence.models import (
     Patient,
     WeeklyWindowRow,
 )
+from app.persistence.repositories import refresh_outside_hours
 
 
 def add_doctor(
@@ -50,6 +51,7 @@ def add_override(
     row.windows = [OverrideWindowRow(start_min=s, end_min=e) for s, e in windows]
     session.add(row)
     session.flush()
+    refresh_outside_hours(session, doctor_id)
     return row
 
 
@@ -92,4 +94,6 @@ def add_appointment(
     appointment = Appointment(**fields)
     session.add(appointment)
     session.flush()
+    if status is Status.BOOKED:  # what the services do whenever hours or bookings change
+        refresh_outside_hours(session, doctor_id)
     return appointment

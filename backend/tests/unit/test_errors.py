@@ -51,6 +51,8 @@ HTTP_STATUS = {
     "TOO_EARLY_TO_MARK": 409,
     "AVAILABILITY_CONFLICTS": 409,
     "PHONE_TAKEN": 409,
+    "PATIENT_HAS_UPCOMING": 409,
+    "PATIENT_ERASED": 409,
     "SLOT_LENGTH_LOCKED": 409,
     "DOCTOR_HAS_APPOINTMENTS": 409,
     "ALREADY_WAITING": 409,
@@ -76,9 +78,9 @@ EDGE_ONLY = {
 DOMAIN_CODES = [code for code in ErrorCode if code not in EDGE_ONLY]
 
 
-def test_the_catalogue_holds_exactly_the_31_codes_of_the_catalogue() -> None:
+def test_the_catalogue_holds_exactly_the_codes_of_the_catalogue() -> None:
     assert {code.value for code in ErrorCode} == set(HTTP_STATUS)
-    assert len(ErrorCode) == 42
+    assert len(ErrorCode) == 44
 
 
 def test_each_code_is_spelled_like_its_name() -> None:

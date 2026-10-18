@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.domain.model import Status
 from app.domain.penalties import LOOKBACK
 from app.domain.timeutil import IST, at_ist
+from app.persistence import repositories as repo
 from app.persistence.models import (
     AppMeta,
     Appointment,
@@ -233,6 +234,8 @@ def seed_database(session: Session, anchor: date, seeded_at: datetime) -> Scenar
     _add_appointment(session, rao, 8, dates.leave_day, "09:30", reason="Routine check-up")
     leave = OverrideRow(doctor_id=rao.id, on_date=dates.leave_day, note="Conference leave")
     session.add(leave)
+    session.flush()
+    repo.refresh_outside_hours(session)  # the booking above now lies outside Dr. Rao's hours
 
     # Cap demo: Dr. Menon's cap is 6 of 8 slots, and 5 are already booked.
     for number, hhmm in ((9, "10:00"), (10, "10:30"), (11, "11:00"), (12, "11:30"), (13, "12:00")):

@@ -15,7 +15,7 @@ import pytest
 import uvicorn
 
 from app.main import create_app
-from scripts import burst
+from scripts import burst, load
 from tests.api.conftest import make_settings
 from tests.integration.conftest import Clinic, clinic  # noqa: F401 - fixture
 
@@ -24,7 +24,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.concurrency]
 
 @pytest.fixture
 def live_url(clinic: Clinic, database_url: str) -> Iterator[str]:  # noqa: F811 - the fixture
-    app = create_app(make_settings(database_url, test_clock_enabled=False))
+    app = create_app(make_settings(database_url, test_clock_enabled=False, rate_limit_per_minute=0))
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning"))
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
@@ -48,3 +48,14 @@ def test_twenty_simultaneous_bookings_of_one_slot_give_one_booking(
     assert "HTTP 201 OK: 1" in output
     assert "HTTP 409 SLOT_TAKEN: 19" in output
     assert "PASS" in output
+
+
+def test_sixty_simultaneous_users_mixing_reads_bookings_and_cancels_break_nothing(
+    live_url: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Far more users than database connections: no 5xx and no doctor is double-booked."""
+    exit_code = load.main(["--base-url", live_url, "--users", "60", "--rounds", "3"])
+    output = capsys.readouterr().out
+    assert exit_code == 0, output
+    assert "server errors: 0" in output
+    assert "overlaps: 0" in output

@@ -126,6 +126,7 @@ class Appointment(Base):
     rescheduled_to_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     slots: Mapped[int] = mapped_column(SmallInteger, default=1)
+    outside_hours: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 

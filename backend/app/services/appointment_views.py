@@ -12,9 +12,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.domain.availability import needs_attention
 from app.domain.model import CancelledBy, Status
-from app.domain.timeutil import ist_date
 from app.domain.transitions import allowed_actions
 from app.domain.triage import looks_urgent
 from app.persistence import repositories as repo
@@ -24,21 +22,10 @@ from app.services.views import AppointmentView
 def build_views(
     session: Session, rows: Sequence[repo.AppointmentRow], now: datetime
 ) -> list[AppointmentView]:
-    lookup = repo.WindowsLookup(session)
-    lookup.preload(
-        (row.appointment.doctor_id, ist_date(row.appointment.start_at))
-        for row in rows
-        if row.appointment.status == Status.BOOKED.value
-    )
     views = []
     for row in rows:
         appt = row.appointment
         status = Status(appt.status)
-        windows = (
-            lookup.windows(appt.doctor_id, ist_date(appt.start_at))
-            if status is Status.BOOKED
-            else ()
-        )
         views.append(
             AppointmentView(
                 id=appt.id,
@@ -57,7 +44,9 @@ def build_views(
                 cancelled_by=CancelledBy(appt.cancelled_by) if appt.cancelled_by else None,
                 status_changed_at=appt.status_changed_at,
                 rescheduled_to_id=appt.rescheduled_to_id,
-                needs_attention=needs_attention(repo.appointment_facts(appt), now, windows),
+                needs_attention=(
+                    status is Status.BOOKED and appt.outside_hours and appt.start_at >= now
+                ),
                 allowed_actions=tuple(
                     allowed_actions(status, appt.start_at, now, appt.checked_in_at is not None)
                 ),

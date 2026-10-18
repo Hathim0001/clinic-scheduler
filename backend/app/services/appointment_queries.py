@@ -49,6 +49,20 @@ class AppointmentQueries:
         def work(session: Session) -> Page[AppointmentView]:
             if doctor_id is not None:
                 repo.get_doctor(session, doctor_id)
+            if needs_attention is True:
+                # the stored flag and its partial index: no scan of every booking
+                stored = repo.AppointmentFilter(
+                    doctor_id=doctor_id,
+                    day=day,
+                    statuses=frozenset({Status.BOOKED})
+                    if status in (None, Status.BOOKED)
+                    else frozenset(),
+                    start_from=now,
+                    outside_hours=True,
+                )
+                rows = repo.find_appointments(session, stored, limit=limit, offset=offset)
+                total = repo.count_appointments(session, stored)
+                return Page(build_views(session, rows, now), total, limit, offset)
             if needs_attention is None:
                 rows = repo.find_appointments(session, flt, limit=limit, offset=offset)
                 total = repo.count_appointments(session, flt)
