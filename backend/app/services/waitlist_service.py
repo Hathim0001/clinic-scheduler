@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.booking_window import HORIZON_DAYS
@@ -31,6 +31,14 @@ from app.services.views import WaitlistAcceptance, WaitlistView
 from app.services.waitlist_offers import ACTIVE, offer_slot, settle_offers
 
 log = structlog.get_logger()
+
+
+def _live(now: datetime) -> ColumnElement[bool]:
+    """Waiting, or holding an offer that has not run out."""
+    return or_(
+        WaitlistEntry.status == "WAITING",
+        and_(WaitlistEntry.status == "OFFERED", WaitlistEntry.offer_expires_at >= now),
+    )
 
 
 def _views(session: Session, entries: list[WaitlistEntry]) -> list[WaitlistView]:
@@ -122,18 +130,21 @@ class WaitlistService:
         return view
 
     def for_doctor_day(self, doctor_id: int, day: date, now: datetime) -> list[WaitlistView]:
-        """Everyone still waiting or holding an offer for that doctor and date, oldest first."""
+        """Everyone still waiting or holding a live offer for that doctor and date, oldest first.
+
+        A read: it takes no lock and writes nothing. An offer whose time has run out is simply not
+        shown; the sweep (or the next change to this doctor's waitlist) passes the slot on.
+        """
 
         def work(session: Session) -> list[WaitlistView]:
-            doctor = repo.get_doctor(session, doctor_id, lock=True)
-            settle_offers(session, doctor, now)
+            repo.get_doctor(session, doctor_id)
             entries = list(
                 session.scalars(
                     select(WaitlistEntry)
                     .where(
                         WaitlistEntry.doctor_id == doctor_id,
                         WaitlistEntry.on_date == day,
-                        WaitlistEntry.status.in_(ACTIVE),
+                        _live(now),
                     )
                     .order_by(WaitlistEntry.created_at, WaitlistEntry.id)
                 )
@@ -147,26 +158,40 @@ class WaitlistService:
 
         def work(session: Session) -> list[WaitlistView]:
             repo.get_patient(session, patient_id)
-            doctor_ids = set(
-                session.scalars(
-                    select(WaitlistEntry.doctor_id).where(WaitlistEntry.patient_id == patient_id)
-                )
-            )
-            for doctor in repo.lock_doctors(session, doctor_ids).values():
-                settle_offers(session, doctor, now)
             entries = list(
                 session.scalars(
                     select(WaitlistEntry)
-                    .where(
-                        WaitlistEntry.patient_id == patient_id,
-                        WaitlistEntry.status.in_(ACTIVE),
-                    )
+                    .where(WaitlistEntry.patient_id == patient_id, _live(now))
                     .order_by(WaitlistEntry.on_date, WaitlistEntry.id)
                 )
             )
             return _views(session, entries)
 
         return run(self._factory, work)
+
+    def sweep(self, now: datetime) -> int:
+        """Pass every lapsed offer on to the next patient in line; returns how many doctors moved.
+
+        Run on a timer by the server and safe to run from any number of instances at once: each
+        doctor is handled in its own transaction under that doctor's row lock.
+        """
+        doctor_ids = run(
+            self._factory,
+            lambda session: sorted(
+                session.scalars(
+                    select(WaitlistEntry.doctor_id)
+                    .where(WaitlistEntry.status == "OFFERED", WaitlistEntry.offer_expires_at < now)
+                    .distinct()
+                )
+            ),
+        )
+        for doctor_id in doctor_ids:
+
+            def work(session: Session, doctor_id: int = doctor_id) -> None:
+                settle_offers(session, repo.get_doctor(session, doctor_id, lock=True), now)
+
+            run(self._factory, work)
+        return len(doctor_ids)
 
     def leave(self, entry_id: int, now: datetime) -> WaitlistView:
         """Leave the queue. Leaving while holding an offer passes the slot to the next patient."""

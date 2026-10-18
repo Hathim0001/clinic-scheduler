@@ -219,6 +219,7 @@ def event_out(view: EventView) -> EventOut:
         at_utc=utc_iso(view.at),
         at_ist=ist_iso(view.at),
         detail=view.detail,
+        actor=view.actor,
     )
 
 

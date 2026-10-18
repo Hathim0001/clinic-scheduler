@@ -188,6 +188,7 @@ class EventOut(BaseModel):
     at_utc: str
     at_ist: str
     detail: dict[str, object]
+    actor: str  # who did it: the staff name when login is on, else "anonymous" or "system"
 
 
 class PatientExportOut(BaseModel):

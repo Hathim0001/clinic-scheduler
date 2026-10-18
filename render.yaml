@@ -19,3 +19,6 @@ services:
         value: "true"
       - key: LOG_LEVEL
         value: INFO
+      # One proxy (Render's load balancer) appends the client address to X-Forwarded-For.
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"

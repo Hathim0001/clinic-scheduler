@@ -30,6 +30,25 @@ class Settings(BaseSettings):
     # Seconds to wait for the database to accept a connection (Neon may need a few to wake up).
     db_connect_timeout_s: int = Field(default=10, ge=1, le=60)
     seed_anchor_date: date | None = None
+    # Database connections kept per process (and how many more a burst may borrow).
+    db_pool_size: int = Field(default=5, ge=1, le=50)
+    db_max_overflow: int = Field(default=5, ge=0, le=50)
+    # How many reverse proxies sit in front of the API and append to X-Forwarded-For. The client
+    # address is read that many entries from the RIGHT, because everything to the left can be
+    # forged by the caller. 0 means no proxy: the socket address is used.
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
+    # Staff login. Unset (the default) leaves the API open, as the assignment allows; set it and
+    # every route except the health checks, the clock and the login itself needs a signed token.
+    staff_password: str | None = Field(default=None, min_length=8)
+    auth_token_ttl_hours: int = Field(default=12, ge=1, le=168)
+    # How often (seconds) the server passes lapsed waitlist offers to the next patient. 0 is off.
+    offer_sweep_interval_s: int = Field(default=30, ge=0, le=3600)
+
+    @field_validator("staff_password", mode="before")
+    @classmethod
+    def _blank_means_off(cls, value: object) -> object:
+        """An empty STAFF_PASSWORD (a variable that exists but holds nothing) leaves login off."""
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("log_level")
     @classmethod

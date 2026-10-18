@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timedelta
 
+from sqlalchemy import delete, func
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.cancellation import check_can_reschedule, classify_cancellation
@@ -38,6 +39,8 @@ from app.services.appointment_views import view_of
 from app.services.support import run
 from app.services.views import AppointmentView, BookCommand, CancelResult, RescheduleResult
 from app.services.waitlist_offers import offer_freed_slot
+
+KEY_LIFETIME = timedelta(hours=24)
 
 
 def deposit_of(session: Session, patient_id: int, now: datetime) -> DepositStatus:
@@ -141,6 +144,9 @@ class BookingService:
         def work(session: Session) -> tuple[AppointmentView, bool]:
             doctor = repo.get_doctor(session, command.doctor_id, lock=True)
             patient = repo.get_patient(session, command.patient_id, lock=True)
+            session.execute(  # by the database's own clock, so a test clock cannot expire real keys
+                delete(IdempotencyKey).where(IdempotencyKey.created_at < func.now() - KEY_LIFETIME)
+            )
             seen = session.get(IdempotencyKey, key)
             if seen is not None:
                 if seen.request_hash != fingerprint:

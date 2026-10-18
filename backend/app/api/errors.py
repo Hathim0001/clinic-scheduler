@@ -61,6 +61,7 @@ STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.IDEMPOTENCY_KEY_REUSED: 409,
     ErrorCode.INVALID_CORRECTION: 409,
     ErrorCode.CONFLICT: 409,
+    ErrorCode.UNAUTHENTICATED: 401,
     ErrorCode.RATE_LIMITED: 429,
     ErrorCode.SERVICE_UNAVAILABLE: 503,
     ErrorCode.INTERNAL_ERROR: 500,

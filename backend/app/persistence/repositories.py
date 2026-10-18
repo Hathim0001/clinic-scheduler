@@ -17,6 +17,7 @@ from datetime import date, datetime
 from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.actor import current_actor
 from app.domain.availability import resolve_windows
 from app.domain.errors import ErrorCode, NotFoundError
 from app.domain.model import (
@@ -407,6 +408,7 @@ def record_event(
             kind=kind,
             at=at,
             detail=detail,
+            actor=current_actor.get(),
         )
     )
 

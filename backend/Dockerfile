@@ -17,4 +17,4 @@ USER appuser
 
 EXPOSE 8000
 # Migrate, seed the demo data only if the database is empty, then serve. Render supplies PORT.
-CMD ["sh", "-c", "python -m scripts.migrate_and_seed --if-empty && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000} --no-access-log --proxy-headers --forwarded-allow-ips='*'"]
+CMD ["sh", "-c", "python -m scripts.migrate_and_seed --if-empty && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000} --no-access-log"]

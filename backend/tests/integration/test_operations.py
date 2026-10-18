@@ -414,14 +414,20 @@ def test_declining_without_an_offer_is_refused(clinic: Clinic) -> None:
     assert raised.value.code is ErrorCode.INVALID_TRANSITION
 
 
-def test_a_lapsed_offer_passes_to_the_next_patient_when_anyone_looks(clinic: Clinic) -> None:
+def test_a_lapsed_offer_is_hidden_at_once_and_passed_on_by_the_sweep(clinic: Clinic) -> None:
     booked = full_slot(clinic)
-    _, second = three_waiting(clinic)
+    first, second = three_waiting(clinic)
     clinic.booking.cancel(booked, CancelledBy.PATIENT, NOW)
     later = NOW + timedelta(minutes=40)  # the 30 minute hold has run out
-    states = {e.id: e.status for e in clinic.waitlist.for_doctor_day(clinic.rao, MONDAY, later)}
-    assert states == {second: "OFFERED"}  # the first lapsed and left the queue
+    shown = {e.id: e.status for e in clinic.waitlist.for_doctor_day(clinic.rao, MONDAY, later)}
+    assert shown == {second: "WAITING"}  # the lapsed offer is not shown, and nothing was written
     assert clinic.waitlist.for_patient(clinic.asha, later) == []
+
+    assert clinic.waitlist.sweep(later) == 1
+    after = {e.id: e.status for e in clinic.waitlist.for_doctor_day(clinic.rao, MONDAY, later)}
+    assert after == {second: "OFFERED"}
+    assert clinic.waitlist.sweep(later) == 0  # nothing left to pass on
+    assert first not in after
 
 
 def test_an_offer_that_lapses_is_passed_on_when_the_late_patient_tries_to_accept(

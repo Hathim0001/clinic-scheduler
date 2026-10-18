@@ -38,12 +38,14 @@ def create_db_engine(
     lock_timeout_ms: int = 5_000,
     idle_tx_timeout_ms: int = 15_000,
     connect_timeout_s: int = 10,
+    pool_size: int = 5,
+    max_overflow: int = 5,
 ) -> Engine:
     """One engine per process. pool_pre_ping replaces connections that Neon suspended when idle."""
     return create_engine(
         database_url,
-        pool_size=5,
-        max_overflow=5,
+        pool_size=pool_size,
+        max_overflow=max_overflow,
         pool_timeout=10,
         pool_pre_ping=True,
         pool_recycle=300,

@@ -68,6 +68,7 @@ class EventView:
     kind: str
     at: datetime
     detail: dict[str, object]
+    actor: str = "system"
 
 
 @dataclass(frozen=True, slots=True)

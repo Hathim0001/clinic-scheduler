@@ -70,7 +70,9 @@ class PatientExport:
 
 
 def _event_view(row: AppointmentEvent) -> EventView:
-    return EventView(row.id, row.appointment_id, row.patient_id, row.kind, row.at, dict(row.detail))
+    return EventView(
+        row.id, row.appointment_id, row.patient_id, row.kind, row.at, dict(row.detail), row.actor
+    )
 
 
 def _ratio(part: int, whole: int) -> float | None:

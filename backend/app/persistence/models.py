@@ -162,6 +162,7 @@ class AppointmentEvent(Base):
     kind: Mapped[str] = mapped_column(Text)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    actor: Mapped[str] = mapped_column(Text, default="system")
 
 
 class IdempotencyKey(Base):

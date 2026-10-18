@@ -68,6 +68,11 @@ class OverridePut(StrictModel):
     acknowledge_conflicts: StrictBool = False
 
 
+class LoginRequest(StrictModel):
+    name: PersonName
+    password: Annotated[str, Field(strict=True, min_length=1, max_length=200)]
+
+
 class PatientCreate(StrictModel):
     name: PersonName
     phone: PhoneText

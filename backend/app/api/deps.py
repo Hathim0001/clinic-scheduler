@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated
@@ -9,8 +10,11 @@ from typing import Annotated
 from fastapi import Depends, Request, Response
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.api.errors import InvalidTestClock
+from app.api.errors import ApiError, InvalidTestClock
 from app.api.parsing import parse_instant
+from app.core.actor import current_actor
+from app.core.auth import verify_token
+from app.domain.errors import ErrorCode
 from app.domain.timeutil import utc_iso
 from app.services.appointment_queries import AppointmentQueries
 from app.services.availability_service import AvailabilityService
@@ -83,6 +87,34 @@ def effective_now(request: Request, response: Response) -> datetime:
     request.state.effective_now = utc_iso(instant)
     response.headers["X-Effective-Now"] = utc_iso(instant)
     return instant
+
+
+async def require_staff(request: Request) -> None:
+    """Sets the actor for the audit trail and, when staff login is on, insists on a valid token.
+
+    `async` on purpose: it must run in the request's own context for the actor to be visible to the
+    route handler that runs after it in a worker thread.
+    """
+    password = request.app.state.settings.staff_password
+    if password is None:
+        current_actor.set("anonymous")
+        return
+    header = request.headers.get("authorization", "")
+    name = (
+        verify_token(password, header[7:].strip(), time.time())
+        if header.lower().startswith("bearer ")
+        else None
+    )
+    if name is None:
+        raise ApiError(
+            ErrorCode.UNAUTHENTICATED,
+            "Sign in to use this service.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    current_actor.set(name)
+    log_fields = getattr(request.state, "log_fields", None)
+    if log_fields is not None:
+        log_fields["staff"] = name
 
 
 ServicesDep = Annotated[Services, Depends(get_services)]

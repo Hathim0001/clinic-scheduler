@@ -58,6 +58,7 @@ def make_settings(database_url: str, **values: Any) -> Settings:
         "cors_origins": ORIGIN,
         "test_clock_enabled": True,
         "log_level": "WARNING",
+        "offer_sweep_interval_s": 0,
     }
     return Settings(**(defaults | values), _env_file=None)  # type: ignore[call-arg]
 
