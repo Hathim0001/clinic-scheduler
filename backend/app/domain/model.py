@@ -19,6 +19,13 @@ class Status(StrEnum):
     NO_SHOW = "NO_SHOW"
 
 
+class Role(StrEnum):
+    """What a signed-in staff member may do: ADMIN also sets the clinic up and manages accounts."""
+
+    ADMIN = "ADMIN"
+    RECEPTIONIST = "RECEPTIONIST"
+
+
 class CancelledBy(StrEnum):
     PATIENT = "PATIENT"
     CLINIC = "CLINIC"

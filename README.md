@@ -391,7 +391,7 @@ an oversized body, a database that is down and the catch-all 500):
 | A client sending too many requests | In-memory sliding window per address | 429 `RATE_LIMITED` with `Retry-After` |
 | Anything else | Any other exception | 500 `INTERNAL_ERROR` with a generic message and the request id; the stack trace is logged, never sent |
 
-All 44 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
+All 48 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
 in one transaction, so a failure leaves the data as it was.
 
 **Logging.** structlog writes one JSON line per event to stdout: `ts` (UTC), `level`, `event` and the

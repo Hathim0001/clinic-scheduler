@@ -271,3 +271,21 @@ def test_search_is_paginated_with_a_total(clinic: Clinic) -> None:
 def test_phone_and_name_filters_combine(clinic: Clinic) -> None:
     assert search(clinic, phone="9000000001", name_prefix="as") == ["Asha Iyer"]
     assert search(clinic, phone="9000000001", name_prefix="ravi") == []
+
+
+def test_the_create_staff_script_makes_an_account_that_can_sign_in(
+    clinic: Clinic, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.domain.model import Role
+    from app.services.staff_service import StaffService
+    from scripts.create_staff import main
+
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    monkeypatch.setenv("STAFF_NEW_PASSWORD", "script-made-pass")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    assert main(["--username", "scripted", "--name", "Scripted Admin", "--role", "ADMIN"]) == 0
+    account = StaffService(clinic.factory).authenticate("scripted", "script-made-pass")
+    assert account is not None
+    assert account.role is Role.ADMIN

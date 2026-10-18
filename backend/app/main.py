@@ -17,7 +17,7 @@ import structlog
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.deps import Services, require_staff
+from app.api.deps import Services, require_admin, require_staff
 from app.api.errors import register_exception_handlers
 from app.api.middleware import RequestContextMiddleware
 from app.api.ratelimit import RateLimitMiddleware
@@ -33,6 +33,7 @@ from app.api.routers import (
     proof,
     queue,
     reports,
+    staff,
     waitlist,
 )
 from app.core.config import Settings, get_settings
@@ -106,6 +107,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(clock.router, prefix=API_PREFIX)  # open: shows the time, no personal data
     app.include_router(auth.router, prefix=API_PREFIX)  # open: it is how you sign in
+    app.include_router(
+        staff.router,
+        prefix=API_PREFIX,
+        dependencies=[Depends(require_staff), Depends(require_admin)],
+    )
     for router in (
         doctors.router,
         availability.router,

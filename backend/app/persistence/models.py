@@ -108,6 +108,20 @@ class Patient(Base):
     erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
+class StaffAccount(Base):
+    """An individual login, used only when the server runs with AUTH_SECRET."""
+
+    __tablename__ = "staff_accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(Text)
+    display_name: Mapped[str] = mapped_column(Text)
+    password_hash: Mapped[str] = mapped_column(Text)
+    role: Mapped[str] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = _created_at()
+
+
 class Appointment(Base):
     __tablename__ = "appointments"
 

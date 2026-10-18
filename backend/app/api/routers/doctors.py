@@ -5,7 +5,7 @@ from __future__ import annotations
 import structlog
 from fastapi import APIRouter, Response
 
-from app.api.deps import NowDep, ServicesDep
+from app.api.deps import AdminOnly, NowDep, ServicesDep
 from app.api.params import DoctorId
 from app.api.presenters import doctor_out
 from app.api.schemas.requests import DoctorCreate, DoctorPatch
@@ -20,7 +20,13 @@ def list_doctors(services: ServicesDep) -> list[DoctorOut]:
     return [doctor_out(d) for d in services.doctors.list()]
 
 
-@router.post("", response_model=DoctorOut, status_code=201, summary="Create a doctor")
+@router.post(
+    "",
+    response_model=DoctorOut,
+    status_code=201,
+    summary="Create a doctor",
+    dependencies=[AdminOnly],
+)
 def create_doctor(body: DoctorCreate, services: ServicesDep) -> DoctorOut:
     view = services.doctors.create(body.name, body.speciality, body.slot_length_min, body.daily_cap)
     log.info("doctor.created", doctor_id=view.id)
@@ -37,6 +43,7 @@ def get_doctor(doctor_id: DoctorId, services: ServicesDep) -> DoctorOut:
     status_code=204,
     summary="Delete a doctor who has no appointments",
     responses={409: {"description": "DOCTOR_HAS_APPOINTMENTS"}},
+    dependencies=[AdminOnly],
 )
 def delete_doctor(doctor_id: DoctorId, services: ServicesDep) -> Response:
     services.doctors.delete(doctor_id)
@@ -48,6 +55,7 @@ def delete_doctor(doctor_id: DoctorId, services: ServicesDep) -> Response:
     "/{doctor_id}",
     response_model=DoctorOut,
     summary="Change a doctor's name, speciality, daily cap or slot length",
+    dependencies=[AdminOnly],
 )
 def update_doctor(
     doctor_id: DoctorId, body: DoctorPatch, services: ServicesDep, now: NowDep

@@ -6,6 +6,7 @@ import threading
 
 from fastapi import APIRouter, Request
 
+from app.api.deps import AdminOnly
 from app.api.schemas.responses import ProofCaseOut, ProofOut
 from app.services.proof_service import run_proof
 
@@ -17,6 +18,7 @@ _one_at_a_time = threading.Lock()  # each run holds a connection and a transacti
     "/diagnostics/proof",
     response_model=ProofOut,
     summary="Run the rule scenarios and roll them back",
+    dependencies=[AdminOnly],
 )
 def run_rule_proof(request: Request) -> ProofOut:
     """Runs fixed scenarios (the 2-hour boundary, the 60-day limit, the deposit flag, an atomic

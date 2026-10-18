@@ -136,3 +136,87 @@ def test_proxy_pool_and_sweep_settings_are_bounded() -> None:
     ):
         with pytest.raises(ValidationError):
             settings(**bad)
+
+
+# ------------------------------------------------------------------ roles and password hashing
+
+
+def test_a_token_carries_the_role_and_the_account_id() -> None:
+    from app.core.auth import verify_claims
+
+    token, _ = issue_token(PASSWORD, "Meera", 1_000, 60, role="RECEPTIONIST", account_id=7)
+    claims = verify_claims(PASSWORD, token, now=1_001)
+    assert claims is not None
+    assert (claims.name, claims.role, claims.account_id) == ("Meera", "RECEPTIONIST", 7)
+
+
+def test_a_shared_password_token_is_an_administrator_without_an_account() -> None:
+    from app.core.auth import verify_claims
+
+    token, _ = issue_token(PASSWORD, "Meera", 1_000, 60)
+    claims = verify_claims(PASSWORD, token, now=1_001)
+    assert claims is not None
+    assert (claims.role, claims.account_id) == ("ADMIN", None)
+
+
+def test_a_token_naming_an_unknown_role_is_refused() -> None:
+    import base64
+    import hashlib
+    import hmac
+    import json
+
+    from app.core.auth import _key, verify_claims
+
+    body = (
+        base64.urlsafe_b64encode(json.dumps({"n": "x", "e": 9_999, "r": "ROOT"}).encode())
+        .rstrip(b"=")
+        .decode()
+    )
+    signature = (
+        base64.urlsafe_b64encode(hmac.new(_key(PASSWORD), body.encode(), hashlib.sha256).digest())
+        .rstrip(b"=")
+        .decode()
+    )
+    assert verify_claims(PASSWORD, f"{body}.{signature}", now=1_000) is None
+
+
+def test_a_password_hash_verifies_only_the_right_password() -> None:
+    from app.core.passwords import hash_password, verify_password
+
+    stored = hash_password("correct horse battery")
+    assert stored.startswith("scrypt$")
+    assert verify_password("correct horse battery", stored)
+    assert not verify_password("correct horse batter", stored)
+
+
+def test_two_hashes_of_one_password_differ_because_each_has_its_own_salt() -> None:
+    from app.core.passwords import hash_password
+
+    assert hash_password("same password") != hash_password("same password")
+
+
+@pytest.mark.parametrize(
+    "stored", ["", "plain", "scrypt$1$2", "md5$1$2$3$ab$cd", "scrypt$x$8$1$zz$zz"]
+)
+def test_an_unreadable_hash_never_verifies_and_never_raises(stored: str) -> None:
+    from app.core.passwords import verify_password
+
+    assert verify_password("anything", stored) is False
+
+
+def test_the_signing_secret_is_the_auth_secret_else_the_shared_password() -> None:
+    both = Settings(
+        database_url="postgresql+psycopg://x/y", auth_secret="s" * 20, staff_password="p" * 8
+    )
+    only_shared = Settings(database_url="postgresql+psycopg://x/y", staff_password="p" * 8)
+    neither = Settings(database_url="postgresql+psycopg://x/y")
+    assert both.signing_secret == "s" * 20
+    assert only_shared.signing_secret == "p" * 8
+    assert (neither.signing_secret, neither.auth_required) == (None, False)
+    assert both.auth_required
+    assert only_shared.auth_required
+
+
+def test_a_short_auth_secret_is_refused() -> None:
+    with pytest.raises(ValidationError):
+        Settings(database_url="postgresql+psycopg://x/y", auth_secret="too-short")

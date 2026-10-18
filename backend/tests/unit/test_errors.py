@@ -29,6 +29,10 @@ HTTP_STATUS = {
     "REFERENCE_NOT_FOUND": 404,
     "WAITLIST_ENTRY_NOT_FOUND": 404,
     "UNAUTHENTICATED": 401,
+    "FORBIDDEN": 403,
+    "STAFF_NOT_FOUND": 404,
+    "STAFF_USERNAME_TAKEN": 409,
+    "LAST_ADMIN": 409,
     "DOCTOR_NOT_ACCEPTING": 409,
     "POSSIBLE_DUPLICATE": 409,
     "ALREADY_CHECKED_IN": 409,
@@ -71,6 +75,7 @@ EDGE_ONLY = {
     ErrorCode.NOT_FOUND,
     ErrorCode.METHOD_NOT_ALLOWED,
     ErrorCode.UNAUTHENTICATED,
+    ErrorCode.FORBIDDEN,
     ErrorCode.RATE_LIMITED,
     ErrorCode.SERVICE_UNAVAILABLE,
     ErrorCode.INTERNAL_ERROR,
@@ -80,7 +85,7 @@ DOMAIN_CODES = [code for code in ErrorCode if code not in EDGE_ONLY]
 
 def test_the_catalogue_holds_exactly_the_codes_of_the_catalogue() -> None:
     assert {code.value for code in ErrorCode} == set(HTTP_STATUS)
-    assert len(ErrorCode) == 44
+    assert len(ErrorCode) == 48
 
 
 def test_each_code_is_spelled_like_its_name() -> None:

@@ -9,7 +9,7 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, Query, Response
 
-from app.api.deps import NowDep, ServicesDep
+from app.api.deps import AdminOnly, NowDep, ServicesDep
 from app.api.errors import ApiError
 from app.api.params import (
     BoolQuery,
@@ -48,6 +48,7 @@ def get_weekly_windows(doctor_id: DoctorId, services: ServicesDep) -> WeeklyOut:
     response_model=WeeklyOut,
     summary="Replace the weekly pattern",
     responses={409: {"description": "AVAILABILITY_CONFLICTS: future bookings would be orphaned"}},
+    dependencies=[AdminOnly],
 )
 def put_weekly_windows(
     doctor_id: DoctorId, body: WeeklyWindowsPut, services: ServicesDep, now: NowDep
@@ -89,6 +90,7 @@ def list_overrides(
     response_model=OverrideOut,
     summary="Create or replace the override for one date (no windows means leave)",
     responses={409: {"description": "AVAILABILITY_CONFLICTS: future bookings would be orphaned"}},
+    dependencies=[AdminOnly],
 )
 def put_override(
     doctor_id: DoctorId,
@@ -118,6 +120,7 @@ def put_override(
     status_code=204,
     summary="Remove the override for one date, back to the weekly pattern",
     responses={409: {"description": "AVAILABILITY_CONFLICTS: future bookings would be orphaned"}},
+    dependencies=[AdminOnly],
 )
 def delete_override(
     doctor_id: DoctorId,

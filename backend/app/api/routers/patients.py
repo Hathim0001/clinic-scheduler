@@ -7,7 +7,7 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, Query, Response
 
-from app.api.deps import NowDep, ServicesDep
+from app.api.deps import AdminOnly, NowDep, ServicesDep
 from app.api.ics import calendar_text
 from app.api.params import Limit, Offset, PatientId
 from app.api.presenters import appointment_out, export_out, patient_out
@@ -129,6 +129,7 @@ def record_consent(patient_id: PatientId, services: ServicesDep, now: NowDep) ->
     response_model=PatientOut,
     summary="Erase a patient's personal data on request",
     responses={409: {"description": "PATIENT_HAS_UPCOMING: cancel or complete those first"}},
+    dependencies=[AdminOnly],
 )
 def erase_patient(patient_id: PatientId, services: ServicesDep, now: NowDep) -> PatientOut:
     """Name, phone, date of birth and appointment reasons are replaced; the appointments stay as
@@ -142,6 +143,7 @@ def erase_patient(patient_id: PatientId, services: ServicesDep, now: NowDep) -> 
     "/{patient_id}/export",
     response_model=PatientExportOut,
     summary="Everything held about a patient: details, every appointment and its history",
+    dependencies=[AdminOnly],
 )
 def export_patient(patient_id: PatientId, services: ServicesDep, now: NowDep) -> PatientExportOut:
     patient = services.patients.get(patient_id, now)

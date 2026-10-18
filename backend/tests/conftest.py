@@ -80,5 +80,5 @@ def session_factory(engine: Engine) -> sessionmaker[Session]:
     connections, so tests cannot be isolated by rolling back. Each test starts by truncating.
     """
     with engine.begin() as conn:
-        conn.execute(text(f"TRUNCATE {DATA_TABLES} RESTART IDENTITY CASCADE"))
+        conn.execute(text(f"TRUNCATE {DATA_TABLES}, staff_accounts RESTART IDENTITY CASCADE"))
     return create_session_factory(engine)

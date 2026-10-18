@@ -74,6 +74,22 @@ class LoginRequest(StrictModel):
     password: Annotated[str, Field(strict=True, min_length=1, max_length=200)]
 
 
+class StaffCreate(StrictModel):
+    username: Annotated[str, Field(strict=True, pattern=r"^[a-z0-9._-]{3,40}$")]
+    display_name: PersonName
+    password: Annotated[str, Field(strict=True, min_length=8, max_length=200)]
+    role: Literal["ADMIN", "RECEPTIONIST"]
+
+
+class StaffPatch(StrictModel):
+    """Only the fields that are sent change."""
+
+    display_name: PersonName | None = None
+    password: Annotated[str, Field(strict=True, min_length=8, max_length=200)] | None = None
+    role: Literal["ADMIN", "RECEPTIONIST"] | None = None
+    active: StrictBool | None = None
+
+
 class PatientCreate(StrictModel):
     name: PersonName
     phone: PhoneText

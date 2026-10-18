@@ -8,13 +8,15 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.errors import ApiError, InvalidTestClock
 from app.api.parsing import parse_instant
 from app.core.actor import current_actor
-from app.core.auth import verify_token
+from app.core.auth import verify_claims
 from app.domain.errors import ErrorCode
+from app.domain.model import Role
 from app.domain.timeutil import utc_iso
 from app.services.alternatives_service import AlternativesService
 from app.services.appointment_queries import AppointmentQueries
@@ -24,6 +26,7 @@ from app.services.doctor_service import DoctorService
 from app.services.meta_service import MetaService
 from app.services.patient_service import PatientService
 from app.services.record_service import RecordService
+from app.services.staff_service import StaffService
 from app.services.waitlist_service import WaitlistService
 
 TEST_CLOCK_HEADER = "x-test-clock"
@@ -40,6 +43,7 @@ class Services:
     waitlist: WaitlistService
     records: RecordService
     alternatives: AlternativesService
+    staff: StaffService
 
     @classmethod
     def build(cls, factory: sessionmaker[Session]) -> Services:
@@ -55,6 +59,7 @@ class Services:
             waitlist=WaitlistService(factory),
             records=RecordService(factory),
             alternatives=AlternativesService(availability, doctors),
+            staff=StaffService(factory),
         )
 
 
@@ -98,29 +103,51 @@ async def require_staff(request: Request) -> None:
     """Sets the actor for the audit trail and, when staff login is on, insists on a valid token.
 
     `async` on purpose: it must run in the request's own context for the actor to be visible to the
-    route handler that runs after it in a worker thread.
+    route handler that runs after it in a worker thread. For an individual account the role and
+    the active flag are read from the database, not trusted from the token, so a demotion or a
+    deactivation applies to the very next request.
     """
-    password = request.app.state.settings.staff_password
-    if password is None:
+    settings = request.app.state.settings
+    secret = settings.signing_secret
+    if secret is None:
         current_actor.set("anonymous")
+        request.state.role = Role.ADMIN  # no sign-in at all: nothing to restrict
         return
     header = request.headers.get("authorization", "")
-    name = (
-        verify_token(password, header[7:].strip(), time.time())
+    claims = (
+        verify_claims(secret, header[7:].strip(), time.time())
         if header.lower().startswith("bearer ")
         else None
     )
-    if name is None:
+    role = Role(claims.role) if claims is not None else None
+    name = claims.name if claims is not None else None
+    if claims is not None and claims.account_id is not None:
+        account = await run_in_threadpool(
+            request.app.state.services.staff.current, claims.account_id
+        )
+        role = account.role if account is not None else None
+        name = account.display_name if account is not None else None
+    if role is None or name is None:
         raise ApiError(
             ErrorCode.UNAUTHENTICATED,
             "Sign in to use this service.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     current_actor.set(name)
+    request.state.role = role
     log_fields = getattr(request.state, "log_fields", None)
     if log_fields is not None:
         log_fields["staff"] = name
 
 
+async def require_admin(request: Request) -> None:
+    """For set-up and sensitive routes: only an administrator (or an open server) may pass."""
+    if getattr(request.state, "role", Role.ADMIN) is not Role.ADMIN:
+        raise ApiError(
+            ErrorCode.FORBIDDEN, "Only an administrator can do this.", details={"required": "ADMIN"}
+        )
+
+
 ServicesDep = Annotated[Services, Depends(get_services)]
+AdminOnly = Depends(require_admin)
 NowDep = Annotated[datetime, Depends(effective_now)]

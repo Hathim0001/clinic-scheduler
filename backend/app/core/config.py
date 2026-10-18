@@ -41,14 +41,28 @@ class Settings(BaseSettings):
     # every route except the health checks, the clock and the login itself needs a signed token.
     staff_password: str | None = Field(default=None, min_length=8)
     auth_token_ttl_hours: int = Field(default=12, ge=1, le=168)
+    # Individual staff accounts with roles. Unset (the default) leaves them off. Set it to a long
+    # random string and people sign in with their own username and password; the shared
+    # STAFF_PASSWORD, if also set, still works as an administrator, to create the first account.
+    auth_secret: str | None = Field(default=None, min_length=16)
     # How often (seconds) the server passes lapsed waitlist offers to the next patient. 0 is off.
     offer_sweep_interval_s: int = Field(default=30, ge=0, le=3600)
 
-    @field_validator("staff_password", mode="before")
+    @field_validator("staff_password", "auth_secret", mode="before")
     @classmethod
     def _blank_means_off(cls, value: object) -> object:
         """An empty STAFF_PASSWORD (a variable that exists but holds nothing) leaves login off."""
         return None if isinstance(value, str) and not value.strip() else value
+
+    @property
+    def auth_required(self) -> bool:
+        """Is any kind of staff sign-in switched on?"""
+        return self.staff_password is not None or self.auth_secret is not None
+
+    @property
+    def signing_secret(self) -> str | None:
+        """What tokens are signed with: AUTH_SECRET, else the shared password."""
+        return self.auth_secret or self.staff_password
 
     @field_validator("log_level")
     @classmethod
