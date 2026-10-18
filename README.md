@@ -194,10 +194,10 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,165 passing in about 6 minutes: 463 unit (no database), 358 integration and race tests (real PostgreSQL), 344 through HTTP |
-| Backend line and branch coverage, all of `app/` | 99 % (3,202 statements, 8 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 100 % (1,607 statements, none missed); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 141 passing; 90.4 % of lines, 83.3 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Backend tests | 1,264 passing in about 7 minutes: 483 unit (no database), 402 integration and race tests (real PostgreSQL), 379 through HTTP |
+| Backend line and branch coverage, all of `app/` | 99 % (3,774 statements, 7 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 99 % (1,886 statements, none missed; one branch partly covered); the gate is 80 % |
+| Frontend tests (Vitest, network faked at `fetch`) | 156 passing; 90.6 % of lines, 83.0 % of branches covered (gate: 85 % lines, 75 % branches) |
 | Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 25 flow checks and 32 accessibility scans (axe-core, light and dark, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
@@ -209,7 +209,7 @@ mutation run (ten deliberate bugs, for example an exclusive look-back) is caught
 Integration tests run the services against real PostgreSQL, including races between real
 connections: ten bookings of one slot give exactly one success, a cap of three holds against ten
 simultaneous bookings, a booking racing a leave day always has one winner, and a real deadlock is
-retried. 344 tests go through HTTP: every error code, hostile input (bad JSON, NaN, huge or
+retried. 379 tests go through HTTP: every error code, hostile input (bad JSON, NaN, huge or
 deeply nested bodies, ids out of range, year 1 and 9999, control characters, wrong methods, bad test
 clocks), CORS and request ids, and logging without personal data. A test runs the burst script
 against a real uvicorn socket. The schema is tested constraint by constraint, and an
@@ -218,7 +218,7 @@ import-scanning test keeps `domain/` free of frameworks.
 **What is deliberately not covered.** Browsers other than Chrome, real SMS or email (none is sent), and load beyond a handful of simultaneous connections. The database-down and
 deadlock paths are exercised with real failures where possible and with stand-ins for the driver's
 errors where not. [Schemathesis](https://schemathesis.readthedocs.io/) 4.31 runs in CI (the `fuzz` job)
-against the running containers with the rate limit off: all 47 operations in the
+against the running containers with the rate limit off: all 57 operations in the
 last local run, no server error. The browser checks in `frontend/e2e/` run in CI too (the
 `compose-smoke` job): they book through the real form, race a stale page, triple-click Book, check the
 deposit gate and the emergency warning, load every page at phone width, and scan every page with axe-core. The few lines `coverage.txt` lists as missed are defensive branches.
