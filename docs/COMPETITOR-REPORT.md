@@ -76,6 +76,9 @@ at a time (`services/alternatives_service.py`).
 | S-09 | audit notes | A staff-typed correction note can hold personal data and the append-only guard stops us scrubbing it | Known limitation | Low; documented (A-64) |
 | S-10 | UI | No warning when a patient already has another appointment the same day (not an overlap, so no rule fires) | Missing feature | Low |
 
+**Update, later the same day:** S-01 to S-04, S-05 (per-account lockout), S-06 (cooldown), S-07 (optional
+token), S-08 (reserved erased-phone shape) and S-10 were fixed; S-09 stays a documented limitation.
+
 No defect was found that breaks a business rule. No crash on malformed input was found in the fuzz runs.
 
 ## 3. Competitive landscape
