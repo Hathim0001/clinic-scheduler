@@ -30,8 +30,8 @@ OFFER_HOLD = timedelta(minutes=30)
 ACTIVE = ("WAITING", "OFFERED")
 
 
-def _expire(session: Session, doctor_id: int, now: datetime) -> list[datetime]:
-    """Mark lapsed offers EXPIRED; return the slots they were holding."""
+def _expire(session: Session, doctor_id: int, now: datetime) -> list[tuple[datetime, int]]:
+    """Mark lapsed offers EXPIRED; return the slots they were holding, with their length."""
     lapsed = session.scalars(
         select(WaitlistEntry)
         .where(
@@ -44,29 +44,32 @@ def _expire(session: Session, doctor_id: int, now: datetime) -> list[datetime]:
     for entry in lapsed:
         entry.status = "EXPIRED"
     session.flush()
-    return sorted({e.offered_start_at for e in lapsed if e.offered_start_at is not None})
+    return sorted(
+        {(e.offered_start_at, e.offered_slots) for e in lapsed if e.offered_start_at is not None}
+    )
 
 
 def settle_offers(session: Session, doctor: Doctor, now: datetime) -> None:
     """Expire lapsed offers and pass each slot on to the next patient. Doctor row lock held."""
-    for slot in _expire(session, doctor.id, now):
-        offer_slot(session, doctor, slot, now)
+    for start, slots in _expire(session, doctor.id, now):
+        offer_slot(session, doctor, start, now, slots)
 
 
 def offer_freed_slot(
-    session: Session, doctor: Doctor, start_at: datetime, now: datetime
+    session: Session, doctor: Doctor, start_at: datetime, now: datetime, slots: int = 1
 ) -> WaitlistEntry | None:
     """Offer the slot starting at `start_at` to the first waiting patient who could take it.
 
     The caller holds the doctor row lock and has already flushed the change that freed the slot.
     """
     settle_offers(session, doctor, now)
-    return offer_slot(session, doctor, start_at, now)
+    return offer_slot(session, doctor, start_at, now, slots)
 
 
 def offer_slot(
-    session: Session, doctor: Doctor, start_at: datetime, now: datetime
+    session: Session, doctor: Doctor, start_at: datetime, now: datetime, slots: int = 1
 ) -> WaitlistEntry | None:
+    """Offer the `slots`-slot visit starting at `start_at` to the first patient who can take it."""
     day = ist_date(start_at)
     already_offered = session.scalar(
         select(WaitlistEntry.id).where(
@@ -92,8 +95,9 @@ def offer_slot(
     ).all()
     for entry in waiting:
         context = repo.slot_context(session, doctor, entry.patient_id, day, now)
-        if first_violation(start_at, context) is None:
+        if first_violation(start_at, context, slots) is None:
             entry.status = "OFFERED"
+            entry.offered_slots = slots
             entry.offered_start_at = start_at
             entry.offer_expires_at = min(now + OFFER_HOLD, start_at)
             session.flush()

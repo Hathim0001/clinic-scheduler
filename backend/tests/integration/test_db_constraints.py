@@ -37,9 +37,9 @@ HALF_HOUR = timedelta(minutes=30)
 APPOINTMENT_INSERT = """
 INSERT INTO appointments (doctor_id, patient_id, start_at, end_at, status, reason,
                           deposit_required_at_booking, deposit_confirmed,
-                          cancelled_at, cancelled_by, status_changed_at, rescheduled_to_id)
+                          cancelled_at, cancelled_by, status_changed_at, rescheduled_to_id, slots)
 VALUES (:doctor, :patient, :start, :end, :status, :reason, :dep_required, :dep_confirmed,
-        :cancelled_at, :cancelled_by, :changed_at, :moved_to)
+        :cancelled_at, :cancelled_by, :changed_at, :moved_to, :slots)
 """
 
 
@@ -90,6 +90,7 @@ def appointment(world: World, **override: Any) -> dict[str, Any]:
         "cancelled_by": None,
         "changed_at": None,
         "moved_to": None,
+        "slots": 1,
     }
     params.update(override)
     return params
@@ -138,13 +139,6 @@ WINDOW_AND_PEOPLE_CASES: dict[str, Case] = {
         lambda w: {},
         "23P01",
         "override_windows_no_overlap",
-    ),
-    "second patient with the same phone": (
-        "INSERT INTO patients (name, phone, date_of_birth) "
-        "VALUES ('Dup', '+919000000001', '2000-01-01')",
-        lambda w: {},
-        "23505",
-        "patients_phone_key",
     ),
     "phone that does not start with 6 to 9": (
         "INSERT INTO patients (name, phone, date_of_birth) "
@@ -217,7 +211,23 @@ APPOINTMENT_CASES: dict[str, tuple[Callable[[World], dict[str, Any]], str, str |
     "45-minute appointment": (
         lambda w: appointment(w, end=LATER + timedelta(minutes=45)),
         "23514",
-        "appt_one_slot_long",
+        "appt_whole_slots",
+    ),
+    "a one-slot visit that lasts an hour": (
+        lambda w: appointment(w, end=LATER + timedelta(hours=1)),
+        "23514",
+        "appt_whole_slots",
+    ),
+    "a two-slot visit of an odd length": (
+        lambda w: appointment(w, slots=2, end=LATER + timedelta(minutes=45)),
+        "23514",
+        "appt_whole_slots",
+    ),
+    "zero slots": (lambda w: appointment(w, slots=0), "23514", "appointments_slots_check"),
+    "five slots": (
+        lambda w: appointment(w, slots=5, end=LATER + timedelta(minutes=150)),
+        "23514",
+        "appointments_slots_check",
     ),
     "unknown status": (
         lambda w: appointment(w, status="MAYBE", changed_at=LATER),
@@ -320,6 +330,24 @@ def test_bad_appointment_rows_are_rejected(
 
 def test_a_valid_appointment_is_accepted(engine: Engine, world: World) -> None:
     assert run(engine, APPOINTMENT_INSERT, **appointment(world)) == (None, None)
+
+
+@pytest.mark.parametrize(
+    ("slots", "minutes"), [(2, 30), (2, 60), (3, 45), (3, 90), (4, 60), (4, 120)]
+)
+def test_a_visit_of_several_slots_is_accepted(
+    engine: Engine, world: World, slots: int, minutes: int
+) -> None:
+    params = appointment(world, slots=slots, end=LATER + timedelta(minutes=minutes))
+    assert run(engine, APPOINTMENT_INSERT, **params) == (None, None)
+
+
+def test_two_patients_may_share_a_phone_number(engine: Engine, world: World) -> None:
+    sql = (
+        "INSERT INTO patients (name, phone, date_of_birth) "
+        "VALUES ('Sibling', '+919000000001', '2001-02-03')"
+    )
+    assert run(engine, sql) == (None, None)
 
 
 def test_adjacent_appointments_do_not_overlap(engine: Engine, world: World) -> None:

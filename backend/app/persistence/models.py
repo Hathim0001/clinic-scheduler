@@ -122,6 +122,7 @@ class Appointment(Base):
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rescheduled_to_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    slots: Mapped[int] = mapped_column(SmallInteger, default=1)
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -145,6 +146,7 @@ class WaitlistEntry(Base):
     offer_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     appointment_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id"))
     declined_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    offered_slots: Mapped[int] = mapped_column(SmallInteger, default=1)
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 

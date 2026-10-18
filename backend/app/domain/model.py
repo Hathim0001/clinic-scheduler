@@ -58,6 +58,10 @@ class WeeklyWindow:
     end_min: int
 
 
+# A visit lasts one to this many of the doctor's slots.
+MAX_APPOINTMENT_SLOTS = 4
+
+
 @dataclass(frozen=True, slots=True)
 class DoctorFacts:
     id: int

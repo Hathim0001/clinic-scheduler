@@ -210,7 +210,7 @@ class WaitlistService:
             entry.status = "CANCELLED"
             session.flush()
             if held is not None:
-                offer_slot(session, doctor, held, now)
+                offer_slot(session, doctor, held, now, entry.offered_slots)
             return _views(session, [entry])[0]
 
         view = run(self._factory, work)
@@ -243,7 +243,7 @@ class WaitlistService:
             entry.offered_start_at = None
             entry.offer_expires_at = None
             session.flush()
-            offer_slot(session, doctor, held, now)
+            offer_slot(session, doctor, held, now, entry.offered_slots)
             return _views(session, [entry])[0]
 
         view = run(self._factory, work)
@@ -270,7 +270,9 @@ class WaitlistService:
                 held = entry.offered_start_at
                 entry.status = "EXPIRED"
                 session.flush()
-                offer_slot(session, doctor, held, now)  # the slot goes to the next patient
+                offer_slot(
+                    session, doctor, held, now, entry.offered_slots
+                )  # on to the next patient
                 return ConflictError(ErrorCode.OFFER_EXPIRED, "The offer has expired.")
             try:
                 deposit = deposit_of(session, patient.id, now)
@@ -283,6 +285,7 @@ class WaitlistService:
                     deposit_confirmed,
                     deposit,
                     now,
+                    slots=entry.offered_slots,
                 )
             except DomainError as error:
                 if error.code is ErrorCode.DEPOSIT_REQUIRED:

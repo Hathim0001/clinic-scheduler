@@ -39,16 +39,20 @@ def is_on_grid(start_at: datetime, slot_length_min: int) -> bool:
     return local.second == 0 and local.microsecond == 0 and minute_of_day % slot_length_min == 0
 
 
-def first_violation(start_at: datetime, ctx: SlotContext) -> ErrorCode | None:
+def first_violation(start_at: datetime, ctx: SlotContext, slots: int = 1) -> ErrorCode | None:
     """The first rule the slot breaks, or None when it is bookable (before the deposit check).
 
     Checked in a fixed order, cheapest and most basic first:
     DOCTOR_NOT_ACCEPTING, BOOKING_IN_PAST / BOOKING_TOO_FAR, OFF_GRID, OUTSIDE_AVAILABILITY,
     DAILY_CAP_REACHED, SLOT_TAKEN, PATIENT_OVERLAP. The cap comes before the overlap checks because
     a full day makes every slot unavailable and "fully booked" is the most useful message.
+
+    `slots` is how many of the doctor's slots the visit lasts. The start must be on the grid, the
+    whole visit must fit inside one window, and nothing of the doctor's or the patient's may overlap
+    any part of it.
     """
     length = ctx.doctor.slot_length_min
-    end_at = start_at + timedelta(minutes=length)
+    end_at = start_at + timedelta(minutes=length * slots)
 
     if not ctx.doctor.accepting_bookings:
         return ErrorCode.DOCTOR_NOT_ACCEPTING
@@ -86,18 +90,20 @@ def candidate_starts(
             minute += slot_length_min
 
 
-def free_slots(day: date, ctx: SlotContext) -> list[datetime]:
-    """The starts of `day` that `first_violation` accepts."""
+def free_slots(day: date, ctx: SlotContext, slots: int = 1) -> list[datetime]:
+    """The starts of `day` where a visit of `slots` slots is accepted by `first_violation`."""
     return [
         start
         for start in candidate_starts(day, ctx.windows, ctx.doctor.slot_length_min)
-        if first_violation(start, ctx) is None
+        if first_violation(start, ctx, slots) is None
     ]
 
 
-def conflicting_appointment(start_at: datetime, ctx: SlotContext) -> AppointmentFacts | None:
-    """The doctor's active appointment that overlaps the slot starting at `start_at`, if any."""
-    end_at = start_at + timedelta(minutes=ctx.doctor.slot_length_min)
+def conflicting_appointment(
+    start_at: datetime, ctx: SlotContext, slots: int = 1
+) -> AppointmentFacts | None:
+    """The doctor's active appointment that overlaps a visit of `slots` slots from `start_at`."""
+    end_at = start_at + timedelta(minutes=ctx.doctor.slot_length_min * slots)
     return next(
         (
             a
@@ -109,10 +115,10 @@ def conflicting_appointment(start_at: datetime, ctx: SlotContext) -> Appointment
 
 
 def overlapping_patient_appointment(
-    start_at: datetime, ctx: SlotContext
+    start_at: datetime, ctx: SlotContext, slots: int = 1
 ) -> AppointmentFacts | None:
-    """The patient's active appointment (with any doctor) that overlaps the slot, if any."""
-    end_at = start_at + timedelta(minutes=ctx.doctor.slot_length_min)
+    """The patient's active appointment (with any doctor) that overlaps the visit, if any."""
+    end_at = start_at + timedelta(minutes=ctx.doctor.slot_length_min * slots)
     return next(
         (
             a

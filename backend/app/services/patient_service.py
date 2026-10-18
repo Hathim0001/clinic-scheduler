@@ -55,6 +55,26 @@ def _check_birth_date(born: date, now: datetime) -> None:
         )
 
 
+def _refuse_shared_phone(owners: list[Patient]) -> None:
+    """Raise PHONE_TAKEN, naming who is already on the number, if there is anyone.
+
+    One mobile is often a whole family's, so sharing is allowed, but only on purpose: the person
+    registering must confirm it, which also stops the same patient being entered twice by mistake.
+    """
+    if owners:
+        names = ", ".join(p.name for p in owners[:3])
+        raise ConflictError(
+            ErrorCode.PHONE_TAKEN,
+            f"This phone number is already registered to {names}. If the new patient is a family "
+            "member who shares the number, confirm it; otherwise use the existing patient.",
+            patient_id=owners[0].id,
+            patients=[
+                {"patient_id": p.id, "name": p.name, "date_of_birth": p.date_of_birth.isoformat()}
+                for p in owners
+            ],
+        )
+
+
 def _refuse_duplicates(matches: list[Patient]) -> None:
     """Raise POSSIBLE_DUPLICATE if another patient has the same name and date of birth.
 
@@ -81,24 +101,23 @@ class PatientService:
         date_of_birth: date,
         now: datetime,
         allow_duplicate: bool = False,
+        shares_phone: bool = False,
     ) -> PatientView:
+        """Register a patient. A number already in use is refused unless `shares_phone` confirms
+        the new patient is someone else who shares it (a family on one mobile)."""
         cleaned = _clean_name(name)
         normalised = _normalised(phone)
         _check_birth_date(date_of_birth, now)
 
         def work(session: Session) -> PatientView:
-            existing = repo.patient_by_phone(session, normalised)
-            if existing is not None:  # a friendlier answer than the constraint's, same code
-                raise ConflictError(
-                    ErrorCode.PHONE_TAKEN,
-                    "A patient with that phone number already exists.",
-                    patient_id=existing.id,
-                )
+            repo.lock_phone(session, normalised)
+            if not shares_phone:
+                _refuse_shared_phone(repo.patients_by_phone(session, normalised))
             if not allow_duplicate:
                 _refuse_duplicates(repo.patients_like(session, cleaned, date_of_birth))
             patient = Patient(name=cleaned, phone=normalised, date_of_birth=date_of_birth)
             session.add(patient)
-            session.flush()  # two requests racing past the check above meet the unique constraint
+            session.flush()
             return _view(patient, deposit_status([], now))
 
         return run(self._factory, work)
@@ -112,12 +131,14 @@ class PatientService:
         phone: str | None = None,
         date_of_birth: date | None = None,
         allow_duplicate: bool = False,
+        shares_phone: bool = False,
     ) -> PatientView:
         """Correct a patient's details (a new phone number, a misspelt name, a wrong birth date).
 
-        Appointments follow the patient, so nothing is rebooked. A new phone must not belong to
-        someone else, and a new name and birth date that match another patient are refused unless
-        the caller confirms they are different people.
+        Appointments follow the patient, so nothing is rebooked. A new phone that already belongs to
+        someone else is refused unless `shares_phone` confirms they share it, and a new name and
+        birth date that match another patient are refused unless the caller confirms they are
+        different people.
         """
         cleaned = _clean_name(name) if name is not None else None
         normalised = _normalised(phone) if phone is not None else None
@@ -127,13 +148,9 @@ class PatientService:
         def work(session: Session) -> PatientView:
             patient = repo.get_patient(session, patient_id, lock=True)
             if normalised is not None and normalised != patient.phone:
-                other = repo.patient_by_phone(session, normalised)
-                if other is not None:
-                    raise ConflictError(
-                        ErrorCode.PHONE_TAKEN,
-                        "A patient with that phone number already exists.",
-                        patient_id=other.id,
-                    )
+                repo.lock_phone(session, normalised)
+                if not shares_phone:
+                    _refuse_shared_phone(repo.patients_by_phone(session, normalised))
             new_name = cleaned if cleaned is not None else patient.name
             new_birth = date_of_birth if date_of_birth is not None else patient.date_of_birth
             changed = (new_name, new_birth) != (patient.name, patient.date_of_birth)

@@ -69,14 +69,6 @@ def test_a_patient_in_two_places_at_once_is_patient_overlap(
     assert error.code is ErrorCode.PATIENT_OVERLAP
 
 
-def test_a_duplicate_phone_number_is_phone_taken(
-    session_factory: sessionmaker[Session], booked: tuple[int, int, int]
-) -> None:
-    error = translated(session_factory, lambda s: add_patient(s, 1, name="Someone Else"))
-    assert isinstance(error, ConflictError)
-    assert error.code is ErrorCode.PHONE_TAKEN
-
-
 def test_an_unknown_doctor_is_a_missing_reference(
     session_factory: sessionmaker[Session], booked: tuple[int, int, int]
 ) -> None:

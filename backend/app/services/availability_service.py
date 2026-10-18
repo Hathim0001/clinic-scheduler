@@ -174,9 +174,10 @@ class AvailabilityService:
         return run(self._factory, work)
 
     def free_slots(
-        self, doctor_id: int, day: date, patient_id: int | None, now: datetime
+        self, doctor_id: int, day: date, patient_id: int | None, now: datetime, slots: int = 1
     ) -> SlotsView:
-        """The starts on `day` that booking would accept, and why there are none when empty."""
+        """The starts on `day` that booking a visit of `slots` slots would accept, and why there are
+        none when empty."""
 
         def work(session: Session) -> SlotsView:
             doctor = repo.get_doctor(session, doctor_id)
@@ -185,7 +186,7 @@ class AvailabilityService:
             windows, source = repo.effective_windows(session, doctor.id, day)
             context = repo.slot_context(session, doctor, patient_id, day, now, windows)
             starts = list(candidate_starts(day, windows, doctor.slot_length_min))
-            violations = [first_violation(start, context) for start in starts]
+            violations = [first_violation(start, context, slots) for start in starts]
             return SlotsView(
                 doctor_id=doctor.id,
                 day=day,
@@ -194,6 +195,7 @@ class AvailabilityService:
                 windows=windows,
                 slots=tuple(s for s, v in zip(starts, violations, strict=True) if v is None),
                 unavailable_reason=unavailable_reason(violations),
+                duration_min=slots * doctor.slot_length_min,
             )
 
         return run(self._factory, work)

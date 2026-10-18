@@ -63,6 +63,7 @@ def build_views(
                 ),
                 checked_in_at=appt.checked_in_at,
                 urgent_symptoms=looks_urgent(appt.reason),
+                slots=appt.slots,
             )
         )
     return views

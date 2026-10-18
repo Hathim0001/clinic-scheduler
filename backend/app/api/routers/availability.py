@@ -29,7 +29,7 @@ from app.api.schemas.responses import (
     WeeklyOut,
 )
 from app.domain.errors import ErrorCode
-from app.domain.model import WeeklyWindow, Window
+from app.domain.model import MAX_APPOINTMENT_SLOTS, WeeklyWindow, Window
 
 router = APIRouter(prefix="/doctors/{doctor_id}", tags=["availability"])
 log = structlog.get_logger()
@@ -145,9 +145,13 @@ def get_slots(
     services: ServicesDep,
     now: NowDep,
     patient_id: OptionalId = None,
+    slots: Annotated[
+        int, Query(ge=1, le=MAX_APPOINTMENT_SLOTS, description="Visit length in slots")
+    ] = 1,
 ) -> SlotsOut:
-    """With `patient_id`, times that overlap that patient's other appointments are left out."""
-    return slots_out(services.availability.free_slots(doctor_id, day, patient_id, now))
+    """With `patient_id`, times that overlap that patient's other appointments are left out. With
+    `slots`, only starts where a visit of that many of the doctor's slots fits are listed."""
+    return slots_out(services.availability.free_slots(doctor_id, day, patient_id, now, slots))
 
 
 @router.get("/schedule", response_model=ScheduleOut, summary="Every slot of one day with its state")

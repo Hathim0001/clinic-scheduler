@@ -90,7 +90,7 @@ def _doctor_report(
         )
 
     completed, no_show = count(Status.COMPLETED), count(Status.NO_SHOW)
-    taking_a_slot = sum(1 for a in rows if Status(a.status) in ACTIVE_STATUSES)
+    taking_a_slot = sum(a.slots for a in rows if Status(a.status) in ACTIVE_STATUSES)
     return DoctorReport(
         doctor_id=doctor_id,
         doctor_name=name,

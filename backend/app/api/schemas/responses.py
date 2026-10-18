@@ -76,6 +76,8 @@ class AppointmentOut(BaseModel):
     checked_in_at_utc: str | None
     checked_in_at_ist: str | None
     urgent_symptoms: bool  # the reason mentions symptoms that may need emergency care
+    slots: int  # how many of the doctor's slots the visit lasts
+    duration_min: int
 
 
 class PageOut[T](BaseModel):
@@ -137,6 +139,7 @@ class SlotsOut(BaseModel):
     windows: list[WindowOut]
     slots: list[SlotOut]
     unavailable_reason: str | None
+    duration_min: int  # the visit length each listed start is free for
 
 
 class ScheduleSlotOut(SlotOut):

@@ -22,6 +22,7 @@ from app.api.schemas.types import (
     TimeOfDay,
     Weekday,
 )
+from app.domain.model import MAX_APPOINTMENT_SLOTS
 
 
 class DoctorCreate(StrictModel):
@@ -78,6 +79,7 @@ class PatientCreate(StrictModel):
     phone: PhoneText
     date_of_birth: BirthDate
     allow_duplicate: StrictBool = False  # register even if the same name and birth date exist
+    shares_phone: StrictBool = False  # a family member on a number that is already registered
 
 
 class PatientPatch(StrictModel):
@@ -87,10 +89,11 @@ class PatientPatch(StrictModel):
     phone: PhoneText | None = None
     date_of_birth: BirthDate | None = None
     allow_duplicate: StrictBool = False
+    shares_phone: StrictBool = False
 
     @model_validator(mode="after")
     def _something_to_change(self) -> PatientPatch:
-        sent = self.model_fields_set - {"allow_duplicate"}
+        sent = self.model_fields_set - {"allow_duplicate", "shares_phone"}
         if not sent:
             raise ValueError("send at least one of name, phone, date_of_birth")
         for field in sent:
@@ -114,6 +117,7 @@ class BookRequest(StrictModel):
     start_at: Instant
     reason: Reason
     deposit_confirmed: StrictBool = False
+    slots: Annotated[int, Field(strict=True, ge=1, le=MAX_APPOINTMENT_SLOTS)] = 1
 
 
 class RecurringBookRequest(BookRequest):
@@ -139,3 +143,7 @@ class RescheduleRequest(StrictModel):
     start_at: Instant
     doctor_id: EntityId | None = None
     deposit_confirmed: StrictBool | None = None
+    # Who is moving it. A clinic move never counts against the patient, as with a clinic cancel.
+    by: Literal["PATIENT", "CLINIC"] = "PATIENT"
+    # A patient move that would be recorded as a late cancellation must be confirmed.
+    acknowledge_late: StrictBool = False

@@ -77,10 +77,6 @@ def translate_db_error(exc: DBAPIError) -> DomainError | None:
             return RuleViolation(ErrorCode.WINDOW_OVERLAP, "Availability windows must not overlap.")
         return ConflictError(ErrorCode.CONFLICT, "The change conflicts with existing data.")
     if state == "23505":  # unique_violation
-        if name == "patients_phone_key":
-            return ConflictError(
-                ErrorCode.PHONE_TAKEN, "A patient with that phone number already exists."
-            )
         return ConflictError(ErrorCode.CONFLICT, "The change conflicts with existing data.")
     if state == "23503":  # foreign_key_violation
         return NotFoundError(ErrorCode.REFERENCE_NOT_FOUND, "A referenced record does not exist.")

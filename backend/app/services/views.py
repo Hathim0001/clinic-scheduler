@@ -49,6 +49,7 @@ class AppointmentView:
     allowed_actions: tuple[str, ...]
     checked_in_at: datetime | None = None
     urgent_symptoms: bool = False
+    slots: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +59,7 @@ class BookCommand:
     start_at: datetime
     reason: str
     deposit_confirmed: bool = False
+    slots: int = 1  # how many of the doctor's slots the visit lasts
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,8 +158,9 @@ class SlotsView:
     slot_length_min: int
     source: str  # "WEEKLY" or "OVERRIDE"
     windows: tuple[Window, ...]
-    slots: tuple[datetime, ...]  # starts; each lasts slot_length_min
+    slots: tuple[datetime, ...]  # starts; each visit lasts duration_min
     unavailable_reason: UnavailableReason | None
+    duration_min: int = 0  # the visit length these starts are free for
 
 
 class SlotState(StrEnum):

@@ -395,7 +395,9 @@ def test_rescheduling_to_the_same_slot_is_refused_and_costs_nothing(clinic: Clin
 def test_a_late_reschedule_is_a_late_cancellation(clinic: Clinic) -> None:
     """T-R05"""
     old_id = seed_booked(clinic, at(10))
-    result = clinic.booking.reschedule(old_id, at(11), None, None, at(8, 30))  # 1.5 h before
+    result = clinic.booking.reschedule(
+        old_id, at(11), None, None, at(8, 30), acknowledge_late=True
+    )  # 1.5 h before, and the patient confirmed the penalty
     assert result.old.status is Status.LATE_CANCELLED
     assert result.new.status is Status.BOOKED
 
@@ -407,7 +409,9 @@ def test_the_deposit_check_ignores_the_strike_made_by_the_move_itself(clinic: Cl
             session, clinic.rao, clinic.asha, ist(2026, 10, 28, 10), status=Status.NO_SHOW
         )
     old_id = seed_booked(clinic, at(10))
-    result = clinic.booking.reschedule(old_id, at(11), None, None, at(9))  # late: 1 h before
+    result = clinic.booking.reschedule(
+        old_id, at(11), None, None, at(9), acknowledge_late=True
+    )  # late: 1 h before
     assert result.new.deposit_required_at_booking is False
     error = rejected(clinic, at(10, day=3), now=at(9, 5))  # now flagged for later bookings
     assert error.code is ErrorCode.DEPOSIT_REQUIRED

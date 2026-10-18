@@ -25,7 +25,11 @@ def ist_text(instant: datetime) -> str:
 
 
 def violation_error(
-    code: ErrorCode, start_at: datetime, ctx: SlotContext, patient_id: int | None = None
+    code: ErrorCode,
+    start_at: datetime,
+    ctx: SlotContext,
+    patient_id: int | None = None,
+    slots: int = 1,
 ) -> DomainError:
     """The error for the first violation of the slot starting at `start_at`.
 
@@ -61,9 +65,10 @@ def violation_error(
                 f"{format_minutes(w.start_min)}-{format_minutes(w.end_min)}" for w in ctx.windows
             )
             where = f"works {hours} that day" if hours else "is not working that day"
+            visit = f" for a {slots * doctor.slot_length_min}-minute visit" if slots > 1 else ""
             return domain_error(
                 code,
-                f"{doctor.name} is not available at {when}; {doctor.name} {where}.",
+                f"{doctor.name} is not available at {when}{visit}; {doctor.name} {where}.",
                 windows=[
                     {"start": format_minutes(w.start_min), "end": format_minutes(w.end_min)}
                     for w in ctx.windows
@@ -77,7 +82,7 @@ def violation_error(
                 daily_cap=doctor.daily_cap,
             )
         case ErrorCode.SLOT_TAKEN:
-            taken = conflicting_appointment(start_at, ctx)
+            taken = conflicting_appointment(start_at, ctx, slots)
             details: dict[str, object] = {}
             if taken is not None:
                 details = {
@@ -92,7 +97,7 @@ def violation_error(
             )
             return ConflictError(code, message, **details)
         case ErrorCode.PATIENT_OVERLAP:
-            other = overlapping_patient_appointment(start_at, ctx)
+            other = overlapping_patient_appointment(start_at, ctx, slots)
             return ConflictError(
                 code,
                 f"The patient already has an appointment that overlaps {when}.",

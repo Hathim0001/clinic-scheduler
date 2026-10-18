@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.cancellation import check_can_reschedule, classify_cancellation
 from app.domain.errors import ConflictError, DomainError, ErrorCode, RuleViolation
-from app.domain.model import CancelledBy, DepositStatus, Status
+from app.domain.model import MAX_APPOINTMENT_SLOTS, CancelledBy, DepositStatus, Status
 from app.domain.penalties import deposit_status
 from app.domain.slots import first_violation
 from app.domain.timeutil import ist_date, ist_iso, utc_iso
@@ -57,12 +57,13 @@ def place_booking(
     deposit: DepositStatus,
     now: datetime,
     via: str = "BOOKING",
+    slots: int = 1,
 ) -> Appointment:
-    """Check every rule for the slot, then insert a BOOKED appointment. Locks must be held."""
+    """Check every rule for the visit, then insert a BOOKED appointment. Locks must be held."""
     context = repo.slot_context(session, doctor, patient.id, ist_date(start_at), now)
-    violation = first_violation(start_at, context)
+    violation = first_violation(start_at, context, slots)
     if violation is not None:
-        raise violation_error(violation, start_at, context, patient.id)
+        raise violation_error(violation, start_at, context, patient.id, slots)
     if deposit.required and not deposit_confirmed:
         raise deposit_required_error(deposit)
 
@@ -70,7 +71,8 @@ def place_booking(
         doctor_id=doctor.id,
         patient_id=patient.id,
         start_at=start_at,
-        end_at=start_at + timedelta(minutes=doctor.slot_length_min),
+        end_at=start_at + timedelta(minutes=doctor.slot_length_min * slots),
+        slots=slots,
         status=Status.BOOKED.value,
         reason=reason,
         deposit_required_at_booking=deposit.required,
@@ -87,6 +89,7 @@ def place_booking(
         doctor_id=doctor.id,
         start_at=utc_iso(start_at),
         deposit_confirmed=deposit_confirmed,
+        slots=slots,
     )
     return appointment
 
@@ -99,6 +102,7 @@ def _request_hash(command: BookCommand) -> str:
             utc_iso(command.start_at),
             command.reason,
             str(command.deposit_confirmed),
+            str(command.slots),
         )
     )
     return hashlib.sha256(text.encode()).hexdigest()
@@ -122,6 +126,7 @@ class BookingService:
                 command.deposit_confirmed,
                 deposit,
                 now,
+                slots=command.slots,
             )
             return view_of(session, appointment.id, now)
 
@@ -165,6 +170,7 @@ class BookingService:
                 command.deposit_confirmed,
                 deposit,
                 now,
+                slots=command.slots,
             )
             session.add(
                 IdempotencyKey(key=key, request_hash=fingerprint, appointment_id=appointment.id)
@@ -201,6 +207,7 @@ class BookingService:
                         command.deposit_confirmed,
                         deposit,
                         now,
+                        slots=command.slots,
                     )
                 except DomainError as error:
                     error.message = (
@@ -235,7 +242,7 @@ class BookingService:
                 start_at=utc_iso(appointment.start_at),
             )
             doctor = repo.get_doctor(session, appointment.doctor_id, lock=True)
-            offer_freed_slot(session, doctor, appointment.start_at, now)  # waiting patients first
+            offer_freed_slot(session, doctor, appointment.start_at, now, appointment.slots)
             return CancelResult(
                 appointment=view_of(session, appointment.id, now),
                 late=outcome is Status.LATE_CANCELLED,
@@ -251,18 +258,28 @@ class BookingService:
         doctor_id: int | None,
         deposit_confirmed: bool | None,
         now: datetime,
+        by: CancelledBy = CancelledBy.PATIENT,
+        acknowledge_late: bool = False,
     ) -> RescheduleResult:
         """Move an appointment: cancel the old one, book the new one, in one transaction.
 
         The old one is cancelled first so the new slot may overlap the patient's own old slot and
         the old slot stops counting toward the cap. If anything about the new slot is wrong the
         whole transaction rolls back and the old appointment is untouched.
+
+        The old slot is cancelled under the 2-hour rule. When the clinic moves it that is never a
+        late cancellation. When the patient moves it inside 2 hours it is, which counts toward the
+        deposit flag, so the move is refused until it is confirmed with `acknowledge_late`. The
+        confirmation is asked last, after the new slot has been checked, so nobody is asked to
+        accept a penalty for a move that could not happen anyway. The visit keeps its length: in
+        slots with the same doctor, in minutes with another (which must fit that doctor's slots).
         """
 
         def work(session: Session) -> RescheduleResult:
             old = repo.get_appointment(session, appointment_id, lock=True)
             check_can_cancel(Status(old.status))
-            _require_not_checked_in(old, "rescheduled")
+            if by is CancelledBy.PATIENT:
+                _require_not_checked_in(old, "rescheduled")
             check_can_reschedule(old.start_at, now)
             target_doctor_id = doctor_id if doctor_id is not None else old.doctor_id
             doctors = repo.lock_doctors(session, {old.doctor_id, target_doctor_id})
@@ -279,16 +296,30 @@ class BookingService:
             deposit = deposit_of(session, patient.id, now)
             confirmed = old.deposit_confirmed if deposit_confirmed is None else deposit_confirmed
 
-            outcome = classify_cancellation(old.start_at, now, CancelledBy.PATIENT)
+            duration = int((old.end_at - old.start_at).total_seconds() // 60)
+            target = doctors[target_doctor_id]
+            if (
+                duration % target.slot_length_min
+                or duration // target.slot_length_min > MAX_APPOINTMENT_SLOTS
+            ):
+                raise RuleViolation(
+                    ErrorCode.VALIDATION_ERROR,
+                    f"This visit lasts {duration} minutes, which does not fit {target.name}'s "
+                    f"{target.slot_length_min}-minute slots.",
+                    field="doctor_id",
+                )
+            new_slots = duration // target.slot_length_min
+
+            outcome = classify_cancellation(old.start_at, now, by)
             old.status = outcome.value
             old.cancelled_at = now
-            old.cancelled_by = CancelledBy.PATIENT.value
+            old.cancelled_by = by.value
             old.status_changed_at = now
             session.flush()
 
             new = place_booking(
                 session,
-                doctors[target_doctor_id],
+                target,
                 patient,
                 start_at,
                 old.reason,
@@ -296,7 +327,18 @@ class BookingService:
                 deposit,
                 now,
                 via="RESCHEDULE",
+                slots=new_slots,
             )
+            if outcome is Status.LATE_CANCELLED and not acknowledge_late:
+                minutes = int((old.start_at - now).total_seconds() // 60)
+                raise ConflictError(
+                    ErrorCode.LATE_RESCHEDULE_NEEDS_CONFIRMATION,
+                    f"This appointment starts in {minutes} minutes, so moving it now is recorded "
+                    "as a late cancellation of the old slot. That counts toward the patient's "
+                    "deposit flag. Confirm to move it anyway, or have the clinic make the move.",
+                    minutes_until_start=minutes,
+                    counts_as="LATE_CANCELLED",
+                )
             old.rescheduled_to_id = new.id
             session.flush()
             repo.record_event(
@@ -304,13 +346,13 @@ class BookingService:
                 old,
                 outcome.value,
                 now,
-                by=CancelledBy.PATIENT.value,
+                by=by.value,
                 start_at=utc_iso(old.start_at),
                 rescheduled_to_id=new.id,
                 rescheduled_to_start_at=utc_iso(new.start_at),
             )
             repo.record_event(session, new, "RESCHEDULED_FROM", now, from_id=old.id)
-            offer_freed_slot(session, doctors[old.doctor_id], old.start_at, now)
+            offer_freed_slot(session, doctors[old.doctor_id], old.start_at, now, old.slots)
             return RescheduleResult(
                 old=view_of(session, old.id, now), new=view_of(session, new.id, now)
             )

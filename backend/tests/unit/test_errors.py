@@ -34,6 +34,7 @@ HTTP_STATUS = {
     "ALREADY_CHECKED_IN": 409,
     "IDEMPOTENCY_KEY_REUSED": 409,
     "INVALID_CORRECTION": 409,
+    "LATE_RESCHEDULE_NEEDS_CONFIRMATION": 409,
     "BOOKING_IN_PAST": 422,
     "BOOKING_TOO_FAR": 422,
     "OFF_GRID": 422,
@@ -77,7 +78,7 @@ DOMAIN_CODES = [code for code in ErrorCode if code not in EDGE_ONLY]
 
 def test_the_catalogue_holds_exactly_the_31_codes_of_the_catalogue() -> None:
     assert {code.value for code in ErrorCode} == set(HTTP_STATUS)
-    assert len(ErrorCode) == 41
+    assert len(ErrorCode) == 42
 
 
 def test_each_code_is_spelled_like_its_name() -> None:

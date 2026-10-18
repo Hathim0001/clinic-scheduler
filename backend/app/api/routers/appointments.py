@@ -109,6 +109,7 @@ def book(
         start_at=body.start_at,
         reason=body.reason,
         deposit_confirmed=body.deposit_confirmed,
+        slots=body.slots,
     )
     if idempotency_key is not None:
         view, replayed = services.booking.book_idempotent(command, idempotency_key, now)
@@ -144,7 +145,12 @@ def book_series(
     request.state.log_fields.update(doctor_id=body.doctor_id, patient_id=body.patient_id)
     views = services.booking.book_series(
         BookCommand(
-            body.doctor_id, body.patient_id, body.start_at, body.reason, body.deposit_confirmed
+            body.doctor_id,
+            body.patient_id,
+            body.start_at,
+            body.reason,
+            body.deposit_confirmed,
+            body.slots,
         ),
         body.every_days,
         body.count,
@@ -225,7 +231,13 @@ def reschedule(
 ) -> RescheduleOut:
     request.state.log_fields.update(appointment_id=appointment_id, doctor_id=body.doctor_id)
     result = services.booking.reschedule(
-        appointment_id, body.start_at, body.doctor_id, body.deposit_confirmed, now
+        appointment_id,
+        body.start_at,
+        body.doctor_id,
+        body.deposit_confirmed,
+        now,
+        CancelledBy(body.by),
+        body.acknowledge_late,
     )
     log.info(
         "appointment.rescheduled",

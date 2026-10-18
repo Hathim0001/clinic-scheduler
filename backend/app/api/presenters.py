@@ -129,6 +129,8 @@ def appointment_out(view: AppointmentView) -> AppointmentOut:
         checked_in_at_utc=_utc(view.checked_in_at),
         checked_in_at_ist=_ist(view.checked_in_at),
         urgent_symptoms=view.urgent_symptoms,
+        slots=view.slots,
+        duration_min=int((view.end_at - view.start_at).total_seconds() // 60),
     )
 
 
@@ -149,8 +151,9 @@ def slots_out(view: SlotsView) -> SlotsOut:
         slot_length_min=view.slot_length_min,
         source=view.source,  # type: ignore[arg-type]
         windows=[window_out(w) for w in view.windows],
-        slots=[SlotOut(**_slot_times(s, view.slot_length_min)) for s in view.slots],
+        slots=[SlotOut(**_slot_times(s, view.duration_min)) for s in view.slots],
         unavailable_reason=view.unavailable_reason.value if view.unavailable_reason else None,
+        duration_min=view.duration_min,
     )
 
 
