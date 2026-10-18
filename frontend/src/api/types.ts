@@ -1,6 +1,16 @@
 // Response shapes of the API (backend/app/api/schemas/responses.py). Every instant comes twice,
 // as `..._utc` and `..._ist`; the UI shows the IST one and never converts times itself.
 
+export type Role = "ADMIN" | "RECEPTIONIST";
+
+export interface StaffAccount {
+  id: number;
+  username: string;
+  display_name: string;
+  role: Role;
+  active: boolean;
+}
+
 export type Status = "BOOKED" | "COMPLETED" | "CANCELLED" | "LATE_CANCELLED" | "NO_SHOW";
 export type Action = "cancel" | "reschedule" | "complete" | "no-show" | "check-in" | "correct";
 export type CancelledBy = "PATIENT" | "CLINIC";

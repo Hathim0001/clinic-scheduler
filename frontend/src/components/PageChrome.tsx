@@ -9,6 +9,7 @@ const TITLES: [prefix: string, title: string][] = [
   ["/patients", "Patients"],
   ["/reports", "Report"],
   ["/proof", "Prove the rules"],
+  ["/staff", "Staff accounts"],
   ["/admin", "Doctors"],
 ];
 

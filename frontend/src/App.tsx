@@ -1,7 +1,7 @@
 import { Link, NavLink, Navigate, Route, Routes } from "react-router";
 import { useAuthStatus, useNeedsAttention } from "./api/hooks";
 import { setSession } from "./lib/authStore";
-import { AuthGate, useSession } from "./components/AuthGate";
+import { AuthGate, useIsAdmin, useSession } from "./components/AuthGate";
 import { ClockBar } from "./components/ClockBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { OfflineBanner, SkipLink, useRouteAccessibility } from "./components/PageChrome";
@@ -13,12 +13,14 @@ import { PatientDetail, PatientSearch } from "./pages/Patients";
 import Proof from "./pages/Proof";
 import Queue from "./pages/Queue";
 import Reports from "./pages/Reports";
+import Staff from "./pages/Staff";
 
 function Header() {
   const attention = useNeedsAttention();
   const count = attention.data?.total ?? 0;
   const session = useSession();
   const auth = useAuthStatus();
+  const isAdmin = useIsAdmin();
   return (
     <header className="app-header">
       <div className="app-header-bar">
@@ -31,7 +33,8 @@ function Header() {
           <NavLink to="/queue">Queue</NavLink>
           <NavLink to="/patients">Patients</NavLink>
           <NavLink to="/reports">Report</NavLink>
-          <NavLink to="/proof">Proof</NavLink>
+          {isAdmin && <NavLink to="/proof">Proof</NavLink>}
+          {isAdmin && auth.data?.accounts && <NavLink to="/staff">Staff</NavLink>}
           <NavLink to="/admin">
             Doctors
             {count > 0 && (
@@ -82,6 +85,7 @@ export default function App() {
             <Route path="/patients/:id" element={<PatientDetail />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/proof" element={<Proof />} />
+            <Route path="/staff" element={<Staff />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/doctors" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

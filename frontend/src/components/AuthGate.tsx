@@ -8,8 +8,17 @@ export function useSession() {
   return useSyncExternalStore(subscribeSession, getSession);
 }
 
+/** Can this person set the clinic up? Everyone can while the server asks for no sign-in. */
+export function useIsAdmin(): boolean {
+  const auth = useAuthStatus();
+  const session = useSession();
+  if (!auth.data?.required) return true;
+  return session?.role !== "RECEPTIONIST";
+}
+
 function SignIn() {
   const login = useLogin();
+  const accounts = useAuthStatus().data?.accounts === true;
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +29,7 @@ function SignIn() {
       { name, password },
       {
         onSuccess: (result) => {
-          setSession({ token: result.token, name: result.name });
+          setSession({ token: result.token, name: result.name, role: result.role });
           void queryClient.invalidateQueries();
         },
       },
@@ -31,10 +40,12 @@ function SignIn() {
     <form className="card sign-in" onSubmit={submit} aria-label="Staff sign-in">
       <h1>Sign in</h1>
       <p className="muted">
-        Use the clinic&apos;s staff password. Your name is written next to every change you make.
+        {accounts
+          ? "Sign in with your own username and password. Your name is written next to every change you make."
+          : "Use the clinic's staff password. Your name is written next to every change you make."}
       </p>
       <label>
-        Your name
+        {accounts ? "Username" : "Your name"}
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -44,7 +55,7 @@ function SignIn() {
         />
       </label>
       <label>
-        Staff password
+        {accounts ? "Password" : "Staff password"}
         <input
           type="password"
           value={password}

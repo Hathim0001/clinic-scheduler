@@ -1,5 +1,7 @@
 import { request } from "./client";
 import type {
+  Role,
+  StaffAccount,
   ProofReport,
   Alternative,
   Appointment,
@@ -79,16 +81,35 @@ export interface DoctorChanges {
   accepting_bookings?: boolean;
 }
 
+export interface NewStaff {
+  username: string;
+  display_name: string;
+  password: string;
+  role: Role;
+}
+
+export interface StaffChanges {
+  display_name?: string;
+  password?: string;
+  role?: Role;
+  active?: boolean;
+}
+
 export interface LoginResult {
   token: string;
   name: string;
+  role: Role;
   expires_at_epoch: number;
 }
 
 // One function per endpoint. The components never build URLs or read response headers.
 export const api = {
   clock: () => request<ClockInfo>("GET", "/clock"),
-  authStatus: () => request<{ required: boolean }>("GET", "/auth/status"),
+  authStatus: () => request<{ required: boolean; accounts: boolean }>("GET", "/auth/status"),
+  staff: () => request<StaffAccount[]>("GET", "/staff"),
+  createStaff: (body: NewStaff) => request<StaffAccount>("POST", "/staff", { body }),
+  updateStaff: (id: number, changes: StaffChanges) =>
+    request<StaffAccount>("PATCH", `/staff/${id}`, { body: changes }),
   login: (name: string, password: string) =>
     request<LoginResult>("POST", "/auth/login", { body: { name, password } }),
 

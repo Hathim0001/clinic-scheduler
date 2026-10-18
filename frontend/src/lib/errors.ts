@@ -88,6 +88,16 @@ export function describeError(error: unknown, context: Context = {}): FriendlyEr
         message:
           "A patient with this phone number is already registered. Search by phone to find them.",
       };
+    case "FORBIDDEN":
+      return { ...base, message: "Only an administrator can do this." };
+    case "LAST_ADMIN":
+      return {
+        ...base,
+        message:
+          "This is the last active administrator. Make someone else an administrator first, so the clinic cannot lock itself out.",
+      };
+    case "STAFF_USERNAME_TAKEN":
+      return { ...base, message: "That username is already in use. Pick another." };
     case "PATIENT_HAS_UPCOMING":
       return {
         ...base,

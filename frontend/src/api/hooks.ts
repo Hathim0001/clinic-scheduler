@@ -5,9 +5,11 @@ import type {
   DoctorChanges,
   NewDoctor,
   NewPatient,
+  NewStaff,
   PatientChanges,
   RescheduleBody,
   SeriesBody,
+  StaffChanges,
 } from "./endpoints";
 import type { CancelledBy, Status, TimeWindow, WeeklyWindow } from "./types";
 
@@ -202,6 +204,8 @@ const AFFECTS = {
   ],
   // joining or leaving the waitlist touches nothing else
   waitlist: ["waitlist"],
+  // staff accounts are listed on one page only
+  staff: ["staff"],
 } as const;
 
 type Change = keyof typeof AFFECTS;
@@ -316,6 +320,17 @@ export const useUpdatePatient = () =>
 
 export const useDeclineOffer = () =>
   useRefreshingMutation("waitlist", (id: number) => api.declineOffer(id));
+
+export const useStaff = (enabled: boolean) =>
+  useQuery({ queryKey: ["staff"], queryFn: api.staff, enabled });
+
+export const useCreateStaff = () =>
+  useRefreshingMutation("staff", (body: NewStaff) => api.createStaff(body));
+
+export const useUpdateStaff = () =>
+  useRefreshingMutation("staff", (args: { id: number; changes: StaffChanges }) =>
+    api.updateStaff(args.id, args.changes),
+  );
 
 export const useLogin = () =>
   useMutation({

@@ -7,6 +7,7 @@ const KEY = "clinic.staffToken";
 export interface Session {
   token: string;
   name: string;
+  role?: "ADMIN" | "RECEPTIONIST"; // missing in a session saved before roles existed
 }
 
 let memory: Session | null = null;
