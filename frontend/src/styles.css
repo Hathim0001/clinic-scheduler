@@ -2022,3 +2022,219 @@ td .actions button {
   font-weight: 700;
   line-height: 1.5;
 }
+
+/* ------------------------------------------------------------ spacing rhythm */
+/*
+ * One rhythm for the whole app: things that belong together sit 8 to 12px apart, separate things
+ * 16px, separate groups 24px. This layer comes last so it wins over the component rules above.
+ */
+main {
+  padding-top: var(--space-6);
+}
+
+h1 {
+  margin-bottom: var(--space-5);
+}
+
+.card {
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+/* inside a card, every block has room above it */
+.card > * + * {
+  margin-top: var(--space-4);
+}
+
+.card > h2 + *,
+.card > h3 + *,
+.card > .page-description + * {
+  margin-top: var(--space-3);
+}
+
+.row {
+  gap: var(--space-4) var(--space-5);
+}
+
+label {
+  gap: var(--space-2);
+}
+
+.check {
+  margin-block: var(--space-3);
+}
+
+fieldset {
+  padding: var(--space-4) var(--space-5);
+  margin: var(--space-4) 0;
+}
+
+dl {
+  gap: var(--space-2) var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.banner {
+  margin: var(--space-4) 0;
+  padding: var(--space-4) var(--space-5);
+}
+
+.banner li + li {
+  margin-top: var(--space-1);
+}
+
+/* a button that follows text on the same line keeps its distance from the words */
+p > button:not(:first-child),
+p > .small:not(:first-child),
+p > a.primary:not(:first-child) {
+  margin-left: var(--space-3);
+}
+
+.actions {
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+td .actions {
+  gap: var(--space-2);
+}
+
+.slot-list {
+  gap: var(--space-3);
+}
+
+/* a name followed by its badges: the badges are spaced, never touching */
+h3 > .status,
+h3 > span,
+td .status + *,
+.status + .status {
+  margin-left: var(--space-2);
+}
+
+.person {
+  gap: var(--space-3);
+}
+
+/* tables breathe, and every cell on a row lines up on its middle */
+th,
+td {
+  padding: var(--space-4);
+  vertical-align: middle;
+}
+
+.table-scroll th,
+.table-scroll td {
+  padding-block: var(--space-3);
+}
+
+.stack td .muted {
+  margin-top: var(--space-1);
+}
+
+.clock-bar {
+  gap: var(--space-3) var(--space-5);
+  padding-block: var(--space-3);
+}
+
+.clock-bar form {
+  gap: var(--space-3);
+}
+
+.page-header {
+  margin-bottom: var(--space-6);
+}
+
+.overview-grid,
+.glance,
+.stat-grid {
+  margin-bottom: var(--space-5);
+}
+
+.overview-grid {
+  gap: var(--space-5);
+}
+
+.glance-item {
+  padding: var(--space-5);
+}
+
+.list-row,
+.doctor-day-head {
+  gap: var(--space-4);
+}
+
+.panel-head {
+  margin-bottom: var(--space-5);
+}
+
+.timetable .slot {
+  padding: var(--space-3) var(--space-5);
+  gap: var(--space-4);
+}
+
+.grid-2 {
+  gap: var(--space-6);
+}
+
+h2 {
+  margin-top: var(--space-6);
+}
+
+.card > h2:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  main {
+    padding-top: var(--space-5);
+  }
+
+  .card {
+    padding: var(--space-4);
+  }
+
+  .banner {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  th,
+  td {
+    padding: var(--space-3);
+  }
+
+  .glance-item {
+    padding: var(--space-4);
+  }
+
+  .grid-2 {
+    gap: var(--space-5);
+  }
+
+  .timetable .slot {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* the report has twelve columns: a slightly smaller face lets them all fit beside the navigation */
+@media (min-width: 641px) {
+  .table-scroll table {
+    font-size: 0.84rem;
+  }
+
+  .table-scroll th,
+  .table-scroll td {
+    padding-inline: 0.3rem;
+    font-size: 0.84rem;
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1400px) {
+  main {
+    padding-inline: var(--space-4);
+  }
+
+  .table-scroll th,
+  .table-scroll td {
+    padding-inline: 0.25rem;
+  }
+}
