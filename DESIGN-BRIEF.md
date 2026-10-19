@@ -101,3 +101,12 @@ the marigold "now" line. Spacing was opened up (a 2.5 rem page gutter, 1.75 rem 
 air in tables and rows), and tables turn into one card per row on a tablet as well as a phone, so
 nothing is squeezed. There is one theme: the automatic dark mode was removed so every screen is the
 one that was designed and checked (the dark colour tokens are kept for a future switch).
+
+### The KJBN Labs language (current)
+
+The look now follows KJBN Labs' own website, adapted for a clinic: warm paper with a faint grain,
+ink-green text, a deep petrol block as the signature, saffron as the single accent, hairline rules,
+Playfair Display titles over Inter, and small tracked labels. It supersedes the "calm white" and
+"linen and scrub" directions above. The evidence (screenshots of kjbnlabs.in, the values copied from
+its stylesheet, and a table of where each part appears in the app) is in
+[docs/KJBN-REFERENCE.md](docs/KJBN-REFERENCE.md).

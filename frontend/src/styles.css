@@ -8,7 +8,7 @@
 
 /* ---------------------------------------------------------------- tokens */
 /*
- * A calm white. The page is the faintest cool white, the sheets on it are pure white and lines are
+ * A warm paper, after kjbnlabs.in. The page is the faintest cool white, the sheets on it are pure white and lines are
  * a pale blue-grey. The one action colour is a deep hospital blue, a pale sage carries booked
  * entries, and a single marigold marks "now". Shadows are tinted with the blue, never pure black.
  * The dark tokens below apply only under data-theme="dark" (there is no automatic dark mode).
@@ -17,52 +17,52 @@
   color-scheme: light;
 
   /* surfaces and text */
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --surface-sunken: #f1f4f8;
-  --text: #1a2530;
-  --muted: #556374;
-  --line: #e3e8ef;
-  --line-strong: #94a1b2;
+  --bg: #f6f3eb;
+  --surface: #fdfbf7;
+  --surface-sunken: #efe9dc;
+  --text: #10302b;
+  --muted: #5c6a60;
+  --line: #e6dece;
+  --line-strong: #8e8672;
 
   /* the primary action: hospital blue */
-  --brand: #245c8c;
-  --brand-hover: #1a4a74;
-  --brand-soft: #e6eff8;
-  --brand-ink: #173f63;
-  --on-brand: #ffffff;
-  --focus: #1d5fd1;
+  --brand: #0c3b3b;
+  --brand-hover: #10302b;
+  --brand-soft: #e3ece7;
+  --brand-ink: #0c3b3b;
+  --on-brand: #eff5f2;
+  --focus: #b86e08;
 
   /* a booked entry: sage */
-  --entry-bg: #e8f4f0;
-  --entry-line: #82b9a8;
-  --entry-text: #14473b;
+  --entry-bg: #e2ece6;
+  --entry-line: #7fa89a;
+  --entry-text: #0c3b3b;
 
   /* "now": the one warm note */
-  --now: #e3a82b;
+  --now: #d8820f;
 
   /* feedback: soft background, border and text that pass 4.5:1 together */
-  --ok-bg: #e2f1e8;
-  --ok-line: #84bd9a;
-  --ok-text: #15502b;
-  --info-bg: #e3edf7;
-  --info-line: #a3bbd6;
-  --info-text: #1d4568;
-  --warn-bg: #fbf0d3;
-  --warn-line: #dcb04c;
-  --warn-text: #6b4706;
-  --danger: #a8372e;
-  --danger-bg: #fbe9e6;
-  --danger-line: #e5b0a8;
-  --danger-text: #82271f;
+  --ok-bg: #e4efe6;
+  --ok-line: #84b496;
+  --ok-text: #1b5a34;
+  --info-bg: #e6eeec;
+  --info-line: #a9c2bd;
+  --info-text: #164a49;
+  --warn-bg: #fbebd0;
+  --warn-line: #e2b25e;
+  --warn-text: #6b3f05;
+  --danger: #a3382e;
+  --danger-bg: #f7e5e0;
+  --danger-line: #e3b3aa;
+  --danger-text: #7e2a22;
 
   /* type: a humanist sans built for reading for the working surface, a soft serif for titles and figures */
   --font:
-    "Source Sans 3 Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
-  --font-display: "Fraunces Variable", "Iowan Old Style", Palatino, Georgia, serif;
-  --font-mono: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
-  --text-xs: 0.86rem;
+  --font-display: "Playfair Display Variable", "Iowan Old Style", Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Consolas, monospace;
+  --text-xs: 0.84rem;
   --text-sm: 0.97rem;
   --text-md: 1.0625rem;
   --text-lg: 1.2rem;
@@ -78,13 +78,13 @@
   --space-7: 3rem;
 
   /* shape: soft corners, larger for containers than for controls */
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
   --radius-pill: 999px;
-  --shadow-card: 0 1px 2px rgb(23 63 99 / 5%), 0 4px 14px rgb(23 63 99 / 4%);
-  --shadow-float: 0 18px 44px rgb(15 40 70 / 24%);
-  --scrim: rgb(10 24 38 / 50%);
+  --shadow-card: 0 1px 0 rgb(16 48 43 / 3%);
+  --shadow-float: 0 40px 90px -48px rgb(14 42 40 / 50%);
+  --scrim: rgb(12 40 38 / 50%);
 
   --control-height: 2.6rem;
   --sidebar-width: 15.5rem;
@@ -168,7 +168,7 @@ h3 {
 h1,
 h2 {
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
+
   font-weight: 560;
   letter-spacing: -0.01em;
 }
@@ -305,7 +305,7 @@ main:focus {
   align-items: center;
   gap: 0.7rem;
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
+
   font-weight: 600;
   font-size: 1.2rem;
   letter-spacing: -0.01em;
@@ -781,7 +781,7 @@ td .actions {
 .day legend {
   padding: 0 var(--space-2);
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
+
   font-size: var(--text-lg);
   font-weight: 560;
 }
@@ -1477,7 +1477,7 @@ td.nowrap {
 
 .glance-value {
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
+
   font-size: 2.6rem;
   font-weight: 520;
   line-height: 1.1;
@@ -1543,7 +1543,7 @@ td.nowrap {
 
 .stat-value {
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
+
   font-size: 1.8rem;
   font-weight: 520;
   line-height: 1.15;
@@ -2408,7 +2408,7 @@ h2 {
 
 .effect strong {
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
+
   font-size: 1.8rem;
   font-weight: 520;
 }
@@ -2513,7 +2513,7 @@ h2 {
 
 .visit-lead .visit-main a {
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 100;
+
   font-size: 1.5rem;
   font-weight: 560;
 }
@@ -2911,4 +2911,580 @@ textarea:focus-visible {
   .stack td[data-label="Actions"] {
     min-width: 12.5rem;
   }
+}
+
+/* ======================================================================================
+ * The KJBN Labs language, as a clinic. Taken from kjbnlabs.in (docs/KJBN-REFERENCE.md):
+ * warm paper with a faint grain, ink-green text, one deep petrol block as the signature, a single
+ * saffron accent, hairline rules instead of boxes, Playfair Display for titles over Inter, and
+ * small tracked labels. Adapted for work all day: denser tables, visible borders on controls, and
+ * a focus colour dark enough to be seen.
+ * ==================================================================================== */
+:root {
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --petrol-line: #2c6363;
+  --on-petrol: #f2f7f4;
+  --on-petrol-muted: rgb(214 232 226 / 76%);
+}
+
+body {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'180'%20height%3D'180'%3E%3Cfilter%20id%3D'n'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'0.9'%20numOctaves%3D'2'%20stitchTiles%3D'stitch'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23n)'%20opacity%3D'0.04'%2F%3E%3C%2Fsvg%3E");
+  letter-spacing: -0.006em;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgb(216 130 15 / 16%);
+  color: var(--text);
+}
+
+/* titles: the serif, light and open, with lining numerals so dates and times stay clear */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  font-variant-numeric: lining-nums;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(2rem, 3.6vw, 2.75rem);
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 1.55rem;
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+h1 em,
+h2 em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--brand);
+}
+
+p {
+  text-wrap: pretty;
+}
+
+.page-description {
+  font-size: 1.05rem;
+  max-width: 62ch;
+}
+
+/* the section name over each page: a serif small-caps label with a short saffron rule */
+main[data-section]::before {
+  content: attr(data-section);
+  display: block;
+  margin-bottom: 1.5rem;
+  padding-left: 2.6rem;
+  background: linear-gradient(var(--now), var(--now)) 0 55% / 30px 1px no-repeat;
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.085em;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+a {
+  color: var(--brand);
+  text-decoration-color: rgb(216 130 15 / 70%);
+  text-underline-offset: 0.2em;
+  transition: color 0.2s var(--ease);
+}
+
+a:hover {
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------------ the navigation */
+.sidebar {
+  background: var(--brand);
+  border-right: 0;
+  color: var(--on-petrol-muted);
+}
+
+.sidebar :focus-visible {
+  outline-color: #f4c67b;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--on-petrol);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.2rem;
+  letter-spacing: 0;
+}
+
+.brand:hover {
+  color: var(--on-petrol);
+}
+
+/* the mark echoes kjbnlabs.in's logo: a thin outline in saffron */
+.brand-mark {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--now);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--now);
+}
+
+.brand-tagline {
+  margin: 0.5rem 0 0 0.25rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--petrol-line);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--on-petrol-muted);
+}
+
+.sidebar-top {
+  display: block;
+  padding: 0 var(--space-2);
+}
+
+.sidebar-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.nav-heading {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  font-weight: 400;
+  font-size: 0.95rem;
+  letter-spacing: 0.085em;
+  color: var(--on-petrol-muted);
+}
+
+.nav a {
+  color: rgb(214 232 226 / 82%);
+  border-radius: var(--radius-md);
+  font-weight: 450;
+}
+
+.nav a .icon {
+  color: rgb(214 232 226 / 60%);
+}
+
+.nav a:hover {
+  background: rgb(255 255 255 / 6%);
+  color: var(--on-petrol);
+}
+
+.nav a[aria-current="page"] {
+  background: rgb(255 255 255 / 9%);
+  color: var(--on-petrol);
+  font-weight: 600;
+  position: relative;
+}
+
+.nav a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -0.75rem;
+  top: 0.6rem;
+  bottom: 0.6rem;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--now);
+}
+
+.nav a[aria-current="page"] .icon {
+  color: var(--now);
+}
+
+.sidebar-user {
+  border-top-color: var(--petrol-line);
+}
+
+.sidebar-user-text strong {
+  color: var(--on-petrol);
+}
+
+.sidebar-user-text span {
+  color: var(--on-petrol-muted);
+}
+
+.sidebar .small {
+  background: transparent;
+  color: var(--on-petrol);
+  border-color: var(--petrol-line);
+}
+
+.sidebar .small:hover:not(:disabled) {
+  background: rgb(255 255 255 / 8%);
+  border-color: var(--on-petrol-muted);
+}
+
+.sidebar .avatar {
+  background: rgb(255 255 255 / 12%);
+  color: var(--on-petrol);
+}
+
+.badge-attention {
+  background: var(--now);
+  color: #2a1a02;
+}
+
+/* ------------------------------------------------------------------------ the top bar */
+.app-header {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.3) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar {
+  min-height: 3.9rem;
+}
+
+.topbar-date {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  letter-spacing: 0.085em;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.clock-bar {
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--line);
+}
+
+.demo-strip {
+  background: rgb(216 130 15 / 14%);
+  color: var(--text);
+  border-bottom: 1px solid rgb(216 130 15 / 40%);
+}
+
+/* ---------------------------------------------------------------------------- controls */
+button,
+input,
+select,
+textarea {
+  border-radius: var(--radius-md);
+}
+
+button {
+  font-weight: 500;
+  font-size: 0.92rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  transition:
+    background 0.22s var(--ease),
+    border-color 0.22s var(--ease),
+    color 0.22s var(--ease),
+    transform 0.22s var(--ease);
+}
+
+button:hover:not(:disabled) {
+  background: transparent;
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+button.primary,
+a.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+  box-shadow: none;
+  border-radius: var(--radius-md);
+}
+
+button.primary:hover:not(:disabled),
+a.primary:hover {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--on-brand);
+  transform: translateY(-1px);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger-line);
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.link {
+  border: 0;
+  background: none;
+  color: var(--brand);
+}
+
+button.link:hover:not(:disabled) {
+  color: var(--text);
+  border-color: transparent;
+}
+
+input,
+select,
+textarea {
+  background: #fffefb;
+  border-color: var(--line-strong);
+}
+
+.card {
+  border-color: var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+.banner {
+  border-radius: var(--radius-md);
+}
+
+.dialog {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+}
+
+/* ----------------------------------------- hairlines, numbered sections, editorial tables */
+main {
+  counter-reset: sec;
+}
+
+.panel-head {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.card.panel > .panel-head h2::before {
+  counter-increment: sec;
+  content: counter(sec, decimal-leading-zero);
+  display: inline-block;
+  margin-right: 0.85rem;
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: #a85f00;
+  vertical-align: 0.25em;
+}
+
+.table-scroll,
+table.stack {
+  border: 0;
+  border-top: 1px solid var(--text);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+table {
+  background: transparent;
+}
+
+thead th {
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+
+tbody tr:hover > * {
+  background: rgb(12 59 59 / 4%);
+}
+
+td,
+th {
+  border-bottom-color: var(--line);
+}
+
+.timetable {
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+/* --------------------------------- the signature: a petrol block with small tracked labels */
+.glance {
+  background: var(--brand);
+  color: var(--on-petrol);
+  border: 0;
+  border-radius: 10px;
+  box-shadow: var(--shadow-float);
+}
+
+.glance-item + .glance-item {
+  border-left-color: var(--petrol-line);
+}
+
+.glance-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--on-petrol-muted);
+}
+
+.glance-value {
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 2.7rem;
+  letter-spacing: -0.025em;
+  color: var(--on-petrol);
+}
+
+.glance-hint {
+  color: var(--on-petrol-muted);
+}
+
+.glance-alert .glance-value {
+  color: var(--now);
+}
+
+.stat-card {
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+.stat-value,
+.effect strong,
+.visit-lead .visit-main a {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.ribbon-now,
+.ribbon-now-key {
+  background: var(--now);
+}
+
+/* one orchestrated moment: a page rises into place once, never on every hover */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+main > div > * {
+  animation: rise 0.7s var(--ease) both;
+}
+
+main > div > :nth-child(2) {
+  animation-delay: 60ms;
+}
+
+main > div > :nth-child(3) {
+  animation-delay: 120ms;
+}
+
+main > div > :nth-child(4) {
+  animation-delay: 180ms;
+}
+
+main > div > :nth-child(n + 5) {
+  animation-delay: 240ms;
+}
+
+@media (max-width: 640px) {
+  .glance-value {
+    font-size: 2.1rem;
+  }
+
+  main[data-section]::before {
+    margin-bottom: 1rem;
+  }
+}
+
+/* the queue and similar tables: tighter columns, so the action buttons sit two to a line */
+@media (min-width: 961px) {
+  .stack th,
+  .stack td {
+    padding-inline: 0.85rem;
+  }
+
+  .stack td[data-label="Actions"] {
+    min-width: 14rem;
+  }
+
+  .stack td[data-label="Reason"] {
+    min-width: 6rem;
+  }
+}
+
+/* the reviewer's clock fits on one line beside the date */
+.clock-bar {
+  gap: var(--space-2) var(--space-4);
+}
+
+.clock-bar input {
+  width: 11.5rem;
+}
+
+.clock-bar button {
+  padding-inline: 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* a numbered section's rule starts in saffron and fades to a hairline, as on kjbnlabs.in */
+.panel-head {
+  border-bottom: 0;
+  background: linear-gradient(90deg, var(--now), var(--line) 18%) left bottom / 100% 1px no-repeat;
+}
+
+/* the report's wide table: tighter caps so all fifteen columns fit beside the navigation */
+.table-compact thead th {
+  letter-spacing: 0.05em;
+  font-size: 0.64rem;
+}
+
+.table-compact th,
+.table-compact td {
+  padding-inline: 0.3rem;
+  font-size: 0.8rem;
+}
+
+/* a table wider than its card scrolls sideways, and says so: a soft shadow shows on the side that
+   still has columns hidden */
+.table-compact {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  background:
+    linear-gradient(90deg, var(--surface) 30%, transparent) left / 40px 100% local no-repeat,
+    linear-gradient(270deg, var(--surface) 30%, transparent) right / 40px 100% local no-repeat,
+    radial-gradient(farthest-side at 0 50%, rgb(16 48 43 / 22%), transparent) left / 14px 100%
+      scroll no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgb(16 48 43 / 22%), transparent) right / 14px 100%
+      scroll no-repeat;
+}
+
+.card.panel > .table-compact {
+  margin-inline: calc(-1 * var(--card-padding));
+  padding-inline: var(--card-padding);
 }

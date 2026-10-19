@@ -4,6 +4,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   server: { port: 5173 },
+  // The content security policy allows fonts only from the app's own address, so no font may be
+  // inlined into the stylesheet as a data: URL (the small font subsets would be otherwise).
+  build: { assetsInlineLimit: 0 },
   test: {
     environment: "jsdom",
     globals: true,

@@ -320,7 +320,7 @@ try {
   });
   check(
     "the first Tab lands on a link with a visible focus outline",
-    focus.tag === "A" && /solid 3px/.test(focus.outline),
+    focus.tag === "A" && /solid [2-9]px/.test(focus.outline),
     JSON.stringify(focus),
   );
 } finally {

@@ -34,6 +34,27 @@ import Queue from "./pages/Queue";
 import Reports from "./pages/Reports";
 import Staff from "./pages/Staff";
 
+/** The group in the menu a page belongs to, shown as the small label above its title. */
+const SECTIONS: [prefix: string, section: string][] = [
+  ["/my-day", "Schedule"],
+  ["/day", "Schedule"],
+  ["/book", "Schedule"],
+  ["/queue", "Schedule"],
+  ["/patients", "Patients"],
+  ["/calls", "Patients"],
+  ["/messages", "Patients"],
+  ["/reports", "Clinic"],
+  ["/admin", "Clinic"],
+  ["/policies", "Clinic"],
+  ["/staff", "Clinic"],
+  ["/proof", "Clinic"],
+];
+
+const sectionOf = (path: string): string | undefined =>
+  path === "/"
+    ? "Schedule"
+    : SECTIONS.find(([prefix]) => path === prefix || path.startsWith(`${prefix}/`))?.[1];
+
 interface NavItem {
   to: string;
   label: string;
@@ -148,6 +169,7 @@ function Sidebar({
           </span>
           Clinic Scheduler
         </Link>
+        <p className="brand-tagline">A calm front desk</p>
         <button type="button" className="icon-button sidebar-close" onClick={onClose}>
           <Icon name="close" size={18} />
           <span className="visually-hidden">Close menu</span>
@@ -248,7 +270,7 @@ function Shell() {
           <Topbar onMenu={() => setOpenOn(open ? null : pathname)} menuOpen={open} />
         </header>
         <ClockBar />
-        <main id="main" ref={main} tabIndex={-1}>
+        <main id="main" ref={main} tabIndex={-1} data-section={sectionOf(pathname)}>
           <OfflineBanner />
           <WakeBanner />
           <UndoCancel />
