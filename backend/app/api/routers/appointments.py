@@ -285,6 +285,28 @@ def reschedule(
     return RescheduleOut(old=appointment_out(result.old), new=appointment_out(result.new))
 
 
+@router.post(
+    "/{appointment_id}/undo-cancel",
+    response_model=AppointmentOut,
+    summary="Take back a cancellation made in the last 10 minutes (the slot must still be free)",
+    responses={
+        409: {"description": "UNDO_NOT_POSSIBLE, SLOT_TAKEN, DAILY_CAP_REACHED or PATIENT_OVERLAP"}
+    },
+)
+def undo_cancel(
+    request: Request,
+    appointment_id: AppointmentId,
+    services: ServicesDep,
+    now: NowDep,
+    if_match: IfMatch = None,
+) -> AppointmentOut:
+    request.state.log_fields.update(appointment_id=appointment_id)
+    require_current(services, appointment_id, now, if_match)
+    view = services.booking.undo_cancel(appointment_id, now)
+    log.info("appointment.cancel_undone", appointment_id=appointment_id)
+    return appointment_out(view)
+
+
 @router.post("/{appointment_id}/complete", response_model=AppointmentOut, summary="Mark completed")
 def complete(
     request: Request,

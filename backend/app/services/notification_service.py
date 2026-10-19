@@ -119,6 +119,13 @@ def cancelled_text(doctor: str, start: datetime) -> str:
     )
 
 
+def restored_text(doctor: str, start: datetime) -> str:
+    return (
+        f"Good news: your appointment with {doctor} on {ist_text(start)} (India time) "
+        "is back on. The cancellation was undone."
+    )
+
+
 def offer_text(doctor: str, start: datetime, until: datetime) -> str:
     return (
         f"A time has opened with {doctor} on {ist_text(start)}. It is held for you until "

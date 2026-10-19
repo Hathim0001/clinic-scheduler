@@ -37,6 +37,7 @@ from app.persistence.models import (
     Doctor,
     OverrideRow,
     Patient,
+    WaitlistEntry,
     WeeklyWindowRow,
 )
 
@@ -510,3 +511,17 @@ def booked_events(
         appointment_id: (str(detail.get("via", "BOOKING")), at)
         for appointment_id, detail, at in events
     }
+
+
+def offer_open_for(session: Session, doctor_id: int, start_at: datetime) -> bool:
+    """True while a waitlist offer for exactly this start with this doctor is still open."""
+    return (
+        session.scalar(
+            select(WaitlistEntry.id).where(
+                WaitlistEntry.doctor_id == doctor_id,
+                WaitlistEntry.status == "OFFERED",
+                WaitlistEntry.offered_start_at == start_at,
+            )
+        )
+        is not None
+    )

@@ -27,6 +27,7 @@ from app.domain.penalties import deposit_status
 from app.domain.slots import first_violation
 from app.domain.timeutil import ist_date, ist_iso, utc_iso
 from app.domain.transitions import (
+    can_undo_cancel,
     check_can_cancel,
     check_can_check_in,
     check_can_mark,
@@ -36,7 +37,13 @@ from app.domain.violations import deposit_required_error, ist_text, violation_er
 from app.persistence import repositories as repo
 from app.persistence.models import Appointment, Doctor, IdempotencyKey, Patient
 from app.services.appointment_views import view_of
-from app.services.notification_service import booked_text, cancelled_text, moved_text, queue_message
+from app.services.notification_service import (
+    booked_text,
+    cancelled_text,
+    moved_text,
+    queue_message,
+    restored_text,
+)
 from app.services.patient_service import refuse_erased
 from app.services.support import run
 from app.services.views import AppointmentView, BookCommand, CancelResult, RescheduleResult
@@ -266,6 +273,68 @@ class BookingService:
                 late=outcome is Status.LATE_CANCELLED,
                 deposit=deposit_of(session, appointment.patient_id, now),
             )
+
+        return run(self._factory, work)
+
+    def undo_cancel(self, appointment_id: int, now: datetime) -> AppointmentView:
+        """Take back a cancellation made in the last few minutes, if the slot is still free.
+
+        Every rule is checked again as for a new booking (the slot may have been taken, the day
+        may have filled up, the patient may have booked something else). A slot already offered to
+        the waitlist is not taken back. A late-cancel strike disappears with the cancellation,
+        because the deposit flag is worked out from the statuses.
+        """
+
+        def work(session: Session) -> AppointmentView:
+            appointment = repo.get_appointment(session, appointment_id, lock=True)
+            status = Status(appointment.status)
+            if not can_undo_cancel(
+                status,
+                appointment.cancelled_at,
+                appointment.start_at,
+                now,
+                appointment.rescheduled_to_id is not None,
+            ):
+                raise ConflictError(
+                    ErrorCode.UNDO_NOT_POSSIBLE,
+                    "A cancellation can only be undone within 10 minutes, before the visit "
+                    "starts, and not for an appointment that was moved.",
+                    status=status.value,
+                )
+            doctor = repo.get_doctor(session, appointment.doctor_id, lock=True)
+            patient = repo.get_patient(session, appointment.patient_id, lock=True)
+            refuse_erased(patient)
+            if repo.offer_open_for(session, doctor.id, appointment.start_at):
+                raise ConflictError(
+                    ErrorCode.UNDO_NOT_POSSIBLE,
+                    "This slot has already been offered to someone on the waitlist, so the "
+                    "cancellation cannot be undone. Book a new time instead.",
+                )
+            context = repo.slot_context(
+                session, doctor, patient.id, ist_date(appointment.start_at), now
+            )
+            violation = first_violation(appointment.start_at, context, appointment.slots)
+            if violation is not None:
+                raise violation_error(
+                    violation, appointment.start_at, context, patient.id, appointment.slots
+                )
+            was = status
+            by = appointment.cancelled_by
+            appointment.status = Status.BOOKED.value
+            appointment.cancelled_at = None
+            appointment.cancelled_by = None
+            appointment.status_changed_at = now
+            session.flush()  # an overlap that slipped past the checks fails here, on the constraint
+            repo.record_event(session, appointment, "CANCEL_UNDONE", now, was=was.value, by=by)
+            if by == CancelledBy.CLINIC.value:
+                queue_message(
+                    session,
+                    patient,
+                    "APPOINTMENT_RESTORED",
+                    restored_text(doctor.name, appointment.start_at),
+                    appointment.id,
+                )
+            return view_of(session, appointment.id, now)
 
         return run(self._factory, work)
 

@@ -8,7 +8,7 @@ cancellation can be waived to an ordinary one. Reception can check a booked pati
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.domain.errors import ConflictError, ErrorCode
 from app.domain.model import Status
@@ -22,6 +22,28 @@ _SO_FAR = {
 }
 
 
+# A cancellation can be taken back for this long, while the visit is still ahead.
+UNDO_WINDOW = timedelta(minutes=10)
+CANCELLED_STATUSES = frozenset({Status.CANCELLED, Status.LATE_CANCELLED})
+
+
+def can_undo_cancel(
+    status: Status,
+    cancelled_at: datetime | None,
+    start_at: datetime,
+    now: datetime,
+    rescheduled: bool,
+) -> bool:
+    """A plain cancellation, made minutes ago, of a visit that has not started."""
+    return (
+        status in CANCELLED_STATUSES
+        and not rescheduled
+        and cancelled_at is not None
+        and timedelta(0) <= now - cancelled_at <= UNDO_WINDOW
+        and now < start_at
+    )
+
+
 # Outcome corrections: what a final status may be changed to.
 CORRECTIONS: dict[Status, frozenset[Status]] = {
     Status.COMPLETED: frozenset({Status.NO_SHOW}),
@@ -31,7 +53,12 @@ CORRECTIONS: dict[Status, frozenset[Status]] = {
 
 
 def allowed_actions(
-    status: Status, start_at: datetime, now: datetime, checked_in: bool = False
+    status: Status,
+    start_at: datetime,
+    now: datetime,
+    checked_in: bool = False,
+    cancelled_at: datetime | None = None,
+    rescheduled: bool = False,
 ) -> list[str]:
     """cancel and reschedule before the start; from it complete, no-show and (late) cancel.
 
@@ -39,7 +66,10 @@ def allowed_actions(
     a correction exists for it.
     """
     if status is not Status.BOOKED:
-        return ["correct"] if status in CORRECTIONS else []
+        actions = ["correct"] if status in CORRECTIONS else []
+        if can_undo_cancel(status, cancelled_at, start_at, now, rescheduled):
+            actions.append("undo-cancel")
+        return actions
     actions = ["cancel", "reschedule"] if now < start_at else ["complete", "no-show", "cancel"]
     if not checked_in and ist_date(now) == ist_date(start_at):
         actions.insert(0, "check-in")

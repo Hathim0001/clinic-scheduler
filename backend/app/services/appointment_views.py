@@ -48,7 +48,14 @@ def build_views(
                     status is Status.BOOKED and appt.outside_hours and appt.start_at >= now
                 ),
                 allowed_actions=tuple(
-                    allowed_actions(status, appt.start_at, now, appt.checked_in_at is not None)
+                    allowed_actions(
+                        status,
+                        appt.start_at,
+                        now,
+                        appt.checked_in_at is not None,
+                        appt.cancelled_at,
+                        appt.rescheduled_to_id is not None,
+                    )
                 ),
                 checked_in_at=appt.checked_in_at,
                 confirmed_by_phone_at=appt.confirmed_by_phone_at,

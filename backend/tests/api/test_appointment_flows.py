@@ -161,7 +161,7 @@ def test_cancelling_with_no_body_is_a_patient_cancellation(api: Api) -> None:
     assert (body["appointment"]["status"], body["late"]) == ("CANCELLED", False)
     assert body["appointment"]["cancelled_by"] == "PATIENT"
     assert body["appointment"]["cancelled_at_utc"] == "2026-11-02T02:30:00Z"
-    assert body["appointment"]["allowed_actions"] == []
+    assert body["appointment"]["allowed_actions"] == ["undo-cancel"]
     assert body["deposit"] == {
         "required": False,
         "required_until_utc": None,

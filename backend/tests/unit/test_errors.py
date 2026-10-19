@@ -62,6 +62,7 @@ HTTP_STATUS = {
     "DOCTOR_HAS_APPOINTMENTS": 409,
     "ALREADY_WAITING": 409,
     "OFFER_EXPIRED": 409,
+    "UNDO_NOT_POSSIBLE": 409,
     "CONFLICT": 409,
     "PRECONDITION_FAILED": 412,
     "RATE_LIMITED": 429,
@@ -88,7 +89,7 @@ DOMAIN_CODES = [code for code in ErrorCode if code not in EDGE_ONLY]
 
 def test_the_catalogue_holds_exactly_the_codes_of_the_catalogue() -> None:
     assert {code.value for code in ErrorCode} == set(HTTP_STATUS)
-    assert len(ErrorCode) == 50
+    assert len(ErrorCode) == 51
 
 
 def test_each_code_is_spelled_like_its_name() -> None:

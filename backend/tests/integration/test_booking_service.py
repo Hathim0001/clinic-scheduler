@@ -256,7 +256,7 @@ def test_cancelling_around_the_two_hour_line(clinic: Clinic, now: datetime, stat
     stored = clinic.appointment(appointment_id)
     assert (stored.cancelled_at, stored.status_changed_at) == (now, now)
     assert stored.cancelled_by == "PATIENT"
-    expected = () if status is Status.CANCELLED else ("correct",)
+    expected = ("undo-cancel",) if status is Status.CANCELLED else ("correct", "undo-cancel")
     assert result.appointment.allowed_actions == expected
 
 
