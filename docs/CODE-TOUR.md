@@ -39,6 +39,9 @@ makes every time rule testable at its boundary and lets the reviewer's `X-Test-C
 | Five wrong passwords lock one account | `api/ratelimit.py` `LoginLockout`, used by `api/routers/auth.py` | `tests/api/test_staff_roles.py`, `tests/unit/test_auth_and_proxy.py` |
 | The gateway is never called inside a database transaction | `notification_service._claim`, `_deliver`, `_finish` (a short lease, then send, then record) | `test_the_gateway_is_called_with_no_database_lock_held` |
 | Reception confirms by phone | `booking_service.confirm_by_phone`; the Calls page | `tests/integration/test_operations.py`, `frontend/src/pages/Review.test.tsx` |
+| Two people act on the same appointment | `api/presenters.py` `etag_of`; `api/routers/appointments.py` `require_current` reads the optional `If-Match` header and answers 412 `PRECONDITION_FAILED`; the UI sends the `etag` it was shown (`frontend/src/api/endpoints.ts` `ifMatch`) | `tests/api/test_etag_api.py`, `frontend/src/pages/Queue.test.tsx` |
+| A cancellation can be taken back for 10 minutes | `domain/transitions.py` `can_undo_cancel` (also feeds `allowed_actions`); `booking_service.undo_cancel` re-runs `first_violation` and refuses a slot already offered to the waitlist (`repo.offer_open_for`); `UNDO_NOT_POSSIBLE` | `tests/api/test_undo_cancel_api.py`, `frontend/src/components/UndoCancel.test.tsx` |
+| Booking again starts with the last patient | `frontend/src/lib/lastPatient.ts` (tab storage, never required), read in `useBookingForm` | `frontend/src/pages/Book.test.tsx` |
 | Errors are stable codes, never a 500 for bad input | `domain/errors.py` (`ErrorCode`), `api/errors.py`, `persistence/db_errors.py` | `tests/api/test_hostile_input.py`, Schemathesis job in CI |
 
 ## Ten-minute read order
@@ -50,6 +53,7 @@ makes every time rule testable at its boundary and lets the reviewer's `X-Test-C
 5. `persistence/models.py` constraints, then `migrations/versions/0001_*.py`.
 6. `api/routers/appointments.py` to see how thin the HTTP layer is.
 7. `frontend/src/components/booking/useBookingForm.ts`: the booking page's decisions, with `Book.tsx` as layout only.
+8. `frontend/src/components/NavMenu.tsx`, `DaySummary.tsx`, `UndoCancel.tsx`: the small pieces added in the UI pass.
 
 ## Drills: change it live
 
@@ -89,6 +93,17 @@ Each is small on purpose. Do the change, run the named test, and say why it fail
     schedule are made of them. Only what identifies a person is replaced; ids and times stay.
 11. **"Where would a new error code go?"** `ErrorCode` in `domain/errors.py`, its status class is
    decided by the sets beneath it, and `frontend/src/lib/errors.ts` gives the text.
+12. **"Is the `If-Match` check a lock?"** No. `require_current` compares the etag just before the
+    action; two calls landing in the same instant are still sorted out by the row lock and the
+    state rules (`check_can_cancel` and the others), so the worst case is a normal
+    `INVALID_TRANSITION`, never a double effect. The etag hashes status, time, doctor, check-in and
+    phone confirmation, so any change a second receptionist could act on changes it.
+13. **"Why can a cancel be undone but a moved appointment cannot?"** A move cancels the old
+    appointment and books a new one in one transaction, so there is something else to unwind;
+    `can_undo_cancel` refuses when `rescheduled_to_id` is set. A plain cancel only changed one row,
+    so undo flips it back after asking `first_violation` again (the slot, the cap and the patient's
+    own overlaps may have changed). A late-cancel strike goes with it because the deposit flag is
+    derived from the statuses, not stored.
 
 ## Questions to be ready for
 

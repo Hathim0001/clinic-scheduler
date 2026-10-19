@@ -195,10 +195,10 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,285 passing in about 10 minutes: 484 unit (no database), 413 integration and race tests (real PostgreSQL), 388 through HTTP |
+| Backend tests | 1,305 passing in about 8 minutes: 486 unit (no database), 413 integration and race tests (real PostgreSQL), 406 through HTTP |
 | Backend line and branch coverage, all of `app/` | 99 % (3,904 statements, 8 missed, branches included) |
 | Rules layer (`app/domain` + `app/services`) | 99 % (1,930 statements, none missed; one branch partly covered); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 167 passing; 91.0 % of lines, 83.4 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Frontend tests (Vitest, network faked at `fetch`) | 182 passing; 91.2 % of lines, 83.3 % of branches covered (gate: 85 % lines, 75 % branches) |
 | Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 26 flow checks and 36 accessibility scans (axe-core, light and dark, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
@@ -262,6 +262,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | POST | `/appointments/{id}/check-in` | Patient arrived (on the day; repeating it changes nothing) | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/correct` | Fix a wrong outcome: completed and no-show swap, a late cancel is waived; a note is required | 409 `INVALID_CORRECTION` |
 | — | `If-Match` on cancel, reschedule, complete, no-show, check-in, confirmed-by-phone and correct | Optional. Send the appointment's `etag` (also the `ETag` header of `GET /appointments/{id}`); if it changed since, nothing is done | 412 `PRECONDITION_FAILED`, `details.current_etag` |
+| POST | `/appointments/{id}/undo-cancel` | Take back a cancellation made in the last 10 minutes, before the visit starts; every booking rule is checked again | 409 `UNDO_NOT_POSSIBLE`, `SLOT_TAKEN`, `DAILY_CAP_REACHED`, `PATIENT_OVERLAP` |
 | GET | `/appointments/{id}/history` | Audit trail, oldest first | 404 |
 | GET | `/queue?date&doctor_id&include_cancelled` | One day's queue in time order | 422 |
 | POST, GET | `/doctors/{id}/waitlist` | Join the waitlist for a doctor and India date; list who is waiting or holds an offer (`?date`) | 409 `ALREADY_WAITING`, 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR` |
@@ -373,7 +374,7 @@ an oversized body, a database that is down and the catch-all 500):
 | A client sending too many requests | In-memory sliding window per address | 429 `RATE_LIMITED` with `Retry-After` |
 | Anything else | Any other exception | 500 `INTERNAL_ERROR` with a generic message and the request id; the stack trace is logged, never sent |
 
-All 50 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
+All 51 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
 in one transaction, so a failure leaves the data as it was.
 
 **Logging.** structlog writes one JSON line per event to stdout: `ts` (UTC), `level`, `event` and the
