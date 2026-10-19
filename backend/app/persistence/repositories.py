@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import ColumnElement, Select, and_, func, or_, select, text
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from app.domain.availability import fits_in_windows, resolve_windows
 from app.domain.errors import ErrorCode, NotFoundError
 from app.domain.model import (
     AppointmentFacts,
+    DepositStatus,
     DoctorFacts,
     PenaltyEvent,
     SlotContext,
@@ -29,11 +30,13 @@ from app.domain.model import (
     WeeklyWindow,
     Window,
 )
-from app.domain.penalties import LOOKBACK
+from app.domain.penalties import deposit_status
+from app.domain.policy import DEFAULT_POLICY, FIELD_NAMES, Policy
 from app.domain.timeutil import ist_date, ist_day_bounds
 from app.persistence.models import (
     Appointment,
     AppointmentEvent,
+    ClinicPolicy,
     Doctor,
     OverrideRow,
     Patient,
@@ -216,6 +219,7 @@ def slot_context(
     if windows is None:
         windows, _ = effective_windows(session, doctor.id, day)
     return SlotContext(
+        policy=load_policy(session),
         doctor=doctor_facts(doctor),
         windows=windows,
         doctor_appts=tuple(appointments_overlapping_day(session, day=day, doctor_id=doctor.id)),
@@ -228,13 +232,29 @@ def slot_context(
     )
 
 
-def penalty_events(session: Session, patient_id: int, now: datetime) -> list[PenaltyEvent]:
-    """The patient's strikes in the 30 days up to `now`.
+def load_policy(session: Session) -> Policy:
+    """The clinic's rules: the stored row, or the defaults when nobody has changed them."""
+    row = session.get(ClinicPolicy, 1)
+    if row is None:
+        return DEFAULT_POLICY
+    return Policy(**{name: getattr(row, name) for name in FIELD_NAMES})
+
+
+def deposit_for(session: Session, patient_id: int, now: datetime) -> DepositStatus:
+    """Whether the patient must acknowledge a deposit at `now`, under the clinic's own rules."""
+    policy = load_policy(session)
+    return deposit_status(penalty_events(session, patient_id, now, policy.lookback), now, policy)
+
+
+def penalty_events(
+    session: Session, patient_id: int, now: datetime, lookback: timedelta = timedelta(days=30)
+) -> list[PenaltyEvent]:
+    """The patient's strikes in the look-back period (30 days by default) up to `now`.
 
     A late cancellation counts from the moment it was made, a no-show from the appointment's
     start (A-13). The domain applies the same bounds again; this only keeps the query small.
     """
-    since = now - LOOKBACK
+    since = now - lookback
     rows = session.execute(
         select(Appointment.id, Appointment.status, Appointment.cancelled_at, Appointment.start_at)
         .where(

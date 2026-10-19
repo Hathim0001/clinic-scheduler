@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from app.domain.policy import DEFAULT_POLICY, Policy
+
 
 class Status(StrEnum):
     BOOKED = "BOOKED"
@@ -101,6 +103,7 @@ class SlotContext:
     doctor_appts: tuple[AppointmentFacts, ...]
     patient_appts: tuple[AppointmentFacts, ...]
     now: datetime
+    policy: Policy = DEFAULT_POLICY
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,3 +122,4 @@ class DepositStatus:
     required: bool
     reasons: tuple[PenaltyEvent, ...]  # newest first
     required_until: datetime | None
+    lookback_days: int = 30  # the period the strikes were counted over, for the message

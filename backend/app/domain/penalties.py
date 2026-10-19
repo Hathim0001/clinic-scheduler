@@ -11,12 +11,15 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 
 from app.domain.model import DepositStatus, PenaltyEvent
+from app.domain.policy import DEFAULT_POLICY, Policy
 
 LOOKBACK = timedelta(days=30)
 STRIKES = 2
 
 
-def deposit_status(events: Iterable[PenaltyEvent], now: datetime) -> DepositStatus:
+def deposit_status(
+    events: Iterable[PenaltyEvent], now: datetime, policy: Policy = DEFAULT_POLICY
+) -> DepositStatus:
     """Whether a deposit acknowledgement is required at `now`.
 
     An event counts when `now - 30 days <= event.at <= now` (both ends inclusive, A-22). The flag is
@@ -24,12 +27,18 @@ def deposit_status(events: Iterable[PenaltyEvent], now: datetime) -> DepositStat
     days old: `required_until`. One second later the patient is no longer flagged.
     """
     recent = sorted(
-        (event for event in events if now - LOOKBACK <= event.at <= now),
+        (event for event in events if now - policy.lookback <= event.at <= now),
         key=lambda event: (event.at, event.appointment_id),
         reverse=True,
     )
-    if len(recent) < STRIKES:
-        return DepositStatus(required=False, reasons=tuple(recent), required_until=None)
+    days = policy.strike_lookback_days
+    if len(recent) < policy.strikes:
+        return DepositStatus(
+            required=False, reasons=tuple(recent), required_until=None, lookback_days=days
+        )
     return DepositStatus(
-        required=True, reasons=tuple(recent), required_until=recent[STRIKES - 1].at + LOOKBACK
+        required=True,
+        reasons=tuple(recent),
+        required_until=recent[policy.strikes - 1].at + policy.lookback,
+        lookback_days=days,
     )

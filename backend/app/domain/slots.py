@@ -56,7 +56,7 @@ def first_violation(start_at: datetime, ctx: SlotContext, slots: int = 1) -> Err
 
     if not ctx.doctor.accepting_bookings:
         return ErrorCode.DOCTOR_NOT_ACCEPTING
-    window_problem = check_booking_window(start_at, ctx.now)
+    window_problem = check_booking_window(start_at, ctx.now, ctx.policy.horizon_days)
     if window_problem is not None:
         return window_problem
     if not is_on_grid(start_at, length):

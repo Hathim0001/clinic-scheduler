@@ -19,7 +19,6 @@ import structlog
 from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.domain.booking_window import HORIZON_DAYS
 from app.domain.errors import ConflictError, DomainError, ErrorCode, NotFoundError, RuleViolation
 from app.domain.timeutil import ist_date
 from app.persistence import repositories as repo
@@ -101,10 +100,11 @@ class WaitlistService:
             today = ist_date(now)
             if day < today:
                 raise RuleViolation(ErrorCode.BOOKING_IN_PAST, "That date has already passed.")
-            if day > today + timedelta(days=HORIZON_DAYS):
+            horizon = repo.load_policy(session).horizon_days
+            if day > today + timedelta(days=horizon):
                 raise RuleViolation(
                     ErrorCode.BOOKING_TOO_FAR,
-                    f"The waitlist opens only {HORIZON_DAYS} days ahead.",
+                    f"The waitlist opens only {horizon} days ahead.",
                 )
             settle_offers(session, doctor, now)
             existing = session.scalar(

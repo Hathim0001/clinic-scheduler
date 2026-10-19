@@ -13,7 +13,7 @@ next patient in the queue (never back to someone who declined that same slot).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import structlog
 from sqlalchemy import or_, select
@@ -27,7 +27,6 @@ from app.services.notification_service import offer_text, queue_message
 
 log = structlog.get_logger()
 
-OFFER_HOLD = timedelta(minutes=30)
 ACTIVE = ("WAITING", "OFFERED")
 
 
@@ -94,13 +93,14 @@ def offer_slot(
         )
         .order_by(WaitlistEntry.created_at, WaitlistEntry.id)
     ).all()
+    hold = repo.load_policy(session).offer_hold  # read before the entry is half-changed
     for entry in waiting:
         context = repo.slot_context(session, doctor, entry.patient_id, day, now)
         if first_violation(start_at, context, slots) is None:
             entry.status = "OFFERED"
             entry.offered_slots = slots
             entry.offered_start_at = start_at
-            entry.offer_expires_at = min(now + OFFER_HOLD, start_at)
+            entry.offer_expires_at = min(now + hold, start_at)
             session.flush()
             patient = session.get(Patient, entry.patient_id)
             if patient is not None:

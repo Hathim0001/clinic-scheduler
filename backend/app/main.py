@@ -31,6 +31,7 @@ from app.api.routers import (
     health,
     notifications,
     patients,
+    policy,
     proof,
     queue,
     reports,
@@ -136,6 +137,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         waitlist.router,
         reports.router,
         notifications.router,
+        policy.router,
     ):
         app.include_router(router, prefix=API_PREFIX, dependencies=[Depends(require_staff)])
 

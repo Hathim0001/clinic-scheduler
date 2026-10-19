@@ -44,6 +44,24 @@ class AppMeta(Base):
     value: Mapped[str] = mapped_column(Text)
 
 
+class ClinicPolicy(Base):
+    """The clinic's editable rules: at most one row (id 1); no row means the defaults."""
+
+    __tablename__ = "clinic_policy"
+
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, default=60)
+    late_cancel_hours: Mapped[int] = mapped_column(Integer, default=2)
+    strike_lookback_days: Mapped[int] = mapped_column(Integer, default=30)
+    strikes: Mapped[int] = mapped_column(Integer, default=2)
+    undo_minutes: Mapped[int] = mapped_column(Integer, default=10)
+    offer_hold_minutes: Mapped[int] = mapped_column(Integer, default=30)
+    reminder_first_hours: Mapped[int] = mapped_column(Integer, default=24)
+    reminder_second_hours: Mapped[int] = mapped_column(Integer, default=2)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_by: Mapped[str | None] = mapped_column(Text)
+
+
 class Doctor(Base):
     __tablename__ = "doctors"
 

@@ -26,7 +26,7 @@ DEFAULT_TEST_URL = "postgresql+psycopg://clinic:clinic@localhost:5433/clinic_tes
 DATA_TABLES = (
     "notifications, idempotency_keys, appointment_events, waitlist_entries, appointments, "
     "override_windows, "
-    "availability_overrides, weekly_windows, patients, doctors, app_meta"
+    "availability_overrides, weekly_windows, patients, doctors, app_meta, clinic_policy"
 )
 
 

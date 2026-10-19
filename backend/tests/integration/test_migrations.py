@@ -24,6 +24,7 @@ DATA_TABLES = {
     "idempotency_keys",
     "staff_accounts",
     "notifications",
+    "clinic_policy",
 }
 
 

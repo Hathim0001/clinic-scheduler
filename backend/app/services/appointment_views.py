@@ -23,6 +23,7 @@ def build_views(
     session: Session, rows: Sequence[repo.AppointmentRow], now: datetime
 ) -> list[AppointmentView]:
     views = []
+    undo_window = repo.load_policy(session).undo_window
     for row in rows:
         appt = row.appointment
         status = Status(appt.status)
@@ -55,6 +56,7 @@ def build_views(
                         appt.checked_in_at is not None,
                         appt.cancelled_at,
                         appt.rescheduled_to_id is not None,
+                        undo_window,
                     )
                 ),
                 checked_in_at=appt.checked_in_at,

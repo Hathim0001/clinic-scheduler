@@ -23,7 +23,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.domain.cancellation import check_can_reschedule, classify_cancellation
 from app.domain.errors import ConflictError, DomainError, ErrorCode, RuleViolation
 from app.domain.model import MAX_APPOINTMENT_SLOTS, CancelledBy, DepositStatus, Status
-from app.domain.penalties import deposit_status
 from app.domain.slots import first_violation
 from app.domain.timeutil import ist_date, ist_iso, utc_iso
 from app.domain.transitions import (
@@ -53,7 +52,7 @@ KEY_LIFETIME = timedelta(hours=24)
 
 
 def deposit_of(session: Session, patient_id: int, now: datetime) -> DepositStatus:
-    return deposit_status(repo.penalty_events(session, patient_id, now), now)
+    return repo.deposit_for(session, patient_id, now)
 
 
 def place_booking(
@@ -244,7 +243,10 @@ class BookingService:
             check_can_cancel(Status(appointment.status))
             if cancelled_by is CancelledBy.PATIENT:
                 _require_not_checked_in(appointment, "cancelled")
-            outcome = classify_cancellation(appointment.start_at, now, cancelled_by)
+            policy = repo.load_policy(session)
+            outcome = classify_cancellation(
+                appointment.start_at, now, cancelled_by, policy.late_threshold
+            )
             appointment.status = outcome.value
             appointment.cancelled_at = now
             appointment.cancelled_by = cancelled_by.value
@@ -294,10 +296,12 @@ class BookingService:
                 appointment.start_at,
                 now,
                 appointment.rescheduled_to_id is not None,
+                repo.load_policy(session).undo_window,
             ):
                 raise ConflictError(
                     ErrorCode.UNDO_NOT_POSSIBLE,
-                    "A cancellation can only be undone within 10 minutes, before the visit "
+                    f"A cancellation can only be undone within "
+                    f"{repo.load_policy(session).undo_minutes} minutes, before the visit "
                     "starts, and not for an appointment that was moved.",
                     status=status.value,
                 )
@@ -506,7 +510,7 @@ def _slots_for_move(old: Appointment, target: Doctor) -> int:
 
 def _cancel_for_move(session: Session, old: Appointment, by: CancelledBy, now: datetime) -> Status:
     """Cancel the old slot under the 2-hour rule, before the new one is placed."""
-    outcome = classify_cancellation(old.start_at, now, by)
+    outcome = classify_cancellation(old.start_at, now, by, repo.load_policy(session).late_threshold)
     old.status = outcome.value
     old.cancelled_at = now
     old.cancelled_by = by.value

@@ -208,9 +208,7 @@ class PatientService:
             if normalised is not None:
                 patient.phone = normalised
             session.flush()
-            return _view(
-                patient, deposit_status(repo.penalty_events(session, patient.id, now), now)
-            )
+            return _view(patient, repo.deposit_for(session, patient.id, now))
 
         return run(self._factory, work)
 
@@ -226,9 +224,7 @@ class PatientService:
             patient.consent_at, patient.consent_version = now, CONSENT_VERSION
             patient.consent_by = consent_by
             session.flush()
-            return _view(
-                patient, deposit_status(repo.penalty_events(session, patient.id, now), now)
-            )
+            return _view(patient, repo.deposit_for(session, patient.id, now))
 
         return run(self._factory, work)
 
@@ -319,9 +315,7 @@ class PatientService:
     def get(self, patient_id: int, now: datetime) -> PatientView:
         def work(session: Session) -> PatientView:
             patient = repo.get_patient(session, patient_id)
-            return _view(
-                patient, deposit_status(repo.penalty_events(session, patient.id, now), now)
-            )
+            return _view(patient, repo.deposit_for(session, patient.id, now))
 
         return run(self._factory, work)
 

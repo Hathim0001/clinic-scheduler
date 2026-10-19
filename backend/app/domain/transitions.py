@@ -33,13 +33,15 @@ def can_undo_cancel(
     start_at: datetime,
     now: datetime,
     rescheduled: bool,
+    undo_window: timedelta = UNDO_WINDOW,
 ) -> bool:
     """A plain cancellation, made minutes ago, of a visit that has not started."""
     return (
         status in CANCELLED_STATUSES
         and not rescheduled
         and cancelled_at is not None
-        and timedelta(0) <= now - cancelled_at <= UNDO_WINDOW
+        and undo_window > timedelta(0)  # 0 minutes turns undo off
+        and timedelta(0) <= now - cancelled_at <= undo_window
         and now < start_at
     )
 
@@ -59,6 +61,7 @@ def allowed_actions(
     checked_in: bool = False,
     cancelled_at: datetime | None = None,
     rescheduled: bool = False,
+    undo_window: timedelta = UNDO_WINDOW,
 ) -> list[str]:
     """cancel and reschedule before the start; from it complete, no-show and (late) cancel.
 
@@ -67,7 +70,7 @@ def allowed_actions(
     """
     if status is not Status.BOOKED:
         actions = ["correct"] if status in CORRECTIONS else []
-        if can_undo_cancel(status, cancelled_at, start_at, now, rescheduled):
+        if can_undo_cancel(status, cancelled_at, start_at, now, rescheduled, undo_window):
             actions.append("undo-cancel")
         return actions
     actions = ["cancel", "reschedule"] if now < start_at else ["complete", "no-show", "cancel"]

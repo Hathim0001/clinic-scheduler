@@ -9,14 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.domain.booking_window import HORIZON_DAYS
 from app.domain.errors import ConflictError, DomainError, ErrorCode, RuleViolation, domain_error
 from app.domain.model import DepositStatus, SlotContext
-from app.domain.penalties import LOOKBACK
 from app.domain.slots import conflicting_appointment, overlapping_patient_appointment
 from app.domain.timeutil import IST, format_minutes, ist_date, ist_iso
-
-_DAYS = LOOKBACK.days
 
 
 def ist_text(instant: datetime) -> str:
@@ -50,8 +46,9 @@ def violation_error(
         case ErrorCode.BOOKING_TOO_FAR:
             return domain_error(
                 code,
-                f"Appointments can be booked at most {HORIZON_DAYS} days ahead; {when} is later.",
-                horizon_days=HORIZON_DAYS,
+                f"Appointments can be booked at most {ctx.policy.horizon_days} days ahead; "
+                f"{when} is later.",
+                horizon_days=ctx.policy.horizon_days,
             )
         case ErrorCode.OFF_GRID:
             return domain_error(
@@ -113,7 +110,7 @@ def deposit_required_error(deposit: DepositStatus) -> RuleViolation:
     return RuleViolation(
         ErrorCode.DEPOSIT_REQUIRED,
         f"Patient has {len(deposit.reasons)} late cancellations or no-shows in the last "
-        f"{_DAYS} days; confirm the deposit to book.",
+        f"{deposit.lookback_days} days; confirm the deposit to book.",
         required_until=ist_iso(until) if until is not None else None,
         reasons=[
             {"appointment_id": e.appointment_id, "type": e.kind.value, "at": ist_iso(e.at)}

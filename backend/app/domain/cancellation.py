@@ -11,7 +11,12 @@ from app.domain.model import CancelledBy, Status
 LATE_THRESHOLD = timedelta(hours=2)
 
 
-def classify_cancellation(start_at: datetime, now: datetime, by: CancelledBy) -> Status:
+def classify_cancellation(
+    start_at: datetime,
+    now: datetime,
+    by: CancelledBy,
+    late_threshold: timedelta = LATE_THRESHOLD,
+) -> Status:
     """CANCELLED or LATE_CANCELLED for a cancellation requested at `now`.
 
     Exactly 2h00m before the start is still a normal Cancel; 1h59m is late, and so is anything
@@ -20,7 +25,7 @@ def classify_cancellation(start_at: datetime, now: datetime, by: CancelledBy) ->
     """
     if by is CancelledBy.CLINIC:
         return Status.CANCELLED
-    return Status.CANCELLED if start_at - now >= LATE_THRESHOLD else Status.LATE_CANCELLED
+    return Status.CANCELLED if start_at - now >= late_threshold else Status.LATE_CANCELLED
 
 
 def check_can_reschedule(start_at: datetime, now: datetime) -> None:

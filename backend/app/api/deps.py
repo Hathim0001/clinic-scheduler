@@ -26,6 +26,7 @@ from app.services.doctor_service import DoctorService
 from app.services.meta_service import MetaService
 from app.services.notification_service import NotificationService
 from app.services.patient_service import PatientService
+from app.services.policy_service import PolicyService
 from app.services.record_service import RecordService
 from app.services.staff_service import StaffService
 from app.services.waitlist_service import WaitlistService
@@ -46,6 +47,7 @@ class Services:
     alternatives: AlternativesService
     staff: StaffService
     notifications: NotificationService
+    policy: PolicyService
 
     @classmethod
     def build(cls, factory: sessionmaker[Session]) -> Services:
@@ -63,6 +65,7 @@ class Services:
             alternatives=AlternativesService(availability, doctors),
             staff=StaffService(factory),
             notifications=NotificationService(factory),
+            policy=PolicyService(factory),
         )
 
 
