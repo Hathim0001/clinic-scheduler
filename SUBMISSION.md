@@ -4,7 +4,7 @@ Most of the code was written with Claude Code; every prompt is in `PROMPTS.md` a
 
 ## A. What I built
 
-A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI, started locally with `docker compose up --build`. All Core features work: doctors with weekly hours and date overrides, patients with a unique phone, free slots, booking, cancelling, rescheduling, completed and no-show, history, a day view, today's queue and the reviewer test clock. All seven business rules are enforced in the backend and hold under simultaneous requests, with a boundary test for every number. Hosted on Vercel (UI), Render (API) and Neon (database), with links in README section 2. I also built the Stretch items (waitlist with automatic offers, recurring appointments, calendar export) and extras: nearest alternatives when a day is full, a "prove the rules" page that rolls back what it runs, a refill metric, optional staff accounts with roles, consent and erasure of patient data, and a message outbox. In the last pass I added optional `If-Match` (412 when an appointment changed since it was read), a 10-minute undo of a cancellation that re-checks every rule, arrow-key moves in the day view, a printable day, the last patient remembered on the booking form, and a UI redesign into a business-style app shell: a grouped side navigation (a drawer on a phone), a top bar with the one action used all day, an Overview page (visits, arrivals, who is next, each doctor's load, what needs a look), figures and avatars on the queue and day view, a "day ribbon" per doctor with a marigold "now" marker, a calm white theme with a hospital-blue accent and bundled Source Sans 3 and Fraunces, and a link to the Swagger API reference. After that, for a real clinic rather than a take-home: clinic-editable rules (booking horizon, late-cancel window, strike count, undo window, waitlist hold, reminder hours), automatic reminders through a Twilio SMS or WhatsApp gateway or a webhook, doctor logins with a "My day" page, one-time password-reset codes and change-password, and a trends report (per-day outcomes, weekday and hour patterns, reminder effect).
+A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI, started locally with `docker compose up --build` and hosted on Vercel, Render and Neon (links in README section 2). All Core features work (doctors with weekly hours and date overrides, patients with a unique phone, free slots, booking, cancelling, rescheduling, completed and no-show, history, day view, today's queue and the reviewer test clock). All seven business rules are enforced in the backend, hold under simultaneous requests, and have a boundary test for every number. I also built the Stretch items (waitlist with automatic offers, recurring appointments, calendar export) and extras: nearest alternatives for a full day, a "prove the rules" page that rolls back what it runs, staff accounts with roles and password reset, doctor logins with a "My day" page, clinic-editable rules, reminders through a Twilio SMS or WhatsApp gateway or a webhook, a trends report, and consent and erasure of patient data. The UI is a calm, KJBN Labs-styled business app shell, checked with axe-core and in a real browser at phone, tablet and desktop widths.
 
 ## B. Three design decisions
 
@@ -46,8 +46,8 @@ The tagged `m0` to `m6` commits. Later work is tagged `[M2]` to `[M6]` by area; 
 ## F. If I had two more days
 
 1. A person who uses a screen reader audits the UI; axe-core passes, which is not the same.
-2. A real SMS or WhatsApp gateway with delivery receipts and reminders; the outbox and the webhook are built, the account is not.
-3. Password reset by email and two-factor sign-in for staff accounts.
+2. A live Twilio account for the reminders, with delivery receipts; the gateway, the outbox and the webhook are built and tested against a stub, but not against a paid account.
+3. Password reset by email and two-factor sign-in for staff accounts (reset today is a one-time code issued by an administrator).
 4. A privacy notice, retention period and processor agreements reviewed by someone qualified; the erase and purge tools exist.
 5. Load tests beyond 100 users and a shared rate limit (Redis) for more than one API instance.
 
@@ -59,10 +59,10 @@ The tagged `m0` to `m6` commits. Later work is tagged `[M2]` to `[M6]` by area; 
 | Code clarity (14) | 5 | Layers guarded by an import test, strict types, no function past about 80 lines, a code tour with live drills |
 | Error handling (10) | 5 | Typed errors, one shape, rollback, no stack to clients; the fuzzer found a 500 and it is fixed and tested |
 | Logging (8) | 5 | Structured JSON with request id, a catalogue of events, a test that no log line holds personal data, `/metrics` |
-| Data modelling (9) | 5 | Exclusion, CHECK and UNIQUE constraints, 11 migrations, stored versus derived documented, hash-chained audit |
+| Data modelling (9) | 5 | Exclusion, CHECK and UNIQUE constraints, 15 migrations, stored versus derived documented, hash-chained audit |
 | API design (8) | 5 | Conventions written down, pagination, idempotency keys, optional `If-Match`, one error shape, OpenAPI fuzzed over every operation |
 | UI (6) | 4 | Flows work unaided, axe clean, phone layouts; never tried by a real receptionist or a screen-reader user |
-| Testing (7) | 5 | 1,450 backend and 214 frontend tests, browser, fuzz and load runs, every statement of the rules layer covered |
+| Testing (7) | 5 | 1,450 backend and 220 frontend tests, browser, fuzz and load runs, every statement of the rules layer covered |
 | Deployment (5) | 4 | One-command stack, CI and a keep-alive; hosted and checked live (README section 2) |
 | Git hygiene (4) | 3 | Conventional commits, one author, tags; but commits came in batches (several share a minute) over two days. Timestamps are real, unedited |
 | Documentation (4) | 4 | README in the required order, limitations stated, this write-up cites commits |
