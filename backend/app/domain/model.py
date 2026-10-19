@@ -22,10 +22,12 @@ class Status(StrEnum):
 
 
 class Role(StrEnum):
-    """What a signed-in staff member may do: ADMIN also sets the clinic up and manages accounts."""
+    """What a signed-in staff member may do. ADMIN also sets the clinic up and manages accounts;
+    RECEPTIONIST runs the day; DOCTOR reads the schedule and marks their own visits."""
 
     ADMIN = "ADMIN"
     RECEPTIONIST = "RECEPTIONIST"
+    DOCTOR = "DOCTOR"  # sees the schedule and marks their own visits; nothing else
 
 
 class CancelledBy(StrEnum):

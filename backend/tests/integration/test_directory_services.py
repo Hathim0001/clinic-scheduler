@@ -300,6 +300,6 @@ def test_a_staff_password_must_be_long_enough_when_created_or_reset(clinic: Clin
         staff.create("shorty", "Shorty", "short", Role.RECEPTIONIST)
     made = staff.create("longer", "Longer", "long-enough-pass", Role.RECEPTIONIST)
     with pytest.raises(RuleViolation):
-        staff.update(made.id, password="short")
-    renamed = staff.update(made.id, display_name="Longer Name")
+        staff.update(made.id, NOW, password="short")
+    renamed = staff.update(made.id, NOW, display_name="Longer Name")
     assert renamed.display_name == "Longer Name"

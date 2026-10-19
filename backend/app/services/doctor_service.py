@@ -20,6 +20,7 @@ from app.domain.errors import ConflictError, ErrorCode, RuleViolation
 from app.domain.timeutil import MAX_DATE, ist_date
 from app.persistence import repositories as repo
 from app.persistence.models import Appointment, Doctor
+from app.services.staff_service import deactivate_for_doctor
 from app.services.support import run
 from app.services.views import DoctorView
 
@@ -107,6 +108,7 @@ class DoctorService:
                     f"{doctor.name} has {booked} appointment(s) on record, so cannot be deleted.",
                     appointments=booked,
                 )
+            deactivate_for_doctor(session, doctor.id)
             session.delete(doctor)
             session.flush()
 

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.model import CANCELLED_STATUSES, Status
 from app.persistence import repositories as repo
+from app.persistence.models import Appointment
 from app.services.appointment_views import build_views, view_of
 from app.services.support import run
 from app.services.views import AppointmentView, Page
@@ -26,6 +27,15 @@ class AppointmentQueries:
         def work(session: Session) -> AppointmentView:
             repo.get_appointment(session, appointment_id)  # 404 before building the view
             return view_of(session, appointment_id, now)
+
+        return run(self._factory, work)
+
+    def doctor_of(self, appointment_id: int) -> int | None:
+        """Which doctor an appointment belongs to, or None when there is no such appointment."""
+
+        def work(session: Session) -> int | None:
+            row = session.get(Appointment, appointment_id)
+            return row.doctor_id if row is not None else None
 
         return run(self._factory, work)
 

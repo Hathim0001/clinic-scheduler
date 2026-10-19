@@ -78,7 +78,8 @@ class StaffCreate(StrictModel):
     username: Annotated[str, Field(strict=True, pattern=r"^[a-z0-9._-]{3,40}$")]
     display_name: PersonName
     password: Annotated[str, Field(strict=True, min_length=8, max_length=200)]
-    role: Literal["ADMIN", "RECEPTIONIST"]
+    role: Literal["ADMIN", "RECEPTIONIST", "DOCTOR"]
+    doctor_id: EntityId | None = None  # required for a DOCTOR account, refused for the others
 
 
 class StaffPatch(StrictModel):
@@ -86,17 +87,31 @@ class StaffPatch(StrictModel):
 
     display_name: PersonName | None = None
     password: Annotated[str, Field(strict=True, min_length=8, max_length=200)] | None = None
-    role: Literal["ADMIN", "RECEPTIONIST"] | None = None
+    role: Literal["ADMIN", "RECEPTIONIST", "DOCTOR"] | None = None
     active: StrictBool | None = None
+    doctor_id: EntityId | None = None  # for a DOCTOR account; send null to clear it for others
 
     @model_validator(mode="after")
     def _something_to_change(self) -> StaffPatch:
         if not self.model_fields_set:
             raise ValueError("send at least one of display_name, password, role, active")
-        for field in self.model_fields_set:
+        for field in self.model_fields_set - {"doctor_id"}:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} must not be null")
         return self
+
+
+class ResetPasswordRequest(StrictModel):
+    """Choose a new password with the single-use code an administrator gave you."""
+
+    username: Annotated[str, Field(strict=True, min_length=1, max_length=60)]
+    code: Annotated[str, Field(strict=True, min_length=4, max_length=20)]
+    new_password: Annotated[str, Field(strict=True, min_length=8, max_length=200)]
+
+
+class ChangePasswordRequest(StrictModel):
+    current_password: Annotated[str, Field(strict=True, min_length=1, max_length=200)]
+    new_password: Annotated[str, Field(strict=True, min_length=8, max_length=200)]
 
 
 class PatientCreate(StrictModel):

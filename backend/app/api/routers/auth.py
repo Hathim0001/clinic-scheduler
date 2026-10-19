@@ -6,12 +6,13 @@ import hmac
 import time
 
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 
+from app.api.deps import NowDep, require_staff
 from app.api.errors import ApiError
 from app.api.ratelimit import LoginLockout
-from app.api.schemas.requests import LoginRequest
+from app.api.schemas.requests import ChangePasswordRequest, LoginRequest, ResetPasswordRequest
 from app.core.auth import issue_token
 from app.domain.errors import ErrorCode, RuleViolation
 from app.domain.model import Role
@@ -30,6 +31,7 @@ class TokenOut(BaseModel):
     name: str
     role: str
     expires_at_epoch: int
+    doctor_id: int | None = None  # set for a doctor's own login
 
 
 @router.get("/status", response_model=AuthStatus, summary="Does this server ask for a staff login?")
@@ -80,6 +82,7 @@ def login(request: Request, body: LoginRequest) -> TokenOut:
                 name=account.display_name,
                 role=account.role.value,
                 expires_at_epoch=expires,
+                doctor_id=account.doctor_id,
             )
         lockout.failed(who, time.time())
     shared = settings.staff_password
@@ -93,3 +96,69 @@ def login(request: Request, body: LoginRequest) -> TokenOut:
         )
     log.warning("auth.login_failed")
     raise ApiError(ErrorCode.UNAUTHENTICATED, "The username or password is not correct.")
+
+
+def _locked(request: Request, key: str) -> None:
+    lockout: LoginLockout = request.app.state.login_lockout
+    wait = lockout.retry_after(key, time.time())
+    if wait is not None:
+        raise ApiError(
+            ErrorCode.RATE_LIMITED,
+            "Too many wrong codes for this account. Try again later.",
+            {"retry_after_seconds": wait},
+            {"Retry-After": str(wait)},
+        )
+
+
+@router.post(
+    "/reset-password",
+    status_code=204,
+    summary="Choose a new password with the single-use code an administrator gave you",
+    responses={401: {"description": "UNAUTHENTICATED: the code is wrong, used or expired"}},
+)
+def reset_password(request: Request, body: ResetPasswordRequest, now: NowDep) -> Response:
+    """Works for accounts only. The code comes from an administrator, is valid for an hour and works
+    once; afterwards every older session of that account ends. The answer is the same whether the
+    username exists or not, and five wrong codes lock the account's resets for a while."""
+    if request.app.state.settings.auth_secret is None:
+        raise RuleViolation(ErrorCode.VALIDATION_ERROR, "Staff accounts are not switched on.")
+    key = f"reset:{body.username.strip().lower()}"
+    _locked(request, key)
+    done = request.app.state.services.staff.reset_password(
+        body.username, body.code, body.new_password, now
+    )
+    if done is None:
+        request.app.state.login_lockout.failed(key, time.time())
+        log.warning("auth.reset_failed")
+        raise ApiError(
+            ErrorCode.UNAUTHENTICATED,
+            "That code is not correct, has already been used or has expired. "
+            "Ask an administrator for a new one.",
+        )
+    request.app.state.login_lockout.succeeded(key)
+    log.info("auth.password_reset", staff_id=done.id)
+    return Response(status_code=204)
+
+
+@router.post(
+    "/change-password",
+    status_code=204,
+    summary="Change your own password (other sessions of your account end)",
+    dependencies=[Depends(require_staff)],
+    responses={401: {"description": "UNAUTHENTICATED: the current password is wrong"}},
+)
+def change_password(request: Request, body: ChangePasswordRequest, now: NowDep) -> Response:
+    account_id = getattr(request.state, "account_id", None)
+    if account_id is None:
+        raise RuleViolation(
+            ErrorCode.VALIDATION_ERROR,
+            "Sign in with your own account to change a password; the shared password is changed "
+            "by whoever runs the server.",
+        )
+    done = request.app.state.services.staff.change_password(
+        account_id, body.current_password, body.new_password, now
+    )
+    if done is None:
+        raise ApiError(ErrorCode.UNAUTHENTICATED, "The current password is not correct.")
+    log.info("auth.password_changed", staff_id=done.id)
+    return Response(status_code=204)

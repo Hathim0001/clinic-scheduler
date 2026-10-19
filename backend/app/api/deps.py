@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -130,12 +131,18 @@ async def require_staff(request: Request) -> None:
     )
     role = Role(claims.role) if claims is not None else None
     name = claims.name if claims is not None else None
+    doctor_id: int | None = None
+    account_id: int | None = None
     if claims is not None and claims.account_id is not None:
         account = await run_in_threadpool(
             request.app.state.services.staff.current, claims.account_id
         )
+        if account is not None and claims.issued_at < account.password_changed_ms:
+            account = None  # the password was changed since this token was issued
         role = account.role if account is not None else None
         name = account.display_name if account is not None else None
+        doctor_id = account.doctor_id if account is not None else None
+        account_id = account.id if account is not None else None
     if role is None or name is None:
         raise ApiError(
             ErrorCode.UNAUTHENTICATED,
@@ -144,9 +151,48 @@ async def require_staff(request: Request) -> None:
         )
     current_actor.set(name)
     request.state.role = role
+    request.state.doctor_id = doctor_id
+    request.state.account_id = account_id
+    if role is Role.DOCTOR:
+        await _keep_to_own_work(request, doctor_id)
     log_fields = getattr(request.state, "log_fields", None)
     if log_fields is not None:
         log_fields["staff"] = name
+
+
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_DOCTOR_MAY = re.compile(r"/appointments/(\d+)/(?:complete|no-show|check-in)$")
+_PERSONAL_EXPORT = re.compile(r"/patients/\d+/export$")
+
+
+async def _keep_to_own_work(request: Request, doctor_id: int | None) -> None:
+    """A doctor reads the schedule and marks the outcome of their own visits, nothing more.
+
+    Everything that changes data is refused except completing, no-show and check-in on an
+    appointment of the doctor's own; a patient's full record export is refused too."""
+    refusal = ApiError(
+        ErrorCode.FORBIDDEN,
+        "A doctor can read the schedule and mark their own visits; anything else is for "
+        "reception or an administrator.",
+        details={"role": "DOCTOR"},
+    )
+    path = request.url.path
+    if request.method in _SAFE_METHODS:
+        if _PERSONAL_EXPORT.search(path):
+            raise refusal
+        return
+    match = _DOCTOR_MAY.search(path)
+    if request.method != "POST" or match is None:
+        raise refusal
+    owner = await run_in_threadpool(
+        request.app.state.services.queries.doctor_of, int(match.group(1))
+    )
+    if owner is not None and owner != doctor_id:
+        raise ApiError(
+            ErrorCode.FORBIDDEN,
+            "This appointment belongs to another doctor.",
+            details={"role": "DOCTOR"},
+        )
 
 
 async def require_admin(request: Request) -> None:

@@ -21,8 +21,9 @@ from dataclasses import dataclass
 @dataclass(frozen=True, slots=True)
 class Claims:
     name: str
-    role: str  # "ADMIN" or "RECEPTIONIST"
+    role: str  # "ADMIN", "RECEPTIONIST" or "DOCTOR"
     account_id: int | None  # None for the shared-password login
+    issued_at: int = 0  # epoch milliseconds; older than the account's password stamp is refused
 
 
 def _key(secret: str) -> bytes:
@@ -47,7 +48,7 @@ def issue_token(
 ) -> tuple[str, int]:
     """A token for `name` and the epoch second at which it stops working."""
     expires = int(now) + ttl_seconds
-    claims: dict[str, object] = {"n": name, "e": expires, "r": role}
+    claims: dict[str, object] = {"n": name, "e": expires, "r": role, "t": int(now * 1000)}
     if account_id is not None:
         claims["i"] = account_id
     body = _b64(json.dumps(claims, separators=(",", ":")).encode())
@@ -66,15 +67,18 @@ def verify_claims(secret: str, token: str, now: float) -> Claims | None:
         name, expires = claims["n"], claims["e"]
         role = claims.get("r", "ADMIN")
         account_id = claims.get("i")
+        issued_at = claims.get("t", 0)
     except (ValueError, KeyError, TypeError, AttributeError, json.JSONDecodeError):
         return None
     if not isinstance(name, str) or not isinstance(expires, int) or expires < now:
         return None
-    if role not in ("ADMIN", "RECEPTIONIST"):
+    if role not in ("ADMIN", "RECEPTIONIST", "DOCTOR"):
         return None
     if account_id is not None and not isinstance(account_id, int):
         return None
-    return Claims(name, role, account_id)
+    if not isinstance(issued_at, int):
+        return None
+    return Claims(name, role, account_id, issued_at)
 
 
 def verify_token(secret: str, token: str, now: float) -> str | None:

@@ -5,7 +5,7 @@ that backs a booking rule (see plan section 23).
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -140,6 +140,14 @@ class StaffAccount(Base):
     role: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = _created_at()
+    doctor_id: Mapped[int | None] = mapped_column(Integer)  # set for a DOCTOR account
+    reset_code_hash: Mapped[str | None] = mapped_column(Text)
+    reset_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The server's own clock, never the request's test clock and never the database's: a token's
+    # issue time comes from the same clock, so the two can be compared.
+    password_changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class Notification(Base):

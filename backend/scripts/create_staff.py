@@ -26,13 +26,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--username", required=True, help="lower-case letters, digits . _ -")
     parser.add_argument("--name", required=True, help="the name shown in the audit trail")
     parser.add_argument("--role", choices=[r.value for r in Role], default=Role.ADMIN.value)
+    parser.add_argument("--doctor-id", type=int, help="the doctor a DOCTOR account belongs to")
     args = parser.parse_args(argv)
     password = os.environ.get("STAFF_NEW_PASSWORD") or getpass.getpass("Password: ")
 
     engine = create_db_engine(get_settings().database_url)
     try:
         view = StaffService(create_session_factory(engine)).create(
-            args.username, args.name, password, Role(args.role)
+            args.username, args.name, password, Role(args.role), args.doctor_id
         )
     finally:
         engine.dispose()

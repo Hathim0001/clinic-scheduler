@@ -146,6 +146,7 @@ def _add_appointment(
         end_at=end,
         status=status.value,
         reason=reason,
+        created_at=start - timedelta(days=3),  # booked a few days ahead, so reminders apply
     )
     if status in (Status.CANCELLED, Status.LATE_CANCELLED):
         if cancelled_hhmm is None:
