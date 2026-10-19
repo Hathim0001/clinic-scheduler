@@ -21,9 +21,10 @@ services:
         value: INFO
       # Sign-in is required. Set these in the dashboard: a long random AUTH_SECRET and the first
       # administrator (created once, only if no account exists). For a public demo only, set
-      # ALLOW_OPEN_ACCESS=true instead and the app says on every page that sign-in is off.
+      # ALLOW_OPEN_ACCESS=true and leave AUTH_SECRET unset (a secret always turns sign-in on);
+      # the app then says on every page that sign-in is off.
       - key: AUTH_SECRET
-        generateValue: true
+        sync: false
       - key: BOOTSTRAP_ADMIN_USERNAME
         sync: false
       - key: BOOTSTRAP_ADMIN_PASSWORD
