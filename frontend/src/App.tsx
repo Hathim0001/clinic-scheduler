@@ -6,6 +6,7 @@ import { ClockBar } from "./components/ClockBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NavMenu } from "./components/NavMenu";
 import { OfflineBanner, SkipLink, useRouteAccessibility } from "./components/PageChrome";
+import { UndoCancel } from "./components/UndoCancel";
 import { WakeBanner } from "./components/WakeBanner";
 import Admin from "./pages/Admin";
 import Book from "./pages/Book";
@@ -116,6 +117,7 @@ export default function App() {
         <main id="main" ref={main} tabIndex={-1}>
           <OfflineBanner />
           <WakeBanner />
+          <UndoCancel />
           <Routes>
             <Route path="/" element={<Navigate to="/day" replace />} />
             <Route path="/day" element={<DayView />} />

@@ -29,7 +29,8 @@ export interface Message {
 }
 
 export type Status = "BOOKED" | "COMPLETED" | "CANCELLED" | "LATE_CANCELLED" | "NO_SHOW";
-export type Action = "cancel" | "reschedule" | "complete" | "no-show" | "check-in" | "correct";
+export type Action =
+  "cancel" | "reschedule" | "complete" | "no-show" | "check-in" | "correct" | "undo-cancel";
 export type CancelledBy = "PATIENT" | "CLINIC";
 
 export interface Doctor {

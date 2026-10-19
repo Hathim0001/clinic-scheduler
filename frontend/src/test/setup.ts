@@ -11,5 +11,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   setTestClockHeader(null);
 });

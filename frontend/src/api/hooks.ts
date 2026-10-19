@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { rememberCancel } from "../lib/lastCancel";
 import { api } from "./endpoints";
 import type {
   BookBody,
@@ -232,7 +233,15 @@ export const useBook = () =>
 
 export const useCancel = () =>
   useRefreshingMutation("appointments", (args: { id: number; by: CancelledBy; etag?: string }) =>
-    api.cancel(args.id, args.by, args.etag),
+    api.cancel(args.id, args.by, args.etag).then((result) => {
+      rememberCancel(result.appointment);
+      return result;
+    }),
+  );
+
+export const useUndoCancel = () =>
+  useRefreshingMutation("appointments", (args: { id: number; etag?: string }) =>
+    api.undoCancel(args.id, args.etag),
   );
 
 export const useReschedule = () =>

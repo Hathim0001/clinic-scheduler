@@ -10,6 +10,7 @@ import {
   useSlots,
 } from "../../api/hooks";
 import { istDate } from "../../lib/formatIST";
+import { readLastPatient, rememberPatient } from "../../lib/lastPatient";
 import { useToday } from "../../lib/useToday";
 import type { Mover } from "./RescheduleNotices";
 
@@ -27,8 +28,10 @@ export function useBookingForm() {
 
   const [pickedDoctor, setPickedDoctor] = useState<number | null>(null);
   const [pickedDate, setPickedDate] = useState<string | null>(null);
+  // Start with the patient of the last booking, unless a link or a move names one.
+  const [remembered] = useState(() => (params.get("patient") ? null : readLastPatient()));
   const [pickedPatient, setPickedPatient] = useState<number | null>(
-    Number(params.get("patient")) || null,
+    Number(params.get("patient")) || remembered,
   );
   const [pickedStart, setPickedStart] = useState<string | null>(params.get("start"));
   const [reason, setReason] = useState("");
@@ -110,15 +113,18 @@ export function useBookingForm() {
         key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
       };
     }
-    book.mutate({
-      doctor_id,
-      patient_id,
-      start_at,
-      reason,
-      deposit_confirmed: depositRequired && depositAcknowledged,
-      slots: visitSlots,
-      idempotencyKey: attempt.current.key,
-    });
+    book.mutate(
+      {
+        doctor_id,
+        patient_id,
+        start_at,
+        reason,
+        deposit_confirmed: depositRequired && depositAcknowledged,
+        slots: visitSlots,
+        idempotencyKey: attempt.current.key,
+      },
+      { onSuccess: () => rememberPatient(patient_id) },
+    );
   };
 
   const submit = (event: FormEvent) => {
@@ -126,16 +132,19 @@ export function useBookingForm() {
     if (!ready || doctorId === null || patientId === null || start === null) return;
     if (rescheduleId !== null) return move(false);
     if (!repeat) return bookOne(doctorId, patientId, start);
-    series.mutate({
-      doctor_id: doctorId,
-      patient_id: patientId,
-      start_at: start,
-      reason,
-      deposit_confirmed: depositRequired && depositAcknowledged,
-      slots: visitSlots,
-      every_days: everyDays,
-      count,
-    });
+    series.mutate(
+      {
+        doctor_id: doctorId,
+        patient_id: patientId,
+        start_at: start,
+        reason,
+        deposit_confirmed: depositRequired && depositAcknowledged,
+        slots: visitSlots,
+        every_days: everyDays,
+        count,
+      },
+      { onSuccess: () => rememberPatient(patientId) },
+    );
   };
 
   return {
@@ -146,6 +155,7 @@ export function useBookingForm() {
     doctorId,
     date,
     patientId,
+    patientFromLastBooking: remembered !== null && pickedPatient === remembered,
     patient,
     deposit,
     movedMinutes,

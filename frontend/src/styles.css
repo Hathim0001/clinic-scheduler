@@ -1317,3 +1317,30 @@ td.nowrap {
     color: #555;
   }
 }
+
+/* Offered for a few minutes after a cancellation, wherever the person has gone since */
+.undo-bar {
+  position: fixed;
+  left: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 20;
+  max-width: min(32rem, calc(100vw - 2 * var(--space-4)));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+  animation: menu-in 150ms ease-out;
+}
+.undo-bar p {
+  margin: 0;
+}
+@media print {
+  .undo-bar {
+    display: none !important;
+  }
+}

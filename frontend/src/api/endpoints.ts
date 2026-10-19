@@ -214,6 +214,8 @@ export const api = {
     request<RescheduleResponse>("POST", `/appointments/${id}/reschedule`, {
       body,
     }),
+  undoCancel: (id: number, etag?: string) =>
+    request<Appointment>("POST", `/appointments/${id}/undo-cancel`, { headers: ifMatch(etag) }),
   complete: (id: number, etag?: string) =>
     request<Appointment>("POST", `/appointments/${id}/complete`, { headers: ifMatch(etag) }),
   noShow: (id: number, etag?: string) =>

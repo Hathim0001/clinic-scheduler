@@ -202,4 +202,31 @@ describe("booking an appointment", () => {
       by: "PATIENT",
     });
   });
+
+  it("starts with the patient of the last booking, and says so", async () => {
+    installFakeApi(routes());
+    window.sessionStorage.setItem("clinic.lastPatientId", "7");
+    renderPage(<Book />, "/book?doctor=1&date=2026-11-02");
+
+    expect(await screen.findByText(/same patient as the last booking/)).toBeInTheDocument();
+    expect(screen.getByText("Kavita Nair", { exact: false })).toBeInTheDocument();
+  });
+
+  it("does not prefill a patient when a link names one or nothing was booked", async () => {
+    installFakeApi(routes());
+    renderPage(<Book />, link);
+    await screen.findByRole("button", { name: "10:00–10:30" });
+    expect(screen.queryByText(/same patient as the last booking/)).not.toBeInTheDocument();
+  });
+
+  it("remembers the patient after a successful booking", async () => {
+    installFakeApi(routes({ "POST /appointments": { status: 201, body: appointment() } }));
+    const user = userEvent.setup();
+    renderPage(<Book />, link);
+    await user.click(await screen.findByRole("button", { name: "10:00–10:30" }));
+    await user.type(screen.getByLabelText("Reason"), "Fever");
+    await user.click(screen.getByRole("button", { name: "Book the appointment" }));
+
+    await waitFor(() => expect(window.sessionStorage.getItem("clinic.lastPatientId")).toBe("7"));
+  });
 });

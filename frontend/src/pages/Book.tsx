@@ -54,6 +54,12 @@ export default function Book() {
             {patient.data && (
               <p>
                 Selected: <strong>{patient.data.name}</strong>, {patient.data.phone}
+                {form.patientFromLastBooking && (
+                  <span className="muted">
+                    {" "}
+                    (same patient as the last booking; search to change)
+                  </span>
+                )}
               </p>
             )}
           </>
