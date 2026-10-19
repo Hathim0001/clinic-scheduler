@@ -90,4 +90,14 @@ written with the project's design skills (frontend-design, ui-ux-pro-max, uiux, 
 - **Overview:** four figures on one sheet (not four boxes), the ribbons, the next visits, and a
   "Needs a look" list that reads "All clear" when it is.
 - **Checks:** unit tests for the overview, the ribbon text and the navigation; the accessibility sweep
-  covers the overview too (40 scans, light and dark, desktop and phone).
+  covers the overview too.
+
+### A calm white theme
+
+The last pass made the page itself white. The page is the faintest cool white (`#f8fafc`), the sheets
+on it are pure white with a hairline and a whisper of blue-tinted shadow, text is a deep slate, and
+the only colours with weight are the hospital-blue action colour, a pale sage for booked entries and
+the marigold "now" line. Spacing was opened up (a 2.5 rem page gutter, 1.75 rem inside a card, more
+air in tables and rows), and tables turn into one card per row on a tablet as well as a phone, so
+nothing is squeezed. There is one theme: the automatic dark mode was removed so every screen is the
+one that was designed and checked (the dark colour tokens are kept for a future switch).

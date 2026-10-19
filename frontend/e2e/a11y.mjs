@@ -1,5 +1,5 @@
 // Automated accessibility scan (axe-core, WCAG 2.0/2.1 A and AA plus best practices) of every page,
-// in light and dark mode, at desktop and phone width. A violation fails the run.
+// in the light theme (the only one), at desktop and phone width. A violation fails the run.
 
 import axe from "axe-core";
 import { BASE_URL, check, finish, launch, openPage, seedClock, sleep } from "./lib.mjs";
@@ -22,7 +22,7 @@ const pages = [
 
 const browser = await launch();
 try {
-  for (const scheme of ["light", "dark"]) {
+  for (const scheme of ["light"]) {
     for (const width of [1280, 390]) {
       const page = await openPage(browser, clock, width, 900);
       await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);

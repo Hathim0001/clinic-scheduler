@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { useAuthStatus, useChangePassword, useLogin, useResetPassword } from "../api/hooks";
 import { getSession, setSession, subscribeSession } from "../lib/authStore";
-import { ErrorBanner, Skeleton } from "./common";
+import { Banner, ErrorBanner, Skeleton } from "./common";
 
 export function useSession() {
   return useSyncExternalStore(subscribeSession, getSession);
@@ -279,6 +279,43 @@ function SignIn() {
  * Shows the app when no sign-in is needed (the server says so) or the person has signed in, and the
  * sign-in form otherwise. The server decides; this only follows.
  */
+function SetupNeeded() {
+  return (
+    <div className="card sign-in">
+      <h1>Sign-in is not set up yet</h1>
+      <p>
+        This server requires staff to sign in, so patient details are never open to anyone with the
+        link, but nobody has finished setting that up. Whoever runs the server needs to set:
+      </p>
+      <ul>
+        <li>
+          <code>AUTH_SECRET</code>: a long random string, 16 characters or more
+        </li>
+        <li>
+          <code>BOOTSTRAP_ADMIN_USERNAME</code> and <code>BOOTSTRAP_ADMIN_PASSWORD</code>: the first
+          administrator, created once
+        </li>
+      </ul>
+      <p className="muted">
+        For a public demo only, <code>ALLOW_OPEN_ACCESS=true</code> leaves the app open instead, and
+        every page then says so.
+      </p>
+    </div>
+  );
+}
+
+/** A reminder on every page when sign-in was switched off on purpose. */
+export function OpenAccessBanner() {
+  const status = useAuthStatus();
+  if (!status.data?.open_access) return null;
+  return (
+    <Banner kind="warn">
+      Sign-in is switched off on this server, so anyone with the link can read patient names and
+      phone numbers. That is meant for a demo only.
+    </Banner>
+  );
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const status = useAuthStatus();
   const session = useSession();
@@ -286,6 +323,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (status.isPending) return <Skeleton rows={2} />;
   if (status.error)
     return <ErrorBanner error={status.error} onRetry={() => void status.refetch()} />;
+  if (status.data.setup_needed) return <SetupNeeded />;
   if (status.data.required && !session) return <SignIn />;
   return <>{children}</>;
 }

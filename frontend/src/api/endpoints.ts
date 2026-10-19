@@ -119,7 +119,13 @@ const ifMatch = (etag?: string) => (etag ? { "If-Match": `"${etag}"` } : undefin
 
 export const api = {
   clock: () => request<ClockInfo>("GET", "/clock"),
-  authStatus: () => request<{ required: boolean; accounts: boolean }>("GET", "/auth/status"),
+  authStatus: () =>
+    request<{
+      required: boolean;
+      accounts: boolean;
+      setup_needed?: boolean; // sign-in is required but the server was never given AUTH_SECRET
+      open_access?: boolean; // sign-in was switched off on purpose
+    }>("GET", "/auth/status"),
   messages: (status: MessageStatus | undefined, limit: number) =>
     request<Page<Message>>("GET", "/notifications", { query: { status, limit } }),
   pendingMessages: () => request<{ count: number }>("GET", "/notifications/pending"),

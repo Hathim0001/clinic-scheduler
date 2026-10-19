@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Component, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,7 +6,7 @@ import { request } from "../api/client";
 import { getSession, resetSessionCache, setSession } from "../lib/authStore";
 import { apiError, installFakeApi } from "../test/fakeApi";
 import { renderPage } from "../test/utils";
-import { AuthGate } from "./AuthGate";
+import { AuthGate, ChangePasswordDialog, OpenAccessBanner } from "./AuthGate";
 import { ErrorBoundary } from "./ErrorBoundary";
 
 beforeEach(() => {
@@ -76,6 +76,117 @@ describe("the sign-in gate", () => {
     });
     await request("GET", "/doctors");
     expect(api.last("GET", "/doctors")?.headers.get("authorization")).toBe("Bearer abc.def");
+  });
+
+  it("says what to set when sign-in is required but was never set up", async () => {
+    installFakeApi({
+      "GET /auth/status": { body: { required: true, accounts: false, setup_needed: true } },
+    });
+    renderPage(
+      <AuthGate>
+        <p>the app</p>
+      </AuthGate>,
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Sign-in is not set up yet" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("AUTH_SECRET")).toBeInTheDocument();
+    expect(screen.queryByText("the app")).not.toBeInTheDocument();
+  });
+
+  it("offers the app and a warning when open access was chosen on purpose", async () => {
+    installFakeApi({
+      "GET /auth/status": { body: { required: false, accounts: false, open_access: true } },
+    });
+    renderPage(
+      <AuthGate>
+        <p>the app</p>
+        <OpenAccessBanner />
+      </AuthGate>,
+    );
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(screen.getByText(/Sign-in is switched off on this server/)).toBeInTheDocument();
+  });
+
+  it("lets someone choose a new password with a reset code", async () => {
+    const api = installFakeApi({
+      "GET /auth/status": { body: { required: true, accounts: true } },
+      "POST /auth/reset-password": { status: 204 },
+    });
+    const user = userEvent.setup();
+    renderPage(
+      <AuthGate>
+        <p>the app</p>
+      </AuthGate>,
+    );
+    await user.click(await screen.findByRole("button", { name: "Forgot your password?" }));
+    await user.type(screen.getByLabelText("Username"), "meera");
+    await user.type(screen.getByLabelText("Reset code"), "k7qx-92md");
+    await user.type(
+      screen.getByLabelText("New password (at least 8 characters)"),
+      "a-brand-new-pass",
+    );
+    await user.type(screen.getByLabelText("New password again"), "a-brand-new-pass");
+    await user.click(screen.getByRole("button", { name: "Set new password" }));
+    expect(await screen.findByRole("heading", { name: "Password changed" })).toBeInTheDocument();
+    expect(api.last("POST", "/auth/reset-password")?.body).toEqual({
+      username: "meera",
+      code: "K7QX-92MD",
+      new_password: "a-brand-new-pass",
+    });
+    await user.click(screen.getByRole("button", { name: "Go to sign in" }));
+    expect(screen.getByRole("form", { name: "Staff sign-in" })).toBeInTheDocument();
+  });
+
+  it("will not send a reset when the two passwords differ", async () => {
+    installFakeApi({ "GET /auth/status": { body: { required: true, accounts: true } } });
+    const user = userEvent.setup();
+    renderPage(
+      <AuthGate>
+        <p>the app</p>
+      </AuthGate>,
+    );
+    await user.click(await screen.findByRole("button", { name: "Forgot your password?" }));
+    await user.type(screen.getByLabelText("Username"), "meera");
+    await user.type(screen.getByLabelText("Reset code"), "K7QX-92MD");
+    await user.type(
+      screen.getByLabelText("New password (at least 8 characters)"),
+      "a-brand-new-pass",
+    );
+    await user.type(screen.getByLabelText("New password again"), "something-else-1");
+    expect(screen.getByText("The two passwords are not the same.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Set new password" })).toBeDisabled();
+  });
+
+  it("does not offer a reset when the server uses one shared password", async () => {
+    installFakeApi({ "GET /auth/status": { body: { required: true, accounts: false } } });
+    renderPage(
+      <AuthGate>
+        <p>the app</p>
+      </AuthGate>,
+    );
+    await screen.findByRole("form", { name: "Staff sign-in" });
+    expect(screen.queryByRole("button", { name: "Forgot your password?" })).not.toBeInTheDocument();
+  });
+
+  it("changes your own password and signs you out", async () => {
+    setSession({ token: "t", name: "Meera", role: "RECEPTIONIST" });
+    const api = installFakeApi({ "POST /auth/change-password": { status: 204 } });
+    const user = userEvent.setup();
+    renderPage(<ChangePasswordDialog onClose={vi.fn()} />);
+    await user.type(screen.getByLabelText("Current password"), "old-password-1");
+    await user.type(
+      screen.getByLabelText("New password (at least 8 characters)"),
+      "new-password-22",
+    );
+    await user.type(screen.getByLabelText("New password again"), "new-password-22");
+    await user.click(screen.getByRole("button", { name: "Change password" }));
+    await waitFor(() => expect(api.count("POST", "/auth/change-password")).toBe(1));
+    expect(api.last("POST", "/auth/change-password")?.body).toEqual({
+      current_password: "old-password-1",
+      new_password: "new-password-22",
+    });
+    await waitFor(() => expect(getSession()).toBeNull());
   });
 
   it("says the password is wrong and stays on the form", async () => {

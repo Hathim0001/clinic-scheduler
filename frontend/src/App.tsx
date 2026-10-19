@@ -8,6 +8,7 @@ import { useToday } from "./lib/useToday";
 import {
   AuthGate,
   ChangePasswordDialog,
+  OpenAccessBanner,
   useIsAdmin,
   useIsDoctor,
   useSession,
@@ -242,6 +243,7 @@ function Shell() {
         <ClockBar />
         <main id="main" ref={main} tabIndex={-1}>
           <OfflineBanner />
+          <OpenAccessBanner />
           <WakeBanner />
           <UndoCancel />
           <Routes>
