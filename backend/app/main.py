@@ -120,6 +120,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.services = Services.build(factory)
 
+    if settings.setup_needed:
+        log.warning(
+            "auth.setup_needed", hint="set AUTH_SECRET, or ALLOW_OPEN_ACCESS=true for a demo"
+        )
+    elif not settings.auth_required:
+        log.warning("auth.open_access", hint="anyone with the link can read patient data")
+    if settings.auth_secret and settings.bootstrap_admin_username:
+        created = app.state.services.staff.bootstrap_admin(
+            settings.bootstrap_admin_username, settings.bootstrap_admin_password or ""
+        )
+        if created:
+            log.info("auth.bootstrap_admin_created", username=settings.bootstrap_admin_username)
+
     register_exception_handlers(app)
     app.include_router(health.router)
     app.include_router(clock.router, prefix=API_PREFIX)  # open: shows the time, no personal data

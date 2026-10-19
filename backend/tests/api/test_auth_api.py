@@ -34,14 +34,24 @@ def bearer(api: Api, name: str = "Meera") -> dict[str, str]:
     return {"Authorization": f"Bearer {login(api, name).json()['token']}"}
 
 
-def test_login_is_off_by_default(api: Api) -> None:
-    assert api.http.get(f"{BASE}/auth/status").json() == {"required": False, "accounts": False}
+def test_login_is_off_when_open_access_is_chosen(api: Api) -> None:
+    assert api.http.get(f"{BASE}/auth/status").json() == {
+        "required": False,
+        "accounts": False,
+        "setup_needed": False,
+        "open_access": True,
+    }
     assert api.get("/doctors").status_code == 200  # open, exactly as before
     assert_error(login(api), 422, "VALIDATION_ERROR")
 
 
 def test_with_login_on_the_status_says_so_and_stays_open(locked: Api) -> None:
-    assert locked.http.get(f"{BASE}/auth/status").json() == {"required": True, "accounts": False}
+    assert locked.http.get(f"{BASE}/auth/status").json() == {
+        "required": True,
+        "accounts": False,
+        "setup_needed": False,
+        "open_access": False,
+    }
 
 
 @pytest.mark.parametrize(

@@ -21,8 +21,7 @@ configuration.
 | API base | https://clinic-api-pn9t.onrender.com/api/v1 |
 | API docs (OpenAPI) | https://clinic-api-pn9t.onrender.com/docs |
 
-Sign-in is **optional and off by default**: the assignment makes authentication optional, and a login would lock out a reviewer. Set `STAFF_PASSWORD` to turn it on (see section 3 and the settings table). With it off there is no login, so there
-are no credentials to give. **Cold start:** on Render's free plan the API sleeps when idle and the
+Sign-in is **required by default**: patient names and phones must not be readable by anyone with the link. A fresh server with nothing set up refuses every clinical route and says what to set (`AUTH_SECRET`, and `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` for the first administrator). The assignment makes authentication optional, so for a demo or a review `ALLOW_OPEN_ACCESS=true` leaves the app open on purpose, and every page then carries a warning that sign-in is off (see the settings table). The local `docker compose` stack sets it for you. **Cold start:** on Render's free plan the API sleeps when idle and the
 first request can take about a minute; a scheduled workflow pings it every 10 minutes to keep it awake (section 11). The UI says "Waking the server" instead of showing a blank
 page.
 
@@ -138,8 +137,11 @@ npm run format:check && npm run lint && npm run typecheck   # what CI runs (npm 
 | `DB_CONNECT_TIMEOUT_S` | backend | Seconds to wait for a database connection (default 10) |
 | `DB_POOL_SIZE`, `DB_MAX_OVERFLOW` | backend | Database connections kept per process and how many more a burst may borrow (defaults 5 and 5) |
 | `TRUSTED_PROXY_HOPS` | backend | How many reverse proxies append to `X-Forwarded-For` (default 0; the Render blueprint sets 1). The rate limit counts the entry that many places from the right, because the left side can be forged |
-| `STAFF_PASSWORD` | backend | Optional, 8+ characters. When set, every route except the health checks, the clock and the login needs a signed token, and each audit row names who made the change. Unset (the default) leaves the API open |
-| `AUTH_SECRET` | backend | Optional, 16+ characters. Turns on **individual staff accounts with roles** (administrator or receptionist): people sign in with their own username and password, and a demotion or a switch-off applies on the very next request. Create the first administrator with `python -m scripts.create_staff` (or sign in with `STAFF_PASSWORD`, if also set, which signs in as an administrator). Unset (the default) leaves accounts off |
+| `ALLOW_OPEN_ACCESS` | backend | `false` by default: sign-in is **required**. Set `true` only for a demo; the app then says on every page that sign-in is off. Ignored (sign-in stays required) when a secret or shared password is set |
+| `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_PASSWORD` | backend | Together, with `AUTH_SECRET`: creates the first administrator at start-up, only when no account exists yet, so a later change here never touches a clinic that is set up |
+| `SEED_DEMO_ACCOUNTS`, `DEMO_ACCOUNTS_PASSWORD` | backend | Local demos only: with the seed, also creates `reception` and `dr.rao` / `dr.menon` logins (one per role) with that password, once |
+| `STAFF_PASSWORD` | backend | Optional, 8+ characters. A single shared password: every route except the health checks, the clock and the login needs a signed token, and each audit row names who made the change |
+| `AUTH_SECRET` | backend | Optional, 16+ characters. Turns on **individual staff accounts with roles** (administrator, receptionist or doctor): people sign in with their own username and password, and a demotion or a switch-off applies on the very next request. Create the first administrator with `python -m scripts.create_staff` (or sign in with `STAFF_PASSWORD`, if also set, which signs in as an administrator). Needed for sign-in with accounts |
 | `METRICS_TOKEN` | backend | Optional, 8+ characters. When set, `GET /metrics` needs it as a Bearer token. Unset leaves the counters open (they hold counts only) |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `NOTIFY_CHANNEL` | backend | Optional. Send messages and reminders straight through a Twilio account: all three of the first set together, and `NOTIFY_CHANNEL` is `sms` (default) or `whatsapp` (then `TWILIO_FROM` is your approved WhatsApp sender). Takes precedence over the webhook. Unset sends nothing by itself |
 | `NOTIFY_WEBHOOK_URL`, `NOTIFY_WEBHOOK_TOKEN` | backend | Optional. Where messages to patients are POSTed as `{to, body, kind}` JSON (an SMS or WhatsApp gateway, or a relay in front of one), with the token as a Bearer header. Unset (the default) sends nothing: the messages wait on the Messages page for reception to phone through |
@@ -196,11 +198,11 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,429 passing in about 8 minutes (unit tests without a database, integration and race tests on real PostgreSQL, and tests through HTTP) |
+| Backend tests | 1,450 passing in about 9 minutes (unit tests without a database, integration and race tests on real PostgreSQL, and tests through HTTP) |
 | Backend line and branch coverage, all of `app/` | 99 % (3,904 statements, 8 missed, branches included) |
 | Rules layer (`app/domain` + `app/services`) | 99 % (1,930 statements, none missed; one branch partly covered); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 208 passing; 89.6 % of lines, 80.5 % of branches covered (gate: 85 % lines, 75 % branches) |
-| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 26 flow checks and 48 accessibility scans (axe-core, light and dark, desktop and phone) |
+| Frontend tests (Vitest, network faked at `fetch`) | 214 passing; 91.9 % of lines, 82.3 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 26 flow checks and 24 accessibility scans (axe-core, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one
@@ -461,8 +463,9 @@ Fifteen invented patients and about 45 appointments. The scenarios, for an ancho
 What is left after the work in sections 8 to 10, and why. Items the assignment asks for are not
 limitations; items it makes optional or leaves out are.
 
-- **Sign-in is optional and off by default**, because the assignment makes authentication optional
-  and a login would lock out a reviewer. Turned on, it can be one shared password (`STAFF_PASSWORD`)
+- **Sign-in is required by default** and can be switched off only with `ALLOW_OPEN_ACCESS=true`,
+  because the assignment makes authentication optional and a login could lock out a reviewer; a
+  server left open says so on every page. When sign-in is on, it can be one shared password (`STAFF_PASSWORD`)
   or individual accounts with three roles (`AUTH_SECRET`): administrator, receptionist and doctor
   (who sees the schedule and marks only their own visits). A forgotten password is handled by an
   administrator issuing a single-use code, not by email. Not built: reset by email, two-factor
@@ -492,8 +495,9 @@ limitations; items it makes optional or leaves out are.
 - **Scope the assignment does not ask for:** one clinic and India Standard Time; no branches, rooms
   or equipment; no appointment types with their own durations (a visit can last one to four of the
   doctor's slots, A-04); no guardian model (one phone, one patient, A-15); no payments, so the
-  deposit is an acknowledgement.
-- **Accessibility** is checked by axe-core on every page (light and dark, desktop and phone) and by
+  deposit is an acknowledgement. [docs/SCENARIOS.md](docs/SCENARIOS.md) sorts about 400 edge-case
+  scenarios into covered, added and out of scope, with the reason for each.
+- **Accessibility** is checked by axe-core on every page (desktop and phone) and by
   hand for keyboard use, plus tests for the skip link, page titles and focus on navigation. It has **not** been audited by a person who uses a screen
   reader; that cannot be done by the author or by software and is the one item here that stays open.
 - **Privacy.** Consent can be recorded and a patient's data erased on request or by a retention

@@ -12,17 +12,22 @@ restart of the hosted API never duplicates data; --reset is run by hand from a l
 from __future__ import annotations
 
 import argparse
+import os
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
+from app.domain.model import Role
 from app.domain.timeutil import ist_date
 from app.persistence.db import create_db_engine, create_session_factory
-from app.persistence.models import AppMeta
+from app.persistence.models import AppMeta, Doctor, StaffAccount
+from app.services.staff_service import StaffService
 from scripts.seed import (
     database_is_empty,
     describe_scenarios,
@@ -39,6 +44,33 @@ def run_migrations(database_url: str) -> None:
     config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
     command.upgrade(config, "head")
+
+
+DEMO_ACCOUNTS = (
+    # username, display name, role, the doctor's name it belongs to (for a doctor's own login)
+    ("reception", "Reception Desk", Role.RECEPTIONIST, None),
+    ("dr.rao", "Dr. Ananya Rao", Role.DOCTOR, "Dr. Ananya Rao"),
+    ("dr.menon", "Dr. Vikram Menon", Role.DOCTOR, "Dr. Vikram Menon"),
+)
+
+
+def seed_demo_accounts(factory: sessionmaker[Session], password: str) -> list[str]:
+    """Make a receptionist and a login for each demo doctor, so every role can be tried.
+
+    Only runs when SEED_DEMO_ACCOUNTS is set, with a password from DEMO_ACCOUNTS_PASSWORD. Accounts
+    that already exist are left alone, so it is safe at every start. The demo data and its logins
+    are for a laptop or a review, never for a real clinic."""
+    made: list[str] = []
+    staff = StaffService(factory)
+    with factory() as session:
+        taken = set(session.scalars(select(StaffAccount.username)))
+        doctors = {d.name: d.id for d in session.scalars(select(Doctor))}
+    for username, name, role, doctor in DEMO_ACCOUNTS:
+        if username in taken or (doctor is not None and doctor not in doctors):
+            continue
+        staff.create(username, name, password, role, doctors.get(doctor) if doctor else None)
+        made.append(username)
+    return made
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -76,6 +108,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 stored = session.get(AppMeta, "seed_anchor_date")
                 shown = date.fromisoformat(stored.value) if stored else anchor
                 print("\n".join(describe_scenarios(scenario_dates(shown))))
+        demo_password = os.environ.get("DEMO_ACCOUNTS_PASSWORD", "")
+        if (
+            os.environ.get("SEED_DEMO_ACCOUNTS", "").lower() in ("1", "true", "yes")
+            and demo_password
+        ):
+            made = seed_demo_accounts(factory, demo_password)
+            if made:
+                print(f"demo accounts: created {', '.join(made)}")
     finally:
         engine.dispose()
     return 0

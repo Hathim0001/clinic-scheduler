@@ -28,12 +28,25 @@ services:
       LOG_LEVEL: INFO
       # 0 switches the per-address limit off, for fuzzing; the default keeps the real limit.
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-600}
-      # Optional: set a staff password (8+ characters) to require sign-in.
-      STAFF_PASSWORD: ${STAFF_PASSWORD:-}
-      # Optional: a long random string turns on individual accounts with roles (see the README).
+      # Staff sign-in is required by the application. This stack is for a laptop, so it is switched
+      # off here on purpose (and the app says so on every page). To try sign-in and the roles:
+      #   ALLOW_OPEN_ACCESS=false AUTH_SECRET=<16+ random characters> \
+      #   BOOTSTRAP_ADMIN_USERNAME=admin BOOTSTRAP_ADMIN_PASSWORD=<8+ characters> \
+      #   SEED_DEMO_ACCOUNTS=true DEMO_ACCOUNTS_PASSWORD=<8+ characters> docker compose up --build
+      ALLOW_OPEN_ACCESS: ${ALLOW_OPEN_ACCESS:-true}
       AUTH_SECRET: ${AUTH_SECRET:-}
-      # Optional: where messages to patients are posted; unset, they wait on the Messages page.
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      SEED_DEMO_ACCOUNTS: ${SEED_DEMO_ACCOUNTS:-}
+      DEMO_ACCOUNTS_PASSWORD: ${DEMO_ACCOUNTS_PASSWORD:-}
+      # Optional: a single shared staff password (8+ characters).
+      STAFF_PASSWORD: ${STAFF_PASSWORD:-}
+      # Optional: where messages to patients go. Unset, they wait on the Messages page.
       NOTIFY_WEBHOOK_URL: ${NOTIFY_WEBHOOK_URL:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM: ${TWILIO_FROM:-}
+      NOTIFY_CHANNEL: ${NOTIFY_CHANNEL:-sms}
     depends_on:
       db:
         condition: service_healthy

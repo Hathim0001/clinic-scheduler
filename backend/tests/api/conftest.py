@@ -59,6 +59,7 @@ def make_settings(database_url: str, **values: Any) -> Settings:
         "test_clock_enabled": True,
         "log_level": "WARNING",
         "offer_sweep_interval_s": 0,
+        "allow_open_access": True,  # most tests run an open server; the sign-in tests set a secret
     }
     return Settings(**(defaults | values), _env_file=None)  # type: ignore[call-arg]
 

@@ -24,6 +24,8 @@ log = structlog.get_logger()
 class AuthStatus(BaseModel):
     required: bool
     accounts: bool  # sign in with a username and password of your own (AUTH_SECRET is set)
+    setup_needed: bool = False  # sign-in is required but AUTH_SECRET was never set
+    open_access: bool = False  # sign-in was switched off on purpose (ALLOW_OPEN_ACCESS)
 
 
 class TokenOut(BaseModel):
@@ -37,7 +39,12 @@ class TokenOut(BaseModel):
 @router.get("/status", response_model=AuthStatus, summary="Does this server ask for a staff login?")
 def status(request: Request) -> AuthStatus:
     settings = request.app.state.settings
-    return AuthStatus(required=settings.auth_required, accounts=settings.auth_secret is not None)
+    return AuthStatus(
+        required=settings.auth_required,
+        accounts=settings.auth_secret is not None,
+        setup_needed=settings.setup_needed,
+        open_access=not settings.auth_required,
+    )
 
 
 @router.post(

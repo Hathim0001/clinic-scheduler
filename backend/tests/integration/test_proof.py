@@ -51,3 +51,20 @@ def test_a_scenario_that_crashes_is_a_failed_case_not_a_failed_run(
     assert not report.passed
     assert report.cases[0].observed == "RuntimeError: boom"
     assert report.rows_before == report.rows_after
+
+
+def test_the_proof_uses_the_standard_rules_and_leaves_the_clinics_own_untouched(
+    engine: Engine, clinic: Clinic
+) -> None:
+    from app.services.policy_service import PolicyService
+    from tests.helpers import ist
+
+    now = ist(2026, 11, 2, 8, 0)
+    policy = PolicyService(clinic.factory)
+    policy.update({"late_cancel_hours": 5, "horizon_days": 10, "strikes": 5}, now)
+
+    report = run_proof(engine)
+
+    assert report.passed, [(c.id, c.expected, c.observed) for c in report.cases if not c.passed]
+    kept = policy.get().policy  # the rollback restored what the clinic had set
+    assert (kept.late_cancel_hours, kept.horizon_days, kept.strikes) == (5, 10, 5)

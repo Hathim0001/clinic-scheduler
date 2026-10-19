@@ -55,7 +55,12 @@ def admin(accounts: Api) -> dict[str, str]:
 
 def test_the_status_says_individual_accounts_are_on(accounts: Api) -> None:
     status = accounts.http.get(f"{BASE}/auth/status").json()
-    assert status == {"required": True, "accounts": True}
+    assert status == {
+        "required": True,
+        "accounts": True,
+        "setup_needed": False,
+        "open_access": False,
+    }
 
 
 def test_the_shared_password_signs_in_as_an_administrator(accounts: Api) -> None:

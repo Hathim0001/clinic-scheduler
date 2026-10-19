@@ -38,8 +38,15 @@ class Settings(BaseSettings):
     # address is read that many entries from the RIGHT, because everything to the left can be
     # forged by the caller. 0 means no proxy: the socket address is used.
     trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
-    # Staff login. Unset (the default) leaves the API open, as the assignment allows; set it and
-    # every route except the health checks, the clock and the login itself needs a signed token.
+    # Staff sign-in is REQUIRED unless ALLOW_OPEN_ACCESS is switched on: patient names and phones
+    # must not be readable by anyone with the link. With sign-in required, set AUTH_SECRET (and
+    # BOOTSTRAP_ADMIN_USERNAME / BOOTSTRAP_ADMIN_PASSWORD for the first administrator). Without a
+    # secret the server runs but refuses every protected route and says what to set.
+    allow_open_access: bool = False
+    bootstrap_admin_username: str | None = Field(default=None, pattern=r"^[a-z0-9._-]{3,40}$")
+    bootstrap_admin_password: str | None = Field(default=None, min_length=8)
+    # A single shared password, the simplest way in. Every route except the health checks, the clock
+    # and the login itself then needs a signed token.
     staff_password: str | None = Field(default=None, min_length=8)
     auth_token_ttl_hours: int = Field(default=12, ge=1, le=168)
     # Individual staff accounts with roles. Unset (the default) leaves them off. Set it to a long
@@ -71,6 +78,8 @@ class Settings(BaseSettings):
         "twilio_account_sid",
         "twilio_auth_token",
         "twilio_from",
+        "bootstrap_admin_username",
+        "bootstrap_admin_password",
         mode="before",
     )
     @classmethod
@@ -87,10 +96,24 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _bootstrap_needs_both(self) -> Settings:
+        if bool(self.bootstrap_admin_username) != bool(self.bootstrap_admin_password):
+            raise ValueError(
+                "BOOTSTRAP_ADMIN_USERNAME and BOOTSTRAP_ADMIN_PASSWORD must be set together"
+            )
+        return self
+
     @property
     def auth_required(self) -> bool:
-        """Is any kind of staff sign-in switched on?"""
-        return self.staff_password is not None or self.auth_secret is not None
+        """Is staff sign-in required? Yes by default; only ALLOW_OPEN_ACCESS (with no password or
+        secret set) leaves the API open. Setting a password or secret always requires it."""
+        return not self.allow_open_access or self.signing_secret is not None
+
+    @property
+    def setup_needed(self) -> bool:
+        """Sign-in is required but nothing has been set up to sign tokens with."""
+        return self.auth_required and self.signing_secret is None
 
     @property
     def signing_secret(self) -> str | None:

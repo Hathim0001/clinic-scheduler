@@ -120,8 +120,18 @@ async def require_staff(request: Request) -> None:
     settings = request.app.state.settings
     secret = settings.signing_secret
     if secret is None:
+        if settings.setup_needed:
+            raise ApiError(
+                ErrorCode.UNAUTHENTICATED,
+                "Sign-in is required but not set up yet. The person who runs this server must set "
+                "AUTH_SECRET and BOOTSTRAP_ADMIN_USERNAME / BOOTSTRAP_ADMIN_PASSWORD (or, for a "
+                "demo only, ALLOW_OPEN_ACCESS=true).",
+                details={"setup_needed": True},
+            )
         current_actor.set("anonymous")
-        request.state.role = Role.ADMIN  # no sign-in at all: nothing to restrict
+        request.state.role = Role.ADMIN  # open access was chosen explicitly: nothing to restrict
+        request.state.doctor_id = None
+        request.state.account_id = None
         return
     header = request.headers.get("authorization", "")
     claims = (

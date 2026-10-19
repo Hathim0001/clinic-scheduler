@@ -8,7 +8,8 @@ it (`join_transaction_mode="create_savepoint"`), and the outer transaction is ro
 end, so no doctor, patient or appointment is ever committed. The clinic's real data is never read
 or changed, because the scenarios create their own doctors and patients inside the transaction.
 
-Time is fixed (`NOW`), so the answers do not depend on the day the proof is run.
+Time is fixed (`NOW`), so the answers do not depend on the day the proof is run. The standard rules
+are used whatever the clinic has set, so the proof keeps testing the documented behaviour.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.errors import DomainError
@@ -383,6 +384,10 @@ def run_proof(engine: Engine) -> ProofReport:
     connection = engine.connect()
     outer = connection.begin()
     try:
+        # The scenarios assert the documented numbers (2 hours, 60 days, 2 strikes in 30 days). The
+        # clinic may have changed its own rules, so inside this transaction, and only here, the
+        # stored rules are removed and the standard ones apply; the rollback brings them back.
+        connection.execute(text("DELETE FROM clinic_policy"))
         factory = sessionmaker(
             bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"
         )

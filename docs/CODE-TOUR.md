@@ -21,9 +21,13 @@ makes every time rule testable at its boundary and lets the reviewer's `X-Test-C
 | Rule from the brief | Decided in | Proven by |
 |---|---|---|
 | Slot grid, hours, no double booking, cap, patient overlap | `backend/app/domain/slots.py` `first_violation` (fixed order: accepting, window, grid, hours, cap, doctor overlap, patient overlap) | `tests/unit/test_slots.py`, `test_property_slots.py`, `tests/integration/test_booking_service.py` |
-| 60-day window, past is strict | `domain/booking_window.py` `check_booking_window` (IST calendar dates) | `tests/unit/test_booking_window.py` |
-| Cancel at least 2 h ahead is free, later is late; clinic never late | `domain/cancellation.py` `classify_cancellation` (`LATE_THRESHOLD`) | `tests/unit/test_cancellation.py` |
-| Two strikes in 30 days need a deposit acknowledgement; derived, never stored | `domain/penalties.py` `deposit_status` | `tests/unit/test_penalties.py` |
+| 60-day window (a clinic setting), past is strict | `domain/booking_window.py` `check_booking_window` (IST calendar dates), fed `ctx.policy.horizon_days` | `tests/unit/test_booking_window.py` |
+| Cancel at least 2 h ahead is free, later is late; clinic never late | `domain/cancellation.py` `classify_cancellation`, fed `policy.late_threshold` | `tests/unit/test_cancellation.py` |
+| Two strikes in 30 days (a clinic setting) need a deposit acknowledgement; derived, never stored | `domain/penalties.py` `deposit_status(events, now, policy)` |
+| The numbers above are the clinic's own, editable by an administrator | `domain/policy.py` (the `Policy` and its ranges), the `clinic_policy` row (migration 0013), `services/policy_service.py`, `GET`/`PATCH /policy`; the services read it per request and hand it to the pure functions | `tests/unit/test_policy.py`, `tests/api/test_policy_api.py` |
+| Reminders: once per visit and kind, only when useful, withdrawn when stale | `services/notification_service.py` `schedule_reminders` (a unique index, migration 0014, guards two servers); sent by `services/gateways.py` (Twilio SMS or WhatsApp, or a webhook) | `tests/integration/test_reminders.py`, `test_gateways_and_delivery.py` |
+| A doctor's login sees the schedule and marks only their own visits | `api/deps.py` `_keep_to_own_work`; sessions end on a password change (`password_changed_at`, `core/auth.py` issue time in ms) | `tests/api/test_doctor_accounts_and_resets.py` |
+| Sign-in is required unless open access is chosen on purpose | `core/config.py` `auth_required`, `setup_needed`; first admin from the environment (`bootstrap_admin`) | `tests/api/test_default_sign_in.py` | `tests/unit/test_penalties.py` |
 | Status changes (who can do what, when) | `domain/transitions.py` | `tests/unit/test_transitions.py` |
 | Phone: Indian mobile, normalised, **unique** | `domain/phone.py`; `UNIQUE (phone)` (`patients_phone_key`: created in 0001, dropped by 0005 for a shared-phone feature, restored by 0006); `services/patient_service.py` `_refuse_taken_phone` | `tests/unit/test_phone.py`, `tests/integration/test_db_constraints.py`, race test `test_ten_simultaneous_registrations_of_one_phone_give_one_patient` |
 | Two requests at once cannot both win | `services/booking_service.py` (lock order: appointment, doctors by id, waitlist entry, patient) and `EXCLUDE` constraints in `0001_initial.sql` | `tests/integration/test_booking_races.py` (10 connections) |
@@ -59,17 +63,17 @@ makes every time rule testable at its boundary and lets the reviewer's `X-Test-C
 
 Each is small on purpose. Do the change, run the named test, and say why it fails or passes.
 
-1. **"Make the late-cancel threshold 3 hours."** Change `LATE_THRESHOLD` in `domain/cancellation.py`.
-   `tests/unit/test_cancellation.py` fails on the 2 h boundary cases, and the Proof page's
-   "cancel-boundary" case fails too, which is the point of having it. Nothing else changes: no other
-   file holds the number.
-2. **"Strikes should last 14 days, not 30."** `LOOKBACK` in `domain/penalties.py`. The repository
-   query `penalty_events` reads the same constant, so the SQL narrows with it.
-3. **"Allow booking 90 days ahead."** `HORIZON_DAYS` in `domain/booking_window.py`; the waitlist
-   imports it, so joining a waitlist follows. The "sixty-days" proof case will fail and must be
-   updated, because it asserts the documented 60.
-4. **"Three strikes, not two."** `STRIKES` in `penalties.py`. `deposit_status` indexes the
-   second-most-recent strike (`recent[STRIKES - 1]`), so `required_until` follows.
+1. **"Make the late-cancel threshold 3 hours."** No code change: `PATCH /policy {"late_cancel_hours": 3}`
+   (or the Clinic rules page). To change the *default*, edit `late_cancel_hours` in
+   `domain/policy.py`: `tests/unit/test_policy.py` fails on "the defaults are the assignment's
+   numbers", and the Proof page's "cancel-boundary" case fails too, which is the point of having it.
+2. **"Strikes should last 14 days, not 30."** `strike_lookback_days` in the policy. The repository's
+   `deposit_for` passes the same look-back to `penalty_events`, so the SQL narrows with it.
+3. **"Allow booking 90 days ahead."** `horizon_days` in the policy; the waitlist reads it too, so
+   joining a waitlist follows. The "sixty-days" proof case asserts the standard 60, so it fails
+   only if you change the default, not when an administrator edits the setting.
+4. **"Three strikes, not two."** `strikes` in the policy. `deposit_status` indexes the
+   strike that tipped the flag (`recent[policy.strikes - 1]`), so `required_until` follows.
 5. **"Why is the phone unique in the database *and* in the service?"** The service check gives a
    readable `PHONE_TAKEN` with the owner's id; the constraint is what makes it true when two
    requests arrive together. The race test registers one phone ten times at once and gets one row.

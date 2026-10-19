@@ -212,7 +212,12 @@ def test_the_signing_secret_is_the_auth_secret_else_the_shared_password() -> Non
     neither = Settings(database_url="postgresql+psycopg://x/y")
     assert both.signing_secret == "s" * 20
     assert only_shared.signing_secret == "p" * 8
-    assert (neither.signing_secret, neither.auth_required) == (None, False)
+    # sign-in is required by default; with no secret the server must say it is not set up
+    assert (neither.signing_secret, neither.auth_required, neither.setup_needed) == (
+        None,
+        True,
+        True,
+    )
     assert both.auth_required
     assert only_shared.auth_required
 
