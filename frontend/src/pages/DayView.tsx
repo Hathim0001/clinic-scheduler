@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { useAppointment, useDoctors, useSchedule } from "../api/hooks";
+import { useAppointment, useClockInfo, useDoctors, useSchedule } from "../api/hooks";
 import type { SlotState } from "../api/types";
 import { AppointmentCard } from "../components/AppointmentCard";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
@@ -56,6 +56,21 @@ export default function DayView() {
 
   const bookingLink = (startIst: string) =>
     `/book?doctor=${doctorId}&date=${schedule.data?.date ?? date}&start=${encodeURIComponent(startIst)}`;
+
+  // On today's page a marigold line marks where "now" falls among the slots.
+  const clock = useClockInfo();
+  const slotsToday = schedule.data?.date === today ? schedule.data.slots : [];
+  const nowAt = clock.data ? Date.parse(clock.data.now_utc) : Infinity;
+  const firstUpcoming = slotsToday.findIndex((s) => Date.parse(s.start_at_utc) >= nowAt);
+  const nowIndex = firstUpcoming > 0 ? firstUpcoming : -1;
+  const mark = (index: number) =>
+    index === nowIndex && clock.data ? (
+      <span
+        className="now-mark"
+        aria-hidden="true"
+        data-label={`Now ${formatTimeIST(clock.data.now_ist)}`}
+      />
+    ) : null;
 
   const hours = schedule.data?.windows.map((w) => `${w.start}–${w.end}`).join(", ");
 
@@ -134,11 +149,12 @@ export default function DayView() {
               </Banner>
             )}
             <ul className="timetable" onKeyDown={moveBetweenSlots}>
-              {schedule.data.slots.map((slot) => {
+              {schedule.data.slots.map((slot, index) => {
                 const time = `${formatTimeIST(slot.start_at_ist)}–${formatTimeIST(slot.end_at_ist)}`;
                 if (slot.state === "FREE") {
                   return (
                     <li key={slot.start_at_utc}>
+                      {mark(index)}
                       <button
                         type="button"
                         className="slot slot-free"
@@ -156,6 +172,7 @@ export default function DayView() {
                 if (slot.state === "BOOKED" && appointment) {
                   return (
                     <li key={slot.start_at_utc}>
+                      {mark(index)}
                       <button
                         type="button"
                         className="slot slot-booked"
@@ -177,6 +194,7 @@ export default function DayView() {
                 }
                 return (
                   <li key={slot.start_at_utc}>
+                    {mark(index)}
                     <button type="button" className="slot slot-muted" disabled>
                       <span className="time">{time}</span>
                       <span>{STATE_TEXT[slot.state]}</span>

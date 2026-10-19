@@ -18,7 +18,8 @@
     "e2e:roles": "node e2e/roles.mjs"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource-variable/fraunces": "5.3.0",
+    "@fontsource-variable/source-sans-3": "5.3.1",
     "@tanstack/react-query": "5.104.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",

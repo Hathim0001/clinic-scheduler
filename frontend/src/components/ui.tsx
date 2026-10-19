@@ -26,6 +26,7 @@ const ICONS = {
   clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 5v5.2l4 2.4-.8 1.3-4.7-2.8V7H13Z",
   alert: "M12 2 1 21h22L12 2Zm-1 7h2v6h-2V9Zm0 8h2v2h-2v-2Z",
   check: "m9 16.2-3.5-3.5L4 14.1l5 5 11-11-1.4-1.4L9 16.2Z",
+  code: "M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4Zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4Z",
   arrow: "m12 4-1.4 1.4 5.6 5.6H4v2h12.2l-5.6 5.6L12 20l8-8-8-8Z",
 } as const;
 
@@ -42,6 +43,21 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
       focusable="false"
     >
       <path d={ICONS[name]} fill="currentColor" />
+    </svg>
+  );
+}
+
+/** The clinic's mark: a cross with rounded ends, softer than a medical-sign plus. */
+export function BrandMark({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M12 5v14M5 12h14"
+        stroke="currentColor"
+        strokeWidth="4.2"
+        strokeLinecap="round"
+        fill="none"
+      />
     </svg>
   );
 }

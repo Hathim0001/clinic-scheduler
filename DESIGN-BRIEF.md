@@ -63,25 +63,31 @@ What changed, from a review of the rendered screens at 1280, 768 and 390 px:
 
 Not done: no testing with real clinic staff, and no screen-reader walkthrough by a person (axe and keyboard checks only).
 
-## Redesign: a business-style app shell, October 2026
+## Redesign: "linen and scrub", October 2026
 
-The first design was a document with a header. The clinic desk works in an application, so the shell
-now behaves like one, and the earlier "serif and ink-green on chart paper" direction above is
-superseded by this section.
+The first design was a document with a header; a second pass made it a dark-sidebar dashboard, which
+read as a generic SaaS kit (navy rail, teal accent, identical icon-and-number cards, all-caps labels).
+This section replaces both, and the "serif and ink-green on chart paper" direction above. It was
+written with the project's design skills (frontend-design, ui-ux-pro-max, uiux, uicolor, a11y).
 
-- **Side navigation** in three groups (Schedule, Patients, Clinic), with an icon and a text label for
-  every page, the current page marked, and the attention counts on Messages and Doctors. Below 960 px
-  it becomes a drawer behind a Menu button (Escape or choosing a page closes it).
-- **Top bar** with today's date and the one action used all day, New booking. The reviewer clock sits
-  in a quiet strip under it.
-- **Overview** is the new landing page: visits today, who has arrived, who was seen, who was missed,
-  the next six visits, each doctor's load with the next free time, and a "needs a look" list that
-  reads "All clear" when there is nothing.
-- **Queue and day view** gain a figures strip, initials avatars, a load meter and a page description.
-  The appointment book stays the day view's one memorable thing.
-- **Type and colour:** one bundled typeface (Inter, served from the app itself, so the content
-  security policy and the no-third-party rule still hold), a cool grey page, white sheets on a
-  whisper of shadow, a clinical teal for the primary action, and a dark slate navigation. Status is
-  still text first, never colour alone. Dark mode has its own tokens.
-- **Checks:** unit tests for the overview and the navigation, and the accessibility sweep now covers
-  the overview too (40 scans).
+- **Subject:** the reception desk of a small outpatient clinic. The job is to see the day, book, and
+  check people in, calmly, many times an hour.
+- **Palette (60-30-10):** linen seafoam page and white paper cards (60), sage for booked entries and
+  free slots (30), hospital blue for the one primary action (10). A single marigold marks "now" and is
+  used for nothing else. Neutrals lean a whisper toward seafoam and shadows are tinted blue, never
+  pure black. Status is still words first; colour only helps.
+- **Type:** Source Sans 3 (a humanist sans built for reading) for the working surface, and Fraunces in
+  its "soft" setting for page titles and the day's figures: the calm of a printed patient leaflet.
+  Both are bundled, so the content security policy and the no-third-party rule still hold. Labels are
+  sentence case, not tracked capitals.
+- **Navigation:** a light rail in the same paper as the cards (Schedule, Patients, Clinic), the current
+  page in a soft blue pill, attention counts on Messages and Doctors, a drawer below 960 px. An
+  "API reference" link opens the interactive Swagger page for administrators.
+- **The memorable thing:** the *day ribbon* on the Overview. Each doctor's day is a strip with one cell
+  per slot (filled booked, open free, hatched passed) and a marigold tick where now falls; the words
+  beside it say the same ("8 of 24 slots booked, next free 10:00"). The day view carries the same
+  marigold "Now" line through the appointment book.
+- **Overview:** four figures on one sheet (not four boxes), the ribbons, the next visits, and a
+  "Needs a look" list that reads "All clear" when it is.
+- **Checks:** unit tests for the overview, the ribbon text and the navigation; the accessibility sweep
+  covers the overview too (40 scans, light and dark, desktop and phone).

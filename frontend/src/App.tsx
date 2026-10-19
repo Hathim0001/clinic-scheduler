@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useLocation } from "react-router";
 import { useAuthStatus, useNeedsAttention, usePendingMessages } from "./api/hooks";
+import { SERVER_ROOT } from "./api/client";
 import { setSession } from "./lib/authStore";
 import { formatDayIST } from "./lib/formatIST";
 import { useToday } from "./lib/useToday";
@@ -8,7 +9,7 @@ import { AuthGate, useIsAdmin, useSession } from "./components/AuthGate";
 import { ClockBar } from "./components/ClockBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { OfflineBanner, SkipLink, useRouteAccessibility } from "./components/PageChrome";
-import { Avatar, Icon, type IconName } from "./components/ui";
+import { Avatar, BrandMark, Icon, type IconName } from "./components/ui";
 import { UndoCancel } from "./components/UndoCancel";
 import { WakeBanner } from "./components/WakeBanner";
 import Admin from "./pages/Admin";
@@ -30,6 +31,8 @@ interface NavItem {
   badge?: number;
   badgeLabel?: string;
   end?: boolean;
+  /** A page outside the app, opened in a new tab (the API reference). */
+  href?: string;
 }
 
 function NavSection({ heading, items }: { heading: string; items: NavItem[] }) {
@@ -39,15 +42,23 @@ function NavSection({ heading, items }: { heading: string; items: NavItem[] }) {
       <ul>
         {items.map((item) => (
           <li key={item.to}>
-            <NavLink to={item.to} end={item.end}>
-              <Icon name={item.icon} size={18} />
-              <span className="nav-label">{item.label}</span>
-              {item.badge ? (
-                <span className="badge-attention" aria-label={item.badgeLabel}>
-                  {item.badge}
-                </span>
-              ) : null}
-            </NavLink>
+            {item.href ? (
+              <a href={item.href} target="_blank" rel="noreferrer">
+                <Icon name={item.icon} size={18} />
+                <span className="nav-label">{item.label}</span>
+                <span className="visually-hidden">(opens in a new tab)</span>
+              </a>
+            ) : (
+              <NavLink to={item.to} end={item.end}>
+                <Icon name={item.icon} size={18} />
+                <span className="nav-label">{item.label}</span>
+                {item.badge ? (
+                  <span className="badge-attention" aria-label={item.badgeLabel}>
+                    {item.badge}
+                  </span>
+                ) : null}
+              </NavLink>
+            )}
           </li>
         ))}
       </ul>
@@ -91,13 +102,21 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   ];
   if (isAdmin && auth.data?.accounts) clinic.push({ to: "/staff", label: "Staff", icon: "key" });
   if (isAdmin) clinic.push({ to: "/proof", label: "Prove the rules", icon: "shield" });
+  // The interactive reference (Swagger UI) lists every endpoint the app uses.
+  if (isAdmin)
+    clinic.push({
+      to: "/api-docs",
+      label: "API reference",
+      icon: "code",
+      href: `${SERVER_ROOT}/docs`,
+    });
 
   return (
     <aside className={open ? "sidebar open" : "sidebar"} id="sidebar">
       <div className="sidebar-top">
         <Link to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            <Icon name="plus" size={16} />
+            <BrandMark />
           </span>
           Clinic Scheduler
         </Link>

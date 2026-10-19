@@ -91,7 +91,9 @@ describe("the overview", () => {
       ),
     ).toBeInTheDocument();
     expect(within(load).getByRole("link", { name: "Next free 09:30" })).toBeInTheDocument();
-    expect(within(load).getByRole("meter")).toHaveAttribute("aria-valuenow", "2");
+    expect(
+      within(load).getByRole("img", { name: /2 of 4 slots booked, next free at 09:30/ }),
+    ).toBeInTheDocument();
   });
 
   it("says when nothing is waiting, and lists what is when something is", async () => {
@@ -132,6 +134,15 @@ describe("the navigation", () => {
       "page",
     );
     expect(within(nav).getByRole("link", { name: "Day view" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("links to the interactive API reference in a new tab", async () => {
+    installFakeApi(routes());
+    renderPage(<App />);
+
+    const link = await screen.findByRole("link", { name: /API reference/ });
+    expect(link).toHaveAttribute("href", expect.stringMatching(/\/docs$/));
+    expect(link).toHaveAttribute("target", "_blank");
   });
 
   it("opens and closes the menu on a phone", async () => {

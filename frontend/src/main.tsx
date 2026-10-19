@@ -6,7 +6,8 @@ import App from "./App";
 import { ApiError } from "./api/client";
 import { ClockProvider } from "./lib/clock";
 import { getSession, setSession } from "./lib/authStore";
-import "@fontsource-variable/inter";
+import "@fontsource-variable/source-sans-3";
+import "@fontsource-variable/fraunces/soft.css";
 import "./styles.css";
 
 // A token that expired, or a password that was changed, shows up as a 401 from whatever the page was
