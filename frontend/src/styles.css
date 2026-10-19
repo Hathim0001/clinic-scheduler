@@ -1286,3 +1286,34 @@ td.nowrap {
   padding-inline: 0.4rem;
   font-size: 0.9rem;
 }
+
+/* A paper copy of the day for the desk: only the schedule, in black on white */
+@media print {
+  .app-header,
+  .clock-bar,
+  .skip-link,
+  .card.row,
+  button:not(.slot) {
+    display: none !important;
+  }
+
+  body,
+  main {
+    background: #fff;
+    color: #000;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .timetable .slot {
+    break-inside: avoid;
+    border-color: #000;
+  }
+
+  .timetable .slot-free {
+    color: #555;
+  }
+}

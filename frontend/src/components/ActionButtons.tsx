@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useCancel, useCheckIn, useComplete, useNoShow } from "../api/hooks";
 import type { Action, Appointment, CancelledBy } from "../api/types";
 import { whyDisabled } from "../lib/errors";
+import { istDate } from "../lib/formatIST";
 import { Banner, ErrorBanner } from "./common";
 
 /**
@@ -34,17 +35,29 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
     <div>
       <div className="actions">
         {allowed.has("check-in") && (
-          <button type="button" disabled={busy} onClick={() => checkIn.mutate(appointment.id)}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => checkIn.mutate({ id: appointment.id, etag: appointment.etag })}
+          >
             Check in
           </button>
         )}
         {allowed.has("complete") && (
-          <button type="button" disabled={busy} onClick={() => complete.mutate(appointment.id)}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => complete.mutate({ id: appointment.id, etag: appointment.etag })}
+          >
             Complete
           </button>
         )}
         {allowed.has("no-show") && (
-          <button type="button" disabled={busy} onClick={() => noShow.mutate(appointment.id)}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => noShow.mutate({ id: appointment.id, etag: appointment.etag })}
+          >
             No-show
           </button>
         )}
@@ -97,7 +110,10 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
               className="danger"
               disabled={cancel.isPending}
               onClick={() =>
-                cancel.mutate({ id: appointment.id, by }, { onSuccess: () => setConfirming(false) })
+                cancel.mutate(
+                  { id: appointment.id, by, etag: appointment.etag },
+                  { onSuccess: () => setConfirming(false) },
+                )
               }
             >
               Confirm cancellation
@@ -113,7 +129,12 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
         <Banner kind={cancel.data.late ? "warn" : "success"}>
           {cancel.data.late
             ? "Cancelled late: this counts toward the patient's deposit flag."
-            : "Cancelled."}
+            : "Cancelled."}{" "}
+          <Link
+            to={`/book?doctor=${appointment.doctor_id}&date=${istDate(appointment.start_at_ist)}&start=${encodeURIComponent(appointment.start_at_ist)}&patient=${appointment.patient_id}`}
+          >
+            Book the same time again
+          </Link>
         </Banner>
       )}
       {error && <ErrorBanner error={error} doctorName={appointment.doctor_name} />}

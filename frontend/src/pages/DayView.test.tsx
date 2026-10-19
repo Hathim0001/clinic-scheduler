@@ -90,6 +90,20 @@ describe("day view", () => {
     expect(decodeURIComponent(where)).toContain("start=2026-11-02T10:30:00+05:30");
   });
 
+  it("steps between slots with the arrow keys", async () => {
+    installFakeApi(routes());
+    const user = userEvent.setup();
+    renderPage(page, link);
+    const booking = await screen.findByRole("button", { name: /10:00–10:30/ });
+    booking.focus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: /10:30–11:00/ })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(booking).toHaveFocus();
+  });
+
   it("shows the details and the allowed actions of a booked slot", async () => {
     const api = installFakeApi(routes({ "GET /appointments/41": { body: booked } }));
     const user = userEvent.setup();

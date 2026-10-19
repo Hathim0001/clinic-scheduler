@@ -231,8 +231,8 @@ export const useBook = () =>
   useRefreshingMutation("appointments", (body: BookBody) => api.book(body));
 
 export const useCancel = () =>
-  useRefreshingMutation("appointments", (args: { id: number; by: CancelledBy }) =>
-    api.cancel(args.id, args.by),
+  useRefreshingMutation("appointments", (args: { id: number; by: CancelledBy; etag?: string }) =>
+    api.cancel(args.id, args.by, args.etag),
   );
 
 export const useReschedule = () =>
@@ -241,9 +241,13 @@ export const useReschedule = () =>
   );
 
 export const useComplete = () =>
-  useRefreshingMutation("appointments", (id: number) => api.complete(id));
+  useRefreshingMutation("appointments", (args: { id: number; etag?: string }) =>
+    api.complete(args.id, args.etag),
+  );
 export const useNoShow = () =>
-  useRefreshingMutation("appointments", (id: number) => api.noShow(id));
+  useRefreshingMutation("appointments", (args: { id: number; etag?: string }) =>
+    api.noShow(args.id, args.etag),
+  );
 
 export const useCreatePatient = () =>
   useRefreshingMutation("patients", (body: NewPatient) => api.createPatient(body));
@@ -302,7 +306,9 @@ export const useAcceptOffer = () =>
   );
 
 export const useCheckIn = () =>
-  useRefreshingMutation("appointments", (id: number) => api.checkIn(id));
+  useRefreshingMutation("appointments", (args: { id: number; etag?: string }) =>
+    api.checkIn(args.id, args.etag),
+  );
 
 export const useCorrect = () =>
   useRefreshingMutation("appointments", (args: { id: number; status: Status; note: string }) =>

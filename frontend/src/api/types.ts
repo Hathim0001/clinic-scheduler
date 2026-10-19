@@ -132,6 +132,7 @@ export interface Appointment {
   urgent_symptoms: boolean;
   slots: number; // how many of the doctor's slots the visit lasts
   duration_min: number;
+  etag?: string; // sent back as If-Match, so an action fails if the appointment changed meanwhile
 }
 
 export interface Page<T> {

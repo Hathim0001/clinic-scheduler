@@ -76,6 +76,28 @@ describe("today's queue", () => {
     await waitFor(() => expect(api.count("GET", "/queue")).toBeGreaterThan(before));
   });
 
+  it("sends the version it showed, and says so when the appointment changed meanwhile", async () => {
+    const versioned = { ...started, etag: "abc123" };
+    const api = installFakeApi(
+      routes({
+        "GET /queue": { body: [versioned, upcoming] },
+        "POST /appointments/1/complete": apiError(
+          412,
+          "PRECONDITION_FAILED",
+          "This appointment has changed since you opened it. Reload it and check before acting.",
+        ),
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage(<Queue />, "/queue?date=2026-11-02");
+    await screen.findByText("Meera Iyer");
+
+    await user.click(within(rowOf("Meera Iyer")).getByRole("button", { name: "Complete" }));
+
+    expect(await screen.findByText(/has changed since you opened it/)).toBeInTheDocument();
+    expect(api.last("POST", "/appointments/1/complete")?.headers.get("If-Match")).toBe('"abc123"');
+  });
+
   it("cancels as the clinic when asked to", async () => {
     const api = installFakeApi(
       routes({
@@ -104,6 +126,10 @@ describe("today's queue", () => {
 
     await waitFor(() =>
       expect(api.last("POST", "/appointments/2/cancel")?.body).toEqual({ cancelled_by: "CLINIC" }),
+    );
+    const again = await row.findByRole("link", { name: "Book the same time again" });
+    expect(decodeURIComponent(again.getAttribute("href") ?? "")).toContain(
+      "start=2026-11-02T11:00:00+05:30&patient=",
     );
   });
 

@@ -106,6 +106,9 @@ export interface LoginResult {
 }
 
 // One function per endpoint. The components never build URLs or read response headers.
+/** Act only if the appointment is still the version the screen shows (see the API's If-Match). */
+const ifMatch = (etag?: string) => (etag ? { "If-Match": `"${etag}"` } : undefined);
+
 export const api = {
   clock: () => request<ClockInfo>("GET", "/clock"),
   authStatus: () => request<{ required: boolean; accounts: boolean }>("GET", "/auth/status"),
@@ -195,22 +198,26 @@ export const api = {
       body,
       headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
     }),
-  checkIn: (id: number) => request<Appointment>("POST", `/appointments/${id}/check-in`),
+  checkIn: (id: number, etag?: string) =>
+    request<Appointment>("POST", `/appointments/${id}/check-in`, { headers: ifMatch(etag) }),
   correct: (id: number, status: Status, note: string) =>
     request<Appointment>("POST", `/appointments/${id}/correct`, { body: { status, note } }),
   history: (id: number) => request<AppointmentEvent[]>("GET", `/appointments/${id}/history`),
   bookSeries: (body: SeriesBody) =>
     request<SeriesResponse>("POST", "/appointments/recurring", { body }),
-  cancel: (id: number, cancelledBy: CancelledBy) =>
+  cancel: (id: number, cancelledBy: CancelledBy, etag?: string) =>
     request<CancelResponse>("POST", `/appointments/${id}/cancel`, {
       body: { cancelled_by: cancelledBy },
+      headers: ifMatch(etag),
     }),
   reschedule: (id: number, body: RescheduleBody) =>
     request<RescheduleResponse>("POST", `/appointments/${id}/reschedule`, {
       body,
     }),
-  complete: (id: number) => request<Appointment>("POST", `/appointments/${id}/complete`),
-  noShow: (id: number) => request<Appointment>("POST", `/appointments/${id}/no-show`),
+  complete: (id: number, etag?: string) =>
+    request<Appointment>("POST", `/appointments/${id}/complete`, { headers: ifMatch(etag) }),
+  noShow: (id: number, etag?: string) =>
+    request<Appointment>("POST", `/appointments/${id}/no-show`, { headers: ifMatch(etag) }),
 
   joinWaitlist: (doctorId: number, patientId: number, date: string) =>
     request<WaitlistEntry>("POST", `/doctors/${doctorId}/waitlist`, {

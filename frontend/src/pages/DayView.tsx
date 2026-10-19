@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useAppointment, useDoctors, useSchedule } from "../api/hooks";
 import type { SlotState } from "../api/types";
@@ -39,6 +39,18 @@ export default function DayView() {
     if (changes.date !== undefined) next.set("date", changes.date);
     setParams(next);
     setSelectedId(null);
+  };
+
+  // Up and Down arrows step through the slots, so a front desk can run the day from the keyboard.
+  const moveBetweenSlots = (event: KeyboardEvent<HTMLUListElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const slots = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>("button.slot"),
+    );
+    const at = slots.indexOf(document.activeElement as HTMLButtonElement);
+    if (at === -1) return;
+    event.preventDefault();
+    slots[at + (event.key === "ArrowDown" ? 1 : -1)]?.focus();
   };
 
   const bookingLink = (startIst: string) =>
@@ -113,7 +125,7 @@ export default function DayView() {
                   : ""}
               </Banner>
             )}
-            <ul className="timetable">
+            <ul className="timetable" onKeyDown={moveBetweenSlots}>
               {schedule.data.slots.map((slot) => {
                 const time = `${formatTimeIST(slot.start_at_ist)}–${formatTimeIST(slot.end_at_ist)}`;
                 if (slot.state === "FREE") {
