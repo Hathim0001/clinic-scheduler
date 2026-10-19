@@ -495,8 +495,7 @@ limitations; items it makes optional or leaves out are.
 - **Scope the assignment does not ask for:** one clinic and India Standard Time; no branches, rooms
   or equipment; no appointment types with their own durations (a visit can last one to four of the
   doctor's slots, A-04); no guardian model (one phone, one patient, A-15); no payments, so the
-  deposit is an acknowledgement. [docs/SCENARIOS.md](docs/SCENARIOS.md) sorts about 400 edge-case
-  scenarios into covered, added and out of scope, with the reason for each.
+  deposit is an acknowledgement.
 - **Accessibility** is checked by axe-core on every page (desktop and phone) and by
   hand for keyboard use, plus tests for the skip link, page titles and focus on navigation. It has **not** been audited by a person who uses a screen
   reader; that cannot be done by the author or by software and is the one item here that stays open.
