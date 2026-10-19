@@ -41,7 +41,7 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 | M5 Docker, CI, deployment config | 2026-10-17 | `2a1559b` |
 | M6 Documentation | 2026-10-17 | `bd72eaf` |
 
-The tagged `m0` to `m6` commits. Later work is tagged `[M2]` to `[M6]` by area; `v1.0` is the final commit (the last pass above is `[M4]`: `If-Match` in `2fb1c12`, undo of a cancel in `5953d14`, the undo bar and the remembered patient in `7ae020a`).
+The tagged `m0` to `m6` commits. Later work is tagged `[M2]` to `[M6]` by area; `v1.0` is the final commit (the last pass above is `[M4]`: `If-Match` in `2fb1c12`, undo of a cancel in `5953d14`, the undo bar and the remembered patient in `7ae020a`, the app shell and Overview redesign in `60e14d6`).
 
 ## F. If I had two more days
 
