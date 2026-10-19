@@ -110,7 +110,7 @@ export default function Queue() {
       )}
 
       {queue.data && queue.data.length > 0 && (
-        <table className="stack">
+        <table className="stack tickets">
           <caption className="visually-hidden">Appointments for {date}</caption>
           <thead>
             <tr>

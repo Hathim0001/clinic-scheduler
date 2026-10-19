@@ -121,8 +121,9 @@ describe("today's queue", () => {
 
     const row = within(rowOf("Neha Joshi"));
     await user.click(row.getByRole("button", { name: "Cancel…" }));
-    await user.click(row.getByLabelText(/The clinic/));
-    await user.click(row.getByRole("button", { name: "Confirm cancellation" }));
+    // the dialog is drawn at the root of the page, not inside the row
+    await user.click(screen.getByLabelText(/The clinic/));
+    await user.click(screen.getByRole("button", { name: "Confirm cancellation" }));
 
     await waitFor(() =>
       expect(api.last("POST", "/appointments/2/cancel")?.body).toEqual({ cancelled_by: "CLINIC" }),

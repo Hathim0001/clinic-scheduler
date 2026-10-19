@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
 interface Props {
@@ -12,12 +13,13 @@ interface Props {
 
 /**
  * A dialog that behaves like one: focus moves in, Tab stays inside, Escape and a click on the dimmed
- * page close it, and focus returns to the button that opened it.
+ * page close it, and focus returns to the button that opened it. It is drawn at the root of the page,
+ * not inside whatever opened it, so a transform or animation on a parent cannot shrink its backdrop.
  */
 export function Modal({ labelledBy, onClose, children, closeOnBackdrop = true }: Props) {
   const dialog = useRef<HTMLDivElement>(null);
   useFocusTrap(dialog, true, onClose);
-  return (
+  return createPortal(
     <div
       className="overlay"
       role="presentation"
@@ -35,6 +37,7 @@ export function Modal({ labelledBy, onClose, children, closeOnBackdrop = true }:
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

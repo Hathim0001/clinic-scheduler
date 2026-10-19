@@ -93,13 +93,27 @@ enforces them inside transactions and locks, and the database constraints guaran
 concurrency could otherwise break. The UI never decides anything: it shows the slots, the reasons and
 the allowed actions the API sends.
 
-**What it looks like** (seeded demo data; the day view and the queue, the booking form for a patient
-who is flagged for a deposit, and the queue on a 375 px phone screen):
+**What it looks like** (seeded demo data, the clock set to the seed morning, Monday 2026-10-19 09:30).
+The interface is drawn from the clinic itself: ECG paper under every page, each doctor's day as a
+blister pack of capsules, the queue as appointment tickets, cards as chart folders.
 
 | | |
 |---|---|
-| ![Day view](docs/screenshots/day-view.png) | ![Queue](docs/screenshots/queue.png) |
-| ![Booking a flagged patient](docs/screenshots/booking-flagged-patient.png) | ![Queue at 375 px](docs/screenshots/phone-375px.png) |
+| ![Overview](docs/screenshots/overview.png) | ![Day view](docs/screenshots/day-view.png) |
+| ![Queue](docs/screenshots/queue.png) | ![Queue at 375 px](docs/screenshots/phone-375px.png) |
+
+**Each business rule, as the user sees it** (the pictures are taken by `frontend/e2e/screenshots.mjs`):
+
+| Rule | Picture |
+|---|---|
+| 1. Only times on the doctor's grid and inside the doctor's hours are offered | ![Rule 1](docs/screenshots/rules/1-availability-and-grid.png) |
+| 2. A doctor is never booked twice at once: taken slots are filled in and cannot be picked | ![Rule 2](docs/screenshots/rules/2-doctor-never-double-booked.png) |
+| 3. A patient is never booked twice at once: Arjun Mehta is with Dr. Rao at 10:00, so that time is missing from Dr. Menon's list for him | ![Rule 3](docs/screenshots/rules/3-patient-never-double-booked.png) |
+| 4. The daily cap: five of six booked, then the sixth is taken and the rest of the day closes | ![Before](docs/screenshots/rules/4-daily-cap-before.png) ![Reached](docs/screenshots/rules/4-daily-cap-reached.png) |
+| 5. Two strikes in 30 days require a deposit acknowledgement; a patient cancelling close to the start is recorded as late | ![Deposit](docs/screenshots/rules/5-deposit-after-two-strikes.png) ![Late cancel](docs/screenshots/rules/5-late-cancellation.png) |
+| 6. A reschedule cancels the old slot and books the new one together, or neither happens | ![Rule 6](docs/screenshots/rules/6-reschedule-is-atomic.png) |
+| 7. Nothing in the past and nothing more than 60 days ahead | ![Rule 7](docs/screenshots/rules/7-booking-window.png) |
+| All of the above, run live against the real database and rolled back | ![Proof](docs/screenshots/rules/proof-of-all-rules.png) |
 
 ## 5. Running locally
 
@@ -209,7 +223,7 @@ cd frontend && npm test -- --run             # all UI tests
 | Backend tests | 1,450 passing in about 10 minutes (unit tests without a database, integration and race tests on real PostgreSQL, and tests through HTTP) |
 | Backend line and branch coverage, all of `app/` | 99 % (4,586 statements, 13 missed, branches included) |
 | Rules layer (`app/domain` + `app/services`) | 99 % (2,304 statements, 1 missed; 3 branches partly covered); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 220 passing; 92.0 % of lines, 82.7 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Frontend tests (Vitest, network faked at `fetch`) | 222 passing; 91.2 % of lines, 82.4 % of branches covered (gate: 85 % lines, 75 % branches) |
 | Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 26 flow checks and 24 accessibility scans (axe-core, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the

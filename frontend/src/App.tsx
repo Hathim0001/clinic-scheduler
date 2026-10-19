@@ -5,6 +5,7 @@ import { SERVER_ROOT } from "./api/client";
 import { setSession } from "./lib/authStore";
 import { formatDayIST } from "./lib/formatIST";
 import { useFocusTrap } from "./lib/useFocusTrap";
+import { useSpotlight } from "./lib/useSpotlight";
 import { useToday } from "./lib/useToday";
 import {
   AuthGate,
@@ -80,7 +81,7 @@ function NavSection({ heading, items }: { heading: string; items: NavItem[] }) {
                 <span className="visually-hidden">(opens in a new tab)</span>
               </a>
             ) : (
-              <NavLink to={item.to} end={item.end}>
+              <NavLink to={item.to} end={item.end} viewTransition>
                 <Icon name={item.icon} size={18} />
                 <span className="nav-label">{item.label}</span>
                 {item.badge ? (
@@ -296,6 +297,7 @@ function Shell() {
   const open = openOn === pathname;
   const sidebarRef = useRef<HTMLDivElement>(null);
   useFocusTrap(sidebarRef, open, () => setOpenOn(null));
+  useSpotlight();
 
   return (
     <div className={open ? "app-shell menu-open" : "app-shell"}>

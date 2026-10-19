@@ -10,6 +10,7 @@ import "@fontsource-variable/inter";
 import "@fontsource-variable/playfair-display";
 import "@fontsource-variable/jetbrains-mono";
 import "./styles.css";
+import "./chart.css";
 
 // A token that expired, or a password that was changed, shows up as a 401 from whatever the page was
 // doing. Dropping the session brings the sign-in form back instead of a page full of error banners.

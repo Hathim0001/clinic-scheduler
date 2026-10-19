@@ -1,0 +1,1053 @@
+/* ======================================================================================
+   The chart. A visual language taken from the clinic itself, built on current CSS:
+   ECG paper under everything, a blister-pack strip for each doctor's day, appointment tickets,
+   chart-folder cards, a bento Overview, a conic-gradient glow, a pointer spotlight, scroll-driven
+   reveals and view transitions. It loads after styles.css and refines it. Every motion is switched
+   off by prefers-reduced-motion, and anything a browser does not support is simply not drawn.
+   ====================================================================================== */
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --mint: #d6ebe2;
+  --coral: #c9503f;
+  --foil-a: #f1f5f2;
+  --foil-b: #d7e2dd;
+  --glass: color-mix(in srgb, #fffdf8 70%, transparent);
+}
+
+/* ECG paper: a fine grid with a heavier line every fifth square, like a chart recorder's roll */
+body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgb(12 59 59 / 5.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(12 59 59 / 5.5%) 1px, transparent 1px),
+    linear-gradient(rgb(12 59 59 / 2.8%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(12 59 59 / 2.8%) 1px, transparent 1px);
+  background-size:
+    120px 120px,
+    120px 120px,
+    24px 24px,
+    24px 24px;
+  background-attachment: fixed;
+}
+
+/* --------------------------------------------------------------------- brand and masthead */
+@keyframes beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  8% {
+    transform: scale(1.12);
+  }
+  16% {
+    transform: scale(1);
+  }
+  24% {
+    transform: scale(1.08);
+  }
+}
+
+.masthead .brand-mark {
+  animation: beat 3.6s ease-in-out infinite;
+}
+
+.masthead {
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.nav a[aria-current="page"]::before {
+  transform-origin: left;
+  animation: underline 0.5s var(--ease-out) both;
+}
+
+@keyframes underline {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (min-width: 961px) {
+  .nav a::after {
+    content: "";
+    position: absolute;
+    left: 0.6rem;
+    right: 0.6rem;
+    bottom: 0;
+    height: 2px;
+    background: var(--line-strong);
+    opacity: 0.5;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s var(--ease-out);
+  }
+
+  .nav a:hover::after {
+    transform: scaleX(1);
+  }
+
+  .nav a[aria-current="page"]::after {
+    display: none;
+  }
+}
+
+.user-pop {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(1.4);
+}
+
+/* ------------------------------------------------------------------ chart-folder cards */
+.card {
+  position: relative;
+  margin-top: 0.9rem;
+  border-radius: 6px 22px 22px 22px;
+  background: var(--surface);
+  isolation: isolate;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: -0.6rem;
+  left: 1.4rem;
+  width: 4.5rem;
+  height: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 1px 0 var(--surface);
+  z-index: 1;
+}
+
+.card.panel::before {
+  width: 6.5rem;
+  background: linear-gradient(90deg, var(--mint), var(--surface));
+}
+
+/* a light that follows the pointer (its position is set by useSpotlight) */
+.card::after,
+.glance-item::after,
+.stat-card::after,
+.tickets tbody tr::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    22rem circle at var(--mx, 50%) var(--my, 0%),
+    rgb(216 130 15 / 9%),
+    transparent 60%
+  );
+  transition: opacity 0.4s;
+  z-index: -1;
+}
+
+@media (hover: hover) {
+  .card:hover::after,
+  .glance-item:hover::after,
+  .stat-card:hover::after,
+  .tickets tbody tr:hover::after {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------- page headers */
+.page-header {
+  position: relative;
+}
+
+.page-header::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0.4rem;
+  width: min(22rem, 38%);
+  height: 2.6rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='40' viewBox='0 0 220 40'%3E%3Cpath d='M0 22H60l6-12 7 26 8-34 8 28 6-8h26l6-5 6 9 5-4h82' fill='none' stroke='%230c3b3b' stroke-opacity='.3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    repeat-x left center / 220px 40px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%);
+  mask-image: linear-gradient(90deg, transparent, #000 40%);
+  animation: sweep 7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes sweep {
+  to {
+    background-position-x: -220px;
+  }
+}
+
+/* --------------------------------------------------------------- the bento Overview */
+.overview {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.overview > * {
+  grid-column: 1 / -1;
+  margin-block: 0;
+}
+
+.overview > .hero {
+  grid-column: 1 / 8;
+}
+
+.overview > .glance {
+  grid-column: 8 / -1;
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  min-height: 15.5rem;
+  padding: 2.25rem 2.5rem 4.5rem;
+  overflow: hidden;
+  color: var(--on-petrol);
+  border-radius: 30px 30px 30px 8px;
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgb(63 163 140 / 38%), transparent 60%),
+    radial-gradient(70% 90% at 0% 100%, rgb(216 130 15 / 16%), transparent 60%),
+    linear-gradient(140deg, #0f4543, #082c30);
+  box-shadow: var(--shadow-float);
+  isolation: isolate;
+}
+
+/* a conic glow that travels round the edge */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 0 62%,
+    rgb(244 198 123 / 90%) 82%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: spin 7s linear infinite;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  border: 0;
+  box-shadow: none;
+}
+
+@keyframes spin {
+  to {
+    --angle: 360deg;
+  }
+}
+
+.hero::after {
+  background: radial-gradient(
+    26rem circle at var(--mx, 70%) var(--my, 0%),
+    rgb(255 255 255 / 10%),
+    transparent 60%
+  );
+}
+
+.hero-text {
+  position: relative;
+  z-index: 1;
+  max-width: 24rem;
+}
+
+.hero-eyebrow {
+  margin: 0 0 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--on-petrol-muted);
+}
+
+.hero-eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.6rem;
+  border-radius: 50%;
+  background: #6fe0bd;
+  box-shadow: 0 0 0 0 rgb(111 224 189 / 60%);
+  animation: live 2.4s ease-out infinite;
+}
+
+@keyframes live {
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.6rem transparent;
+  }
+}
+
+.hero-greeting {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.hero-line {
+  margin: 0.8rem 0 0;
+  color: var(--on-petrol-muted);
+  font-size: var(--text-md);
+}
+
+.hero .pulse-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.9rem;
+  width: 100%;
+  height: 4.6rem;
+  z-index: 0;
+}
+
+.pulse-line path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.pulse-base {
+  stroke: rgb(214 232 226 / 22%);
+  stroke-width: 1.6;
+}
+
+.pulse-trace {
+  stroke: #8ff0cf;
+  stroke-width: 2.4;
+  stroke-dasharray: 0.16 1;
+  stroke-dashoffset: 0.16;
+  filter: drop-shadow(0 0 5px rgb(111 224 189 / 80%));
+  animation: trace 4.2s linear infinite;
+}
+
+@keyframes trace {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+/* a ring that fills to a share of the day */
+.ring {
+  position: relative;
+  flex: none;
+  width: 9.5rem;
+  aspect-ratio: 1;
+  z-index: 1;
+}
+
+.ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ring circle {
+  fill: none;
+  stroke-width: 9;
+}
+
+.ring-track {
+  stroke: rgb(255 255 255 / 14%);
+}
+
+.ring-fill {
+  stroke: var(--now);
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--share, 0));
+  filter: drop-shadow(0 0 6px rgb(216 130 15 / 55%));
+  animation: ring-in 1.4s var(--ease-out) 0.2s both;
+}
+
+@keyframes ring-in {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+.ring-centre {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.ring-figure {
+  font-family: var(--font-display);
+  font-size: 2.7rem;
+  line-height: 1;
+}
+
+.ring-of {
+  margin-top: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--on-petrol-muted);
+}
+
+/* the four figures: glass tiles, each with its own colour on the edge */
+.glance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  box-shadow: none;
+}
+
+.glance-item {
+  --tone: var(--brand);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 1.15rem 1.3rem 1.2rem 1.5rem;
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 8px 20px 20px 8px;
+  background: var(--glass);
+  backdrop-filter: blur(10px) saturate(1.3);
+  transition:
+    transform 0.4s var(--ease-out),
+    box-shadow 0.4s var(--ease-out);
+}
+
+.glance-item::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: var(--tone);
+}
+
+.glance-item + .glance-item {
+  border-left: 0;
+}
+
+.glance-item:nth-child(2) {
+  --tone: var(--now);
+}
+
+.glance-item:nth-child(3) {
+  --tone: #3f9d7f;
+}
+
+.glance-alert {
+  --tone: var(--coral);
+}
+
+@media (hover: hover) {
+  .glance-item:hover,
+  .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 30px -22px rgb(12 59 59 / 45%);
+  }
+}
+
+.glance-label {
+  color: var(--muted);
+}
+
+.glance-value {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 500;
+}
+
+.glance-hint {
+  color: var(--muted);
+}
+
+.glance-alert .glance-value {
+  color: var(--coral);
+}
+
+/* ------------------------------------------------- the day as a blister pack of capsules */
+.ribbon {
+  position: relative;
+  gap: 0.4rem;
+  height: auto;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 70%), transparent 45%),
+    linear-gradient(180deg, var(--foil-a), var(--foil-b));
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -2px 4px rgb(12 59 59 / 8%);
+}
+
+.ribbon-slot {
+  height: 2.1rem;
+  animation: pop 0.55s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 22ms + 200ms);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+.cell {
+  border-radius: 999px;
+  border-width: 1px;
+}
+
+/* a filled capsule with a highlight, standing proud of the foil */
+.cell-booked {
+  border-color: #0a2f33;
+  background:
+    radial-gradient(120% 90% at 30% 15%, rgb(255 255 255 / 38%), transparent 42%),
+    linear-gradient(180deg, #15605c, #0a3a3b);
+  box-shadow:
+    0 2px 3px rgb(8 44 48 / 35%),
+    inset 0 -2px 3px rgb(0 0 0 / 25%);
+}
+
+/* an empty well pressed into the foil */
+.cell-free {
+  border-color: rgb(12 59 59 / 22%);
+  background: linear-gradient(180deg, #e3eeea, #f6faf8);
+  box-shadow: inset 0 2px 3px rgb(12 59 59 / 22%);
+  transition:
+    transform 0.3s var(--ease-out),
+    background 0.3s;
+}
+
+@media (hover: hover) {
+  .ribbon-slot:hover .cell-free {
+    transform: scale(1.1);
+    background: var(--mint);
+  }
+}
+
+.cell-past {
+  opacity: 0.6;
+}
+
+.ribbon-now {
+  top: -0.2rem;
+  bottom: -0.2rem;
+  width: 4px;
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  50% {
+    box-shadow: 0 0 0 5px rgb(216 130 15 / 22%);
+  }
+}
+
+.ribbon-key .cell {
+  width: 1.5rem;
+  height: 0.85rem;
+}
+
+/* ----------------------------------------------------------------- appointment tickets */
+table.stack.tickets,
+.tickets tbody {
+  display: block;
+  border: 0;
+  background: transparent;
+}
+
+.tickets thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.tickets tbody {
+  display: grid;
+  gap: 1rem;
+}
+
+.tickets tbody tr {
+  position: relative;
+  display: grid;
+  grid-template-columns: 8.75rem minmax(12rem, 1.6fr) minmax(8rem, 1fr) minmax(6rem, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem 1.5rem;
+  padding: 1rem 1.5rem 1rem 0;
+  border: 1px solid var(--line);
+  border-radius: 6px 20px 20px 6px;
+  background: var(--surface);
+  isolation: isolate;
+  transition:
+    transform 0.4s var(--ease-out),
+    box-shadow 0.4s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .tickets tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 28px -22px rgb(12 59 59 / 45%);
+  }
+}
+
+.tickets td,
+.tickets tbody tr:hover > * {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.tickets td::before {
+  display: none;
+}
+
+/* the stub: the time, torn off along a perforation with a notch at each end */
+.tickets td:first-child {
+  position: relative;
+  align-self: stretch;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-content: center;
+  padding: 0 0.75rem 0 1.4rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--brand);
+  white-space: nowrap;
+  border-right: 2px dotted var(--line-strong);
+  background: linear-gradient(90deg, var(--mint), transparent);
+  border-radius: 6px 0 0 6px;
+}
+
+.tickets td:first-child::before,
+.tickets td:first-child::after {
+  content: "";
+  display: block;
+  position: absolute;
+  right: -0.65rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  z-index: 1;
+}
+
+.tickets td:first-child::before {
+  top: -0.6rem;
+}
+
+.tickets td:first-child::after {
+  bottom: -0.6rem;
+}
+
+.tickets .person {
+  gap: 0.75rem;
+}
+
+.tickets td:last-child {
+  grid-column: 2 / -1;
+  justify-self: start;
+}
+
+.tickets td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------------ figure cards */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px 20px 20px 8px;
+  border-left: 0;
+  background: var(--glass);
+  transition:
+    transform 0.4s var(--ease-out),
+    box-shadow 0.4s var(--ease-out);
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: var(--brand);
+}
+
+.stat-card.tone-ok::before {
+  background: #3f9d7f;
+}
+
+.stat-card.tone-danger::before {
+  background: var(--coral);
+}
+
+.stat-card.tone-warn::before {
+  background: var(--now);
+}
+
+/* ---------------------------------------------------------------------- empty states */
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.empty::before {
+  content: "";
+  width: 4.5rem;
+  height: 4.5rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72' fill='none' stroke='%230c3b3b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='16' y='12' width='40' height='50' rx='6' fill='%23d6ebe2' fill-opacity='.7'/%3E%3Crect x='27' y='7' width='18' height='10' rx='4' fill='%23fdfbf7'/%3E%3Cpath d='M25 34h22M25 44h14'/%3E%3Cpath d='M26 53h6l3-6 4 10 3-6h4' stroke='%23d8820f'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  animation: float 5s ease-in-out infinite;
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* ---------------------------------------------------------------------- buttons, badges */
+button,
+a.primary {
+  transition:
+    transform 0.2s var(--ease-out),
+    box-shadow 0.3s var(--ease-out),
+    background var(--transition),
+    border-color var(--transition);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+
+@media (hover: hover) {
+  button.primary:hover:not(:disabled),
+  a.primary:hover {
+    box-shadow: 0 10px 20px -12px rgb(12 59 59 / 70%);
+    transform: translateY(-1px);
+  }
+}
+
+.badge-attention {
+  animation: ping 2.6s ease-out infinite;
+}
+
+@keyframes ping {
+  0% {
+    box-shadow: 0 0 0 0 rgb(216 130 15 / 55%);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 0.55rem rgb(216 130 15 / 0%);
+  }
+}
+
+/* --------------------------------------------------- reveals, as the eye reaches them */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem) scale(0.98);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .doctor-day,
+  .list-row,
+  .tickets tbody tr {
+    animation: reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+
+/* -------------------------------------------------------------- a page changes smoothly */
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+::view-transition-old(root) {
+  animation: 0.18s ease-in both fade-out;
+}
+
+::view-transition-new(root) {
+  animation: 0.4s var(--ease-out) both fade-in-up;
+}
+
+/* --------------------------------------------------------------------- narrower screens */
+@media (max-width: 1100px) {
+  .overview > .hero,
+  .overview > .glance {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1040px) {
+  .tickets tbody tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0 1.1rem 1rem 0;
+  }
+
+  .tickets td:first-child {
+    grid-row: auto;
+    grid-column: 1 / -1;
+    justify-items: start;
+    padding: 0.6rem 1.1rem;
+    border-right: 0;
+    border-bottom: 2px dotted var(--line-strong);
+    border-radius: 6px 20px 0 0;
+    text-align: left;
+  }
+
+  .tickets td:first-child::before {
+    top: auto;
+    bottom: -0.6rem;
+    left: -0.6rem;
+    right: auto;
+  }
+
+  .tickets td:first-child::after {
+    bottom: -0.6rem;
+    right: -0.6rem;
+  }
+
+  .tickets td {
+    grid-column: 1 / -1;
+    padding-left: 1.1rem;
+  }
+
+  .tickets td:last-child {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    padding: 1.6rem 1.4rem 4.2rem;
+    gap: 1.25rem;
+  }
+
+  .ring {
+    width: 7.5rem;
+  }
+
+  .page-header::after {
+    display: none;
+  }
+
+  .glance-value {
+    font-size: 2rem;
+  }
+
+  .ribbon {
+    gap: 0.25rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .ribbon-slot {
+    height: 1.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .masthead .brand-mark,
+  .hero::before,
+  .hero-eyebrow::before,
+  .page-header::after,
+  .pulse-trace,
+  .empty::before,
+  .badge-attention,
+  .ribbon-now,
+  .ring-fill {
+    animation: none !important;
+  }
+
+  .pulse-trace {
+    stroke-dasharray: none;
+  }
+
+  .ribbon-slot,
+  .doctor-day,
+  .list-row,
+  .tickets tbody tr {
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------ the day view as a timeline of the day */
+.timetable {
+  position: relative;
+  background: transparent;
+  border: 0;
+  overflow: visible;
+  padding: 0.25rem 0;
+}
+
+/* the rail the slots hang from */
+.timetable::before {
+  content: "";
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  left: calc(9.45rem - 1px);
+  width: 2px;
+  background: repeating-linear-gradient(180deg, var(--line-strong) 0 5px, transparent 5px 10px);
+  opacity: 0.45;
+}
+
+.timetable li + li {
+  border-top: 0;
+}
+
+.timetable .slot {
+  grid-template-columns: 7.25rem 1.6rem minmax(0, 1fr) auto;
+  gap: 0 0.9rem;
+  margin: 2px 0;
+  padding: 0 1rem 0 0.5rem;
+  border-radius: 14px;
+  transition:
+    background 0.3s,
+    transform 0.35s var(--ease-out),
+    box-shadow 0.35s var(--ease-out);
+}
+
+.timetable .slot > .time {
+  grid-column: 1;
+  grid-row: 1;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+}
+
+/* the node on the rail: a pill for a booking, a hollow well for a free slot */
+.timetable .slot::before {
+  content: "";
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  position: relative;
+  z-index: 1;
+}
+
+.timetable .slot > :nth-child(2) {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.timetable .slot > :nth-child(3) {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.timetable .slot-free::before {
+  background: linear-gradient(180deg, #e3eeea, #f6faf8);
+  border: 1px solid rgb(12 59 59 / 28%);
+  box-shadow: inset 0 2px 3px rgb(12 59 59 / 22%);
+}
+
+.timetable .slot-booked::before {
+  height: 1.45rem;
+  background: linear-gradient(180deg, #15605c, #0a3a3b);
+  box-shadow: 0 2px 3px rgb(8 44 48 / 35%);
+}
+
+.timetable .slot-muted::before {
+  background: var(--line);
+  opacity: 0.8;
+}
+
+.timetable .slot-booked {
+  background: linear-gradient(90deg, var(--mint), rgb(214 235 226 / 25%));
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .timetable .slot-free:hover:not(:disabled) {
+    background: var(--brand-soft);
+    transform: translateX(4px);
+  }
+
+  .timetable .slot-free:hover:not(:disabled)::before {
+    background: var(--now);
+    border-color: var(--now);
+  }
+
+  .timetable .slot-booked:hover:not(:disabled) {
+    transform: translateX(4px);
+    box-shadow: 0 12px 22px -18px rgb(12 59 59 / 55%);
+    filter: none;
+  }
+}
+
+.now-mark {
+  left: 0.5rem;
+  right: 0.5rem;
+  top: -2px;
+  border-top-style: dashed;
+}
+
+@media (max-width: 640px) {
+  .timetable::before {
+    left: calc(7.1rem - 1px);
+  }
+
+  .timetable .slot {
+    grid-template-columns: 5.4rem 1.2rem minmax(0, 1fr) auto;
+    gap: 0 0.6rem;
+    padding-right: 0.6rem;
+  }
+}

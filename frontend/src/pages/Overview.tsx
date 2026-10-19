@@ -9,6 +9,7 @@ import {
 } from "../api/hooks";
 import type { Doctor, ScheduleSlot, SlotState } from "../api/types";
 import { ErrorBanner, Skeleton } from "../components/common";
+import { CountUp, PulseLine, Ring } from "../components/Pulse";
 import { Avatar, Icon, PageHeader } from "../components/ui";
 import { formatDayIST, formatTimeIST } from "../lib/formatIST";
 import { useToday } from "../lib/useToday";
@@ -48,7 +49,12 @@ function DayRibbon({
   return (
     <div className="ribbon" role="img" aria-label={summary}>
       {slots.map((slot, index) => (
-        <span key={slot.start_at_utc} className="ribbon-slot" aria-hidden="true">
+        <span
+          key={slot.start_at_utc}
+          className="ribbon-slot"
+          style={{ ["--i" as string]: index }}
+          aria-hidden="true"
+        >
           {index === nowAt && <span className="ribbon-now" />}
           <span className={`cell ${CELL_CLASS[slot.state]}`} />
         </span>
@@ -105,6 +111,20 @@ function DoctorDay({ doctor, date, now }: { doctor: Doctor; date: string; now: s
   );
 }
 
+/** "Good morning" and so on, by the hour in India. */
+function greeting(now: string): string {
+  const hour = now
+    ? Number(
+        new Intl.DateTimeFormat("en-GB", {
+          hour: "numeric",
+          hourCycle: "h23",
+          timeZone: "Asia/Kolkata",
+        }).format(new Date(now)),
+      )
+    : 9;
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
 /** The front desk's morning view: how the day is going, who is next, and what needs a look. */
 export default function Overview() {
   const today = useToday();
@@ -122,7 +142,8 @@ export default function Overview() {
   const upcoming = all.filter((a) => a.status === "BOOKED" && a.end_at_utc >= now);
   const needsAttention = attention.data?.total ?? 0;
   const messagesWaiting = messages.data?.count ?? 0;
-  const figure = (value: number) => (queue.isPending ? "–" : value);
+  const figure = (value: number) => (queue.isPending ? "–" : <CountUp value={value} />);
+  const finished = seen + missed;
 
   return (
     <div className="overview">
@@ -132,6 +153,31 @@ export default function Overview() {
           today ? `${formatDayIST(`${today}T12:00:00+05:30`)} · all times India (IST)` : undefined
         }
       />
+
+      <section className="hero" aria-label="Today's pulse">
+        <PulseLine />
+        <div className="hero-text">
+          <p className="hero-eyebrow">Today&apos;s pulse</p>
+          <p className="hero-greeting">{greeting(now)}.</p>
+          <p className="hero-line">
+            {queue.isPending
+              ? "Reading today's schedule…"
+              : all.length === 0
+                ? "No visits are booked today."
+                : `${finished} of ${all.length} visits are done; ${upcoming.length} still to come.`}
+          </p>
+        </div>
+        <Ring
+          value={finished}
+          max={all.length}
+          label={`${finished} of ${all.length} visits finished`}
+        >
+          <span className="ring-figure">
+            {queue.isPending ? "–" : <CountUp value={finished} />}
+          </span>
+          <span className="ring-of">of {queue.isPending ? "–" : all.length}</span>
+        </Ring>
+      </section>
 
       {queue.error && <ErrorBanner error={queue.error} onRetry={() => void queue.refetch()} />}
 
