@@ -759,18 +759,35 @@ td .actions {
 /* ------------------------------------------------- weekly hours editor */
 .week-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
 
+/* a fieldset will not shrink below its content unless told to: that is what made the days overlap */
 .day {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
+  align-items: stretch;
+  gap: var(--space-3);
+  min-width: 0;
   margin: 0;
-  background: var(--surface-sunken);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.day legend {
+  padding: 0 var(--space-2);
+  font-family: var(--font-display);
+  font-variation-settings: "SOFT" 100;
+  font-size: var(--text-lg);
+  font-weight: 560;
+}
+
+.day > .small {
+  align-self: flex-start;
 }
 
 .day-off {
@@ -779,12 +796,13 @@ td .actions {
 
 .window-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
 
 .window-row input {
-  width: 5.5rem;
+  width: 5.25rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
