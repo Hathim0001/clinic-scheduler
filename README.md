@@ -479,10 +479,8 @@ limitations; items it makes optional or leaves out are.
 - **Reminders** are queued once per visit and kind (24 hours and 2 hours before by default, set in
   Clinic rules), only when they still make sense, and withdrawn when the visit is cancelled or
   moved. Not built: delivery receipts from the gateway, patient replies ("reply 1 to confirm"), and
-  templates in other languages. Reception can also ring tomorrow's patients from the **Calls** page;
-  a 2025 meta-analysis found telephone reminders improve attendance significantly and SMS reminders
-  not significantly (docs/COMPETITOR-REPORT.md). Payments, a patient portal and multi-location are
-  not built (not in the brief).
+  templates in other languages. Reception can also ring tomorrow's patients from the **Calls** page and
+  record each call. Payments, a patient portal and multi-location are not built (not in the brief).
 - **Cold start.** Render's free plan sleeps when idle. A scheduled workflow (`keepalive.yml`) pings
   `/healthz` every 10 minutes to prevent that; GitHub may pause scheduled workflows on a repository
   with no activity for 60 days, and a paid plan is the real fix.
@@ -494,8 +492,7 @@ limitations; items it makes optional or leaves out are.
 - **Scope the assignment does not ask for:** one clinic and India Standard Time; no branches, rooms
   or equipment; no appointment types with their own durations (a visit can last one to four of the
   doctor's slots, A-04); no guardian model (one phone, one patient, A-15); no payments, so the
-  deposit is an acknowledgement. [docs/SCENARIOS.md](docs/SCENARIOS.md) sorts about 400 edge-case
-  scenarios into covered, added and out of scope, with the reason for each.
+  deposit is an acknowledgement.
 - **Accessibility** is checked by axe-core on every page (light and dark, desktop and phone) and by
   hand for keyboard use, plus tests for the skip link, page titles and focus on navigation. It has **not** been audited by a person who uses a screen
   reader; that cannot be done by the author or by software and is the one item here that stays open.
@@ -537,8 +534,6 @@ limitations; items it makes optional or leaves out are.
   `SUBMISSION.md`, not the commit metadata.
 - **To explain it live:** [docs/CODE-TOUR.md](docs/CODE-TOUR.md) maps every rule to the code that
   decides it and the test that proves it, and lists drills (change a number, say what fails and why).
-  Market research and a reasoned answer on an LLM component are in
-  [docs/COMPETITIVE-ANALYSIS.md](docs/COMPETITIVE-ANALYSIS.md).
 - **Every prompt** given to it is logged in [PROMPTS.md](PROMPTS.md), with what was done with the
   answer. The full planning brief is in
   [docs/prompts/01-planning-brief.md](docs/prompts/01-planning-brief.md).
