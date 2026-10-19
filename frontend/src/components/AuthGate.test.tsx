@@ -72,6 +72,7 @@ describe("the sign-in gate", () => {
     expect(JSON.parse(window.sessionStorage.getItem("clinic.staffToken") ?? "null")).toEqual({
       token: "abc.def",
       name: "Meera",
+      doctor_id: null,
     });
     await request("GET", "/doctors");
     expect(api.last("GET", "/doctors")?.headers.get("authorization")).toBe("Bearer abc.def");

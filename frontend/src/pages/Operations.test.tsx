@@ -371,10 +371,15 @@ describe("doctors and the report", () => {
       },
     });
     renderPage(<Reports />, "/reports");
-    expect((await screen.findAllByText("38%")).length).toBe(2); // utilisation 0.375, rounded
+    // utilisation 0.375, rounded: the headline, the doctor and the total
+    expect((await screen.findAllByText("38%")).length).toBe(3);
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
-    expect(screen.getByText("All doctors")).toBeInTheDocument();
+    expect(screen.getByRole("rowheader", { name: "All doctors" })).toBeInTheDocument();
     expect(screen.getAllByText("1 (1 via waitlist)")).toHaveLength(2); // the doctor and the total
-    expect(api.last("GET", "/reports/summary")?.query).toMatchObject({ to: "2026-11-02" });
+    // the period asked for, and the same length of time just before it for the comparison
+    const asked = api.calls.filter((c) => c.method === "GET" && c.path === "/reports/summary");
+    expect(asked.map((c) => c.query.to)).toEqual(
+      expect.arrayContaining(["2026-11-02", "2026-10-26"]),
+    );
   });
 });

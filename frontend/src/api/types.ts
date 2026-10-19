@@ -1,7 +1,7 @@
 // Response shapes of the API (backend/app/api/schemas/responses.py). Every instant comes twice,
 // as `..._utc` and `..._ist`; the UI shows the IST one and never converts times itself.
 
-export type Role = "ADMIN" | "RECEPTIONIST";
+export type Role = "ADMIN" | "RECEPTIONIST" | "DOCTOR";
 
 export interface StaffAccount {
   id: number;
@@ -9,6 +9,7 @@ export interface StaffAccount {
   display_name: string;
   role: Role;
   active: boolean;
+  doctor_id?: number | null; // set for a doctor's own login
 }
 
 export type MessageStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
@@ -293,4 +294,76 @@ export interface ProofReport {
   rows_before: number;
   rows_after: number;
   cases: ProofCase[];
+}
+
+/** The clinic's own rules (GET /policy). `defaults` and `bounds` come from the server. */
+export interface Policy {
+  horizon_days: number;
+  late_cancel_hours: number;
+  strike_lookback_days: number;
+  strikes: number;
+  undo_minutes: number;
+  offer_hold_minutes: number;
+  reminder_first_hours: number;
+  reminder_second_hours: number;
+  defaults: Record<PolicyField, number>;
+  bounds: Record<PolicyField, [number, number]>;
+  updated_at_utc: string | null;
+  updated_by: string | null;
+}
+
+export type PolicyField =
+  | "horizon_days"
+  | "late_cancel_hours"
+  | "strike_lookback_days"
+  | "strikes"
+  | "undo_minutes"
+  | "offer_hold_minutes"
+  | "reminder_first_hours"
+  | "reminder_second_hours";
+
+/** How messages leave the clinic (GET /notifications/delivery). */
+export interface Delivery {
+  gateway: "twilio" | "webhook" | null; // null: reception sends everything by hand
+  channel: "sms" | "whatsapp" | null;
+  reminder_first_hours: number;
+  reminder_second_hours: number;
+  counts: Record<string, number>;
+}
+
+export interface DayTrend {
+  date: string;
+  scheduled: number;
+  completed: number;
+  no_show: number;
+  cancelled: number;
+  upcoming: number;
+}
+
+export interface Bucket {
+  key: number; // weekday (Monday is 0) or hour of the India day
+  scheduled: number;
+  completed: number;
+  no_show: number;
+  no_show_rate: number | null;
+}
+
+export interface Trends {
+  start: string;
+  end: string;
+  doctor_id: number | null;
+  days: DayTrend[];
+  weekdays: Bucket[];
+  hours: Bucket[];
+  reminder_effect: {
+    reminded_visits: number;
+    reminded_no_shows: number;
+    other_visits: number;
+    other_no_shows: number;
+  };
+}
+
+export interface ResetCode {
+  code: string;
+  expires_at_utc: string;
 }

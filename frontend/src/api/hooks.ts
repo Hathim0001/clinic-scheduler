@@ -12,7 +12,14 @@ import type {
   SeriesBody,
   StaffChanges,
 } from "./endpoints";
-import type { CancelledBy, MessageStatus, Status, TimeWindow, WeeklyWindow } from "./types";
+import type {
+  CancelledBy,
+  MessageStatus,
+  PolicyField,
+  Status,
+  TimeWindow,
+  WeeklyWindow,
+} from "./types";
 
 // Query hooks. The keys start with the resource name so a mutation can refresh what shows it.
 
@@ -143,6 +150,21 @@ export const useAppointmentHistory = (id: number | null, enabled: boolean) =>
     enabled: enabled && id !== null,
   });
 
+/** The clinic's own rules. They change rarely, so a minute of staleness is fine. */
+export const usePolicy = () =>
+  useQuery({ queryKey: ["policy"], queryFn: api.policy, staleTime: 60_000 });
+
+/** How messages leave the clinic, and the reminder times. */
+export const useDelivery = () =>
+  useQuery({ queryKey: ["delivery"], queryFn: api.delivery, refetchInterval: 60_000 });
+
+export const useTrends = (from: string, to: string, doctorId: number | null) =>
+  useQuery({
+    queryKey: ["trends", from, to, doctorId],
+    queryFn: () => api.trends(from, to, doctorId ?? undefined),
+    enabled: from !== "" && to !== "",
+  });
+
 export const useReport = (from: string, to: string) =>
   useQuery({
     queryKey: ["report", from, to],
@@ -177,6 +199,7 @@ const AFFECTS = {
     "waitlist",
     "patient", // the deposit flag
     "report",
+    "trends",
   ],
   // weekly hours and days off: what is free, and which bookings no longer fit
   hours: [
@@ -190,6 +213,23 @@ const AFFECTS = {
     "appointment",
     "patientAppointments",
     "report",
+    "trends",
+  ],
+  // the clinic's rules decide what is offered, what counts as late and who is flagged
+  policy: [
+    "policy",
+    "delivery",
+    "slots",
+    "schedule",
+    "queue",
+    "appointment",
+    "patientAppointments",
+    "patient",
+    "patients",
+    "alternatives",
+    "waitlist",
+    "report",
+    "trends",
   ],
   // a doctor's own details
   doctors: ["doctors", "slots", "schedule", "weekly", "overrides", "needsAttention"],
@@ -207,8 +247,8 @@ const AFFECTS = {
   waitlist: ["waitlist"],
   // staff accounts are listed on one page only
   staff: ["staff"],
-  // a message marked sent changes the lists and the count
-  messages: ["messages"],
+  // a message marked sent (or a reminder queued) changes the lists and the counts
+  messages: ["messages", "delivery"],
 } as const;
 
 type Change = keyof typeof AFFECTS;
@@ -371,6 +411,20 @@ export const useUpdateStaff = () =>
   useRefreshingMutation("staff", (args: { id: number; changes: StaffChanges }) =>
     api.updateStaff(args.id, args.changes),
   );
+
+export const useUpdatePolicy = () =>
+  useRefreshingMutation("policy", (changes: Partial<Record<PolicyField, number>>) =>
+    api.updatePolicy(changes),
+  );
+
+export const useRunReminders = () => useRefreshingMutation("messages", () => api.runReminders());
+
+/** An administrator issues a one-time code; shown once, so nothing is cached. */
+export const useIssueResetCode = () => useMutation({ mutationFn: api.issueResetCode });
+
+export const useResetPassword = () => useMutation({ mutationFn: api.resetPassword });
+
+export const useChangePassword = () => useMutation({ mutationFn: api.changePassword });
 
 export const useLogin = () =>
   useMutation({

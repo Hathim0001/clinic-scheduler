@@ -1,13 +1,26 @@
 import { useState, type FormEvent } from "react";
-import { useAuthStatus, useCreateStaff, useStaff, useUpdateStaff } from "../api/hooks";
+import {
+  useAuthStatus,
+  useCreateStaff,
+  useDoctors,
+  useIssueResetCode,
+  useStaff,
+  useUpdateStaff,
+} from "../api/hooks";
 import type { Role, StaffAccount } from "../api/types";
 import { Banner, ErrorBanner, Skeleton } from "../components/common";
+import { PageHeader } from "../components/ui";
+import { formatTimeIST } from "../lib/formatIST";
 import { useIsAdmin } from "../components/AuthGate";
 
 const ROLE_TEXT: Record<Role, string> = {
   ADMIN: "Administrator",
   RECEPTIONIST: "Receptionist",
+  DOCTOR: "Doctor",
 };
+
+/** The roles a row can be switched between: a doctor's login is tied to a doctor, so it stays. */
+const SWITCHABLE: Role[] = ["ADMIN", "RECEPTIONIST"];
 
 /** Staff accounts: who can sign in and as what. Administrators only (the server enforces it). */
 export default function Staff() {
@@ -25,11 +38,10 @@ export default function Staff() {
   }
   return (
     <div>
-      <h1>Staff accounts</h1>
-      <p className="muted">
-        An administrator also sets up doctors and hours and can erase a patient&apos;s data. A
-        receptionist does the day-to-day work: patients, bookings, the queue and the waitlist.
-      </p>
+      <PageHeader
+        title="Staff accounts"
+        description="An administrator also sets up doctors, hours and the clinic's rules and can erase a patient's data. A receptionist runs the day: patients, bookings, the queue and the waitlist. A doctor sees the schedule and marks their own visits."
+      />
       {staff.isPending && <Skeleton rows={3} />}
       {staff.error && <ErrorBanner error={staff.error} onRetry={() => void staff.refetch()} />}
       {staff.data && staff.data.length === 0 && (
@@ -65,8 +77,11 @@ export default function Staff() {
 
 function StaffRow({ account }: { account: StaffAccount }) {
   const update = useUpdateStaff();
+  const issue = useIssueResetCode();
+  const doctors = useDoctors();
   const [password, setPassword] = useState("");
   const [resetting, setResetting] = useState(false);
+  const doctorName = doctors.data?.find((d) => d.id === account.doctor_id)?.name;
 
   return (
     <tr>
@@ -75,19 +90,26 @@ function StaffRow({ account }: { account: StaffAccount }) {
       </th>
       <td data-label="Name">{account.display_name}</td>
       <td data-label="Role">
-        <select
-          aria-label={`Role of ${account.username}`}
-          value={account.role}
-          onChange={(event) =>
-            update.mutate({ id: account.id, changes: { role: event.target.value as Role } })
-          }
-        >
-          {(Object.keys(ROLE_TEXT) as Role[]).map((role) => (
-            <option key={role} value={role}>
-              {ROLE_TEXT[role]}
-            </option>
-          ))}
-        </select>
+        {account.role === "DOCTOR" ? (
+          <span>
+            Doctor
+            {doctorName && <span className="muted"> ({doctorName})</span>}
+          </span>
+        ) : (
+          <select
+            aria-label={`Role of ${account.username}`}
+            value={account.role}
+            onChange={(event) =>
+              update.mutate({ id: account.id, changes: { role: event.target.value as Role } })
+            }
+          >
+            {SWITCHABLE.map((role) => (
+              <option key={role} value={role}>
+                {ROLE_TEXT[role]}
+              </option>
+            ))}
+          </select>
+        )}
       </td>
       <td data-label="Status">{account.active ? "Active" : "Switched off"}</td>
       <td data-label="Actions">
@@ -126,10 +148,33 @@ function StaffRow({ account }: { account: StaffAccount }) {
             </button>
           </span>
         ) : (
-          <button type="button" onClick={() => setResetting(true)}>
-            Reset password for {account.username}
-          </button>
+          <>
+            <button type="button" onClick={() => setResetting(true)}>
+              Reset password for {account.username}
+            </button>{" "}
+            <button
+              type="button"
+              onClick={() => issue.mutate(account.id)}
+              disabled={issue.isPending}
+            >
+              Issue a reset code for {account.username}
+            </button>
+          </>
         )}
+        {issue.data && (
+          <Banner kind="success">
+            <p>
+              Reset code for {account.display_name}:{" "}
+              <code className="reset-code">{issue.data.code}</code>
+            </p>
+            <p>
+              It works once and stops working at {formatTimeIST(issue.data.expires_at_utc)} India
+              time. Give it to them in person or by phone; they choose a new password on the sign-in
+              page (&ldquo;Forgot your password?&rdquo;). It is not shown again.
+            </p>
+          </Banner>
+        )}
+        {issue.error && <ErrorBanner error={issue.error} />}
         {update.error && <ErrorBanner error={update.error} />}
       </td>
     </tr>
@@ -138,6 +183,8 @@ function StaffRow({ account }: { account: StaffAccount }) {
 
 function NewStaff() {
   const create = useCreateStaff();
+  const doctors = useDoctors();
+  const [doctorId, setDoctorId] = useState<number | null>(null);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -146,7 +193,13 @@ function NewStaff() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     create.mutate(
-      { username, display_name: displayName, password, role },
+      {
+        username,
+        display_name: displayName,
+        password,
+        role,
+        doctor_id: role === "DOCTOR" ? (doctorId ?? undefined) : undefined,
+      },
       {
         onSuccess: () => {
           setUsername("");
@@ -201,6 +254,23 @@ function NewStaff() {
             ))}
           </select>
         </label>
+        {role === "DOCTOR" && (
+          <label>
+            Which doctor
+            <select
+              value={doctorId ?? ""}
+              onChange={(event) => setDoctorId(Number(event.target.value) || null)}
+              required
+            >
+              <option value="">Choose a doctor</option>
+              {doctors.data?.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button type="submit" className="primary" disabled={create.isPending}>
           Create account
         </button>

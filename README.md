@@ -141,6 +141,7 @@ npm run format:check && npm run lint && npm run typecheck   # what CI runs (npm 
 | `STAFF_PASSWORD` | backend | Optional, 8+ characters. When set, every route except the health checks, the clock and the login needs a signed token, and each audit row names who made the change. Unset (the default) leaves the API open |
 | `AUTH_SECRET` | backend | Optional, 16+ characters. Turns on **individual staff accounts with roles** (administrator or receptionist): people sign in with their own username and password, and a demotion or a switch-off applies on the very next request. Create the first administrator with `python -m scripts.create_staff` (or sign in with `STAFF_PASSWORD`, if also set, which signs in as an administrator). Unset (the default) leaves accounts off |
 | `METRICS_TOKEN` | backend | Optional, 8+ characters. When set, `GET /metrics` needs it as a Bearer token. Unset leaves the counters open (they hold counts only) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `NOTIFY_CHANNEL` | backend | Optional. Send messages and reminders straight through a Twilio account: all three of the first set together, and `NOTIFY_CHANNEL` is `sms` (default) or `whatsapp` (then `TWILIO_FROM` is your approved WhatsApp sender). Takes precedence over the webhook. Unset sends nothing by itself |
 | `NOTIFY_WEBHOOK_URL`, `NOTIFY_WEBHOOK_TOKEN` | backend | Optional. Where messages to patients are POSTed as `{to, body, kind}` JSON (an SMS or WhatsApp gateway, or a relay in front of one), with the token as a Bearer header. Unset (the default) sends nothing: the messages wait on the Messages page for reception to phone through |
 | `AUTH_TOKEN_TTL_HOURS` | backend | How long a sign-in lasts (default 12) |
 | `OFFER_SWEEP_INTERVAL_S` | backend | How often lapsed waitlist offers are passed to the next patient (default 30; 0 turns the sweep off) |
@@ -195,11 +196,11 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,305 passing in about 8 minutes: 486 unit (no database), 413 integration and race tests (real PostgreSQL), 406 through HTTP |
+| Backend tests | 1,429 passing in about 8 minutes (unit tests without a database, integration and race tests on real PostgreSQL, and tests through HTTP) |
 | Backend line and branch coverage, all of `app/` | 99 % (3,904 statements, 8 missed, branches included) |
 | Rules layer (`app/domain` + `app/services`) | 99 % (1,930 statements, none missed; one branch partly covered); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 186 passing; 91.3 % of lines, 83.1 % of branches covered (gate: 85 % lines, 75 % branches) |
-| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 26 flow checks and 40 accessibility scans (axe-core, light and dark, desktop and phone) |
+| Frontend tests (Vitest, network faked at `fetch`) | 208 passing; 89.6 % of lines, 80.5 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 26 flow checks and 48 accessibility scans (axe-core, light and dark, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
 2-hour cancel line (2h00m00s is normal, 1h59m59s is late), the 30-day look-back (inclusive, and one
@@ -272,10 +273,18 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | POST | `/waitlist/{id}/accept` | Turn an offer into a booking, with every rule checked | 409 `OFFER_EXPIRED`, `SLOT_TAKEN`, 422 `DEPOSIT_REQUIRED` |
 | GET | `/alternatives?doctor_id&date&patient_id?&slots?&limit?` | The nearest bookable times when a day has none: the same doctor's next days first, then other doctors (same speciality first); every option passed the booking rules for this patient and length | 404, 422 |
 | GET | `/reports/summary.csv?from&to` | The same report as a CSV file (names that look like formulas are quoted) | 422 |
+| GET | `/reports/trends?from&to&doctor_id?` | A row per day (visits, completed, no-shows, cancelled, still booked), no-show rates by weekday and by hour, and the no-show rate of reminded patients against the rest (at most 92 days) | 422 |
+| GET | `/reports/trends.csv?from&to&doctor_id?` | The per-day series as a CSV file | 422 |
 | GET | `/reports/summary?from&to` | Per doctor: appointments, outcomes, rates, utilisation, and freed / refilled / refilled-by-waitlist slots with a recovery rate (at most 92 days) | 422 |
+| GET | `/policy` | The clinic's own rules (booking horizon, late-cancel window, strike count and look-back, undo window, waitlist hold, reminder hours), their defaults and allowed ranges | |
+| PATCH | `/policy` | **Admin.** Change any of those rules; each has a range, nothing applies retroactively | 422 `VALIDATION_ERROR` |
+| GET | `/notifications/delivery` | How messages leave the clinic (Twilio, a webhook, or by hand), the reminder times and the counts | |
+| POST | `/notifications/reminders/run` | **Admin.** Queue the reminders due now (the server does this every 30 seconds on the real clock; this honours the test clock) | |
 | GET | `/notifications?status=`, `/notifications/pending` | Messages the system wrote for patients, and how many still need sending | 422 |
 | POST | `/notifications/{id}/sent` | Reception phoned or messaged the patient: mark it sent | 404 `NOTIFICATION_NOT_FOUND`, 409 |
-| GET, POST, PATCH | `/staff`, `/staff/{id}` | **Admin.** List, create and change staff accounts (role, switch off, reset password); never returns a hash | 409 `STAFF_USERNAME_TAKEN`, `LAST_ADMIN`, 404 `STAFF_NOT_FOUND` |
+| POST | `/staff/{id}/reset-code` | **Admin.** A single-use code (valid an hour, stored only as a hash) so a person can choose a new password | 404 `STAFF_NOT_FOUND` |
+| POST | `/auth/reset-password`, `/auth/change-password` | Choose a new password with a reset code, or change your own with the current one; both end the account's older sessions. Five wrong codes lock the account's resets for 15 minutes | 401, 429 |
+| GET, POST, PATCH | `/staff`, `/staff/{id}` | **Admin.** List, create and change staff accounts (role ADMIN, RECEPTIONIST or DOCTOR, a doctor's login names its doctor; switch off, set a password); never returns a hash | 409 `STAFF_USERNAME_TAKEN`, `LAST_ADMIN`, 404 `STAFF_NOT_FOUND` |
 | GET | `/diagnostics/audit` | **Admin.** Recompute the audit hash chain in the database and list any event that no longer matches | |
 | POST | `/diagnostics/proof` | Run the rule scenarios through the real services and database inside a transaction that is always rolled back; returns each scenario's expected and observed result and the row counts before and after | |
 | POST | `/triage` | Does a text describe symptoms that may need emergency care? (a hint for the form, never a block) | 422 |
@@ -454,20 +463,26 @@ limitations; items it makes optional or leaves out are.
 
 - **Sign-in is optional and off by default**, because the assignment makes authentication optional
   and a login would lock out a reviewer. Turned on, it can be one shared password (`STAFF_PASSWORD`)
-  or individual accounts with two roles (`AUTH_SECRET`). Not built: password reset by email,
-  two-factor sign-in, more than two roles. While sign-in is off any caller can read patient names
+  or individual accounts with three roles (`AUTH_SECRET`): administrator, receptionist and doctor
+  (who sees the schedule and marks only their own visits). A forgotten password is handled by an
+  administrator issuing a single-use code, not by email. Not built: reset by email, two-factor
+  sign-in. While sign-in is off any caller can read patient names
   and phones.
 - **The hosted test clock is switched on on purpose.** The assignment requires a way for a reviewer
   to set "now"; that also lets any caller send `X-Test-Clock` and book in the past or skip the 60-day
   window. After the review set `TEST_CLOCK_ENABLED=false` in the Render dashboard.
-- **Messages go nowhere by themselves.** The outbox, the consent gate, the retries and the webhook
-  are built and tested, but sending needs a gateway (an SMS or WhatsApp account) that the clinic
-  chooses and pays for; this project has none, so by default messages wait on the Messages page for
-  reception. There are no reminders before an appointment.
-- **Reminders.** No SMS reminders are sent. Reception can ring tomorrow's patients from the **Calls**
-  page and record each call; a 2025 meta-analysis found telephone reminders improve attendance
-  significantly and SMS reminders not significantly (docs/COMPETITOR-REPORT.md), so this is the better-supported
-  first step. Payments, a patient portal and multi-location are not built (not in the brief).
+- **Messages need a gateway account.** The outbox, the consent gate, the retries, the Twilio (SMS or
+  WhatsApp) sender and the webhook are built and tested against a local stand-in for Twilio, but
+  this project has no account: sending for real needs the clinic's own (WhatsApp business messages
+  also need pre-approved templates). With no gateway configured, messages and reminders wait on the
+  Messages page for reception to send by hand.
+- **Reminders** are queued once per visit and kind (24 hours and 2 hours before by default, set in
+  Clinic rules), only when they still make sense, and withdrawn when the visit is cancelled or
+  moved. Not built: delivery receipts from the gateway, patient replies ("reply 1 to confirm"), and
+  templates in other languages. Reception can also ring tomorrow's patients from the **Calls** page;
+  a 2025 meta-analysis found telephone reminders improve attendance significantly and SMS reminders
+  not significantly (docs/COMPETITOR-REPORT.md). Payments, a patient portal and multi-location are
+  not built (not in the brief).
 - **Cold start.** Render's free plan sleeps when idle. A scheduled workflow (`keepalive.yml`) pings
   `/healthz` every 10 minutes to prevent that; GitHub may pause scheduled workflows on a repository
   with no activity for 60 days, and a paid plan is the real fix.

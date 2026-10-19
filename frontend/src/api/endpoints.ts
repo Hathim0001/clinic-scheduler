@@ -11,6 +11,7 @@ import type {
   CancelledBy,
   CancelResponse,
   ClockInfo,
+  Delivery,
   Doctor,
   SeriesResponse,
   WaitlistAcceptResponse,
@@ -18,12 +19,16 @@ import type {
   OverrideResponse,
   Page,
   Patient,
+  Policy,
+  PolicyField,
   Report,
+  ResetCode,
   RescheduleResponse,
   ScheduleResponse,
   SlotsResponse,
   Status,
   TimeWindow,
+  Trends,
   Triage,
   WeeklyResponse,
   WeeklyWindow,
@@ -89,6 +94,7 @@ export interface NewStaff {
   display_name: string;
   password: string;
   role: Role;
+  doctor_id?: number | null;
 }
 
 export interface StaffChanges {
@@ -96,6 +102,7 @@ export interface StaffChanges {
   password?: string;
   role?: Role;
   active?: boolean;
+  doctor_id?: number | null;
 }
 
 export interface LoginResult {
@@ -103,6 +110,7 @@ export interface LoginResult {
   name: string;
   role: Role;
   expires_at_epoch: number;
+  doctor_id?: number | null;
 }
 
 // One function per endpoint. The components never build URLs or read response headers.
@@ -121,6 +129,16 @@ export const api = {
   createStaff: (body: NewStaff) => request<StaffAccount>("POST", "/staff", { body }),
   updateStaff: (id: number, changes: StaffChanges) =>
     request<StaffAccount>("PATCH", `/staff/${id}`, { body: changes }),
+  issueResetCode: (id: number) => request<ResetCode>("POST", `/staff/${id}/reset-code`),
+  resetPassword: (body: { username: string; code: string; new_password: string }) =>
+    request<void>("POST", "/auth/reset-password", { body }),
+  changePassword: (body: { current_password: string; new_password: string }) =>
+    request<void>("POST", "/auth/change-password", { body }),
+  policy: () => request<Policy>("GET", "/policy"),
+  updatePolicy: (changes: Partial<Record<PolicyField, number>>) =>
+    request<Policy>("PATCH", "/policy", { body: changes }),
+  delivery: () => request<Delivery>("GET", "/notifications/delivery"),
+  runReminders: () => request<{ queued: number }>("POST", "/notifications/reminders/run"),
   login: (name: string, password: string) =>
     request<LoginResult>("POST", "/auth/login", { body: { name, password } }),
 
@@ -240,6 +258,8 @@ export const api = {
 
   report: (from: string, to: string) =>
     request<Report>("GET", "/reports/summary", { query: { from, to } }),
+  trends: (from: string, to: string, doctorId?: number) =>
+    request<Trends>("GET", "/reports/trends", { query: { from, to, doctor_id: doctorId } }),
   runProof: () => request<ProofReport>("POST", "/diagnostics/proof"),
   triage: (text: string) => request<Triage>("POST", "/triage", { body: { text } }),
 

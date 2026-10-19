@@ -2238,3 +2238,325 @@ h2 {
     padding-inline: 0.25rem;
   }
 }
+
+/* ------------------------------------------------- charts, rules, a doctor's day */
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+.chart {
+  margin: 0;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.chart-grid > .card {
+  margin-bottom: 0;
+}
+
+/* visits each day: one stacked column per day */
+.day-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 11rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.day-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.day-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 1px;
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+.bar-completed {
+  background: var(--brand);
+}
+
+.bar-noshow {
+  background: var(--danger);
+}
+
+.bar-cancelled {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--line-strong),
+    var(--line-strong) 2px,
+    var(--surface) 2px,
+    var(--surface) 4px
+  );
+  border: 1px solid var(--line-strong);
+}
+
+.bar-upcoming {
+  background: var(--entry-bg);
+  border: 1.5px solid var(--entry-line);
+}
+
+.day-label {
+  position: absolute;
+  left: 50%;
+  bottom: -1.4rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.chart-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.chart-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.swatch {
+  display: inline-block;
+  width: 1.2rem;
+  height: 0.8rem;
+  border-radius: 3px;
+}
+
+/* by weekday and by hour: a bar of visits with the missed share darkened inside it */
+.bucket-chart {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.bucket-row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) 9.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.bucket-track {
+  height: 0.9rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.bucket-fill {
+  display: flex;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  overflow: hidden;
+}
+
+.bucket-missed {
+  height: 100%;
+  background: var(--danger);
+}
+
+.bucket-figure {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.effect {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.effect dd {
+  font-size: var(--text-lg);
+}
+
+.effect strong {
+  font-family: var(--font-display);
+  font-variation-settings: "SOFT" 100;
+  font-size: 1.8rem;
+  font-weight: 520;
+}
+
+/* the clinic's rules */
+.rules {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.rule label {
+  font-size: var(--text-md);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.rule-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 400;
+}
+
+.rule-input input {
+  width: 6.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rule-unit {
+  color: var(--muted);
+}
+
+.rule-help {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.rule-wrong {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.delivery {
+  grid-template-columns: max-content 1fr;
+}
+
+.reset-code {
+  padding: 0.15rem var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid currentcolor;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+/* a doctor's day */
+.visits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.visit {
+  display: grid;
+  grid-template-columns: 6rem auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--line);
+}
+
+.visit:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.visit-time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.visit-time .muted {
+  font-weight: 400;
+}
+
+.visit-main {
+  display: grid;
+  min-width: 0;
+}
+
+.visit-main a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.visit-main a:hover {
+  text-decoration: underline;
+}
+
+.visit-lead .visit-main a {
+  font-family: var(--font-display);
+  font-variation-settings: "SOFT" 100;
+  font-size: 1.5rem;
+  font-weight: 560;
+}
+
+.visit .actions {
+  margin-top: 0;
+}
+
+.visit-done {
+  color: var(--muted);
+}
+
+@media (max-width: 960px) {
+  .visit {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .visit-time {
+    grid-column: 1 / -1;
+  }
+
+  .visit > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .bucket-row {
+    grid-template-columns: 5rem minmax(0, 1fr);
+  }
+
+  .bucket-figure {
+    grid-column: 2;
+  }
+
+  .day-chart {
+    height: 9rem;
+  }
+}

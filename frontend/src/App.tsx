@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Route, Routes, useLocation } from "react-router";
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router";
 import { useAuthStatus, useNeedsAttention, usePendingMessages } from "./api/hooks";
 import { SERVER_ROOT } from "./api/client";
 import { setSession } from "./lib/authStore";
 import { formatDayIST } from "./lib/formatIST";
 import { useToday } from "./lib/useToday";
-import { AuthGate, useIsAdmin, useSession } from "./components/AuthGate";
+import {
+  AuthGate,
+  ChangePasswordDialog,
+  useIsAdmin,
+  useIsDoctor,
+  useSession,
+} from "./components/AuthGate";
 import { ClockBar } from "./components/ClockBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { OfflineBanner, SkipLink, useRouteAccessibility } from "./components/PageChrome";
@@ -18,7 +24,9 @@ import DayView from "./pages/DayView";
 import { PatientDetail, PatientSearch } from "./pages/Patients";
 import Calls from "./pages/Calls";
 import Messages from "./pages/Messages";
+import MyDay from "./pages/MyDay";
 import Overview from "./pages/Overview";
+import Policies from "./pages/Policies";
 import Proof from "./pages/Proof";
 import Queue from "./pages/Queue";
 import Reports from "./pages/Reports";
@@ -72,34 +80,44 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const session = useSession();
   const auth = useAuthStatus();
   const isAdmin = useIsAdmin();
+  const isDoctor = useIsDoctor();
+  const [changingPassword, setChangingPassword] = useState(false);
 
+  // A doctor's own login reads the schedule and marks their own visits; the server refuses the
+  // rest, so the menu does not offer it.
   const schedule: NavItem[] = [
     { to: "/", label: "Overview", icon: "overview", end: true },
+    { to: "/my-day", label: "My day", icon: "pulse" },
     { to: "/day", label: "Day view", icon: "calendar" },
-    { to: "/book", label: "Book", icon: "plus" },
+    ...(isDoctor ? [] : [{ to: "/book", label: "Book", icon: "plus" as IconName }]),
     { to: "/queue", label: "Queue", icon: "queue" },
   ];
-  const people: NavItem[] = [
-    { to: "/patients", label: "Patients", icon: "people" },
-    { to: "/calls", label: "Calls", icon: "phone" },
-    {
-      to: "/messages",
-      label: "Messages",
-      icon: "message",
-      badge: messagesWaiting,
-      badgeLabel: `${messagesWaiting} messages waiting`,
-    },
-  ];
-  const clinic: NavItem[] = [
-    { to: "/reports", label: "Report", icon: "chart" },
-    {
-      to: "/admin",
-      label: "Doctors",
-      icon: "doctor",
-      badge: attention,
-      badgeLabel: `${attention} appointments need attention`,
-    },
-  ];
+  const people: NavItem[] = [{ to: "/patients", label: "Patients", icon: "people" }];
+  if (!isDoctor) {
+    people.push(
+      { to: "/calls", label: "Calls", icon: "phone" },
+      {
+        to: "/messages",
+        label: "Messages",
+        icon: "message",
+        badge: messagesWaiting,
+        badgeLabel: `${messagesWaiting} messages waiting`,
+      },
+    );
+  }
+  const clinic: NavItem[] = [{ to: "/reports", label: "Report", icon: "chart" }];
+  if (!isDoctor) {
+    clinic.push(
+      {
+        to: "/admin",
+        label: "Doctors",
+        icon: "doctor",
+        badge: attention,
+        badgeLabel: `${attention} appointments need attention`,
+      },
+      { to: "/policies", label: "Clinic rules", icon: "sliders" },
+    );
+  }
   if (isAdmin && auth.data?.accounts) clinic.push({ to: "/staff", label: "Staff", icon: "key" });
   if (isAdmin) clinic.push({ to: "/proof", label: "Prove the rules", icon: "shield" });
   // The interactive reference (Swagger UI) lists every endpoint the app uses.
@@ -135,19 +153,32 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           <Avatar name={session.name} />
           <div className="sidebar-user-text">
             <strong>{session.name}</strong>
-            <span>{session.role === "ADMIN" ? "Administrator" : "Reception"}</span>
+            <span>
+              {session.role === "ADMIN"
+                ? "Administrator"
+                : session.role === "DOCTOR"
+                  ? "Doctor"
+                  : "Reception"}
+            </span>
           </div>
+          {auth.data.accounts && (
+            <button type="button" className="small" onClick={() => setChangingPassword(true)}>
+              Change password
+            </button>
+          )}
           <button type="button" className="small" onClick={() => setSession(null)}>
             Sign out ({session.name})
           </button>
         </div>
       )}
+      {changingPassword && <ChangePasswordDialog onClose={() => setChangingPassword(false)} />}
     </aside>
   );
 }
 
 function Topbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: boolean }) {
   const today = useToday();
+  const isDoctor = useIsDoctor();
   return (
     <div className="topbar">
       <button
@@ -163,10 +194,12 @@ function Topbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: boolean })
       <span className="topbar-date">
         {today ? formatDayIST(`${today}T12:00:00+05:30`) : "Clinic Scheduler"}
       </span>
-      <Link to="/book" className="primary topbar-action">
-        <Icon name="plus" size={16} />
-        New booking
-      </Link>
+      {!isDoctor && (
+        <Link to="/book" className="primary topbar-action">
+          <Icon name="plus" size={16} />
+          New booking
+        </Link>
+      )}
     </div>
   );
 }
@@ -184,6 +217,7 @@ function NotFound() {
 
 function Shell() {
   const main = useRouteAccessibility();
+  const isDoctor = useIsDoctor();
   const { pathname } = useLocation();
   // The menu belongs to the page it was opened on: moving to another page closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
@@ -211,7 +245,9 @@ function Shell() {
           <WakeBanner />
           <UndoCancel />
           <Routes>
-            <Route path="/" element={<Overview />} />
+            <Route path="/" element={isDoctor ? <Navigate to="/my-day" replace /> : <Overview />} />
+            <Route path="/my-day" element={<MyDay />} />
+            <Route path="/policies" element={<Policies />} />
             <Route path="/day" element={<DayView />} />
             <Route path="/book" element={<Book />} />
             <Route path="/queue" element={<Queue />} />

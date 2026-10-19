@@ -7,7 +7,8 @@ const KEY = "clinic.staffToken";
 export interface Session {
   token: string;
   name: string;
-  role?: "ADMIN" | "RECEPTIONIST"; // missing in a session saved before roles existed
+  role?: "ADMIN" | "RECEPTIONIST" | "DOCTOR"; // missing in a session saved before roles existed
+  doctor_id?: number | null; // the doctor a doctor's own login belongs to
 }
 
 let memory: Session | null = null;
