@@ -152,7 +152,7 @@ export default function Queue() {
                   )}
                 </td>
                 <td data-label="Actions">
-                  <ActionButtons appointment={appointment} />
+                  <ActionButtons appointment={appointment} compact />
                 </td>
               </tr>
             ))}

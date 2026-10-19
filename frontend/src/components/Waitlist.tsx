@@ -7,6 +7,7 @@ import {
   useJoinWaitlist,
   useLeaveWaitlist,
   usePatientWaitlist,
+  usePolicy,
 } from "../api/hooks";
 import type { Deposit, WaitlistEntry } from "../api/types";
 import { formatDayIST, formatIST, formatTimeIST } from "../lib/formatIST";
@@ -24,11 +25,12 @@ export function JoinWaitlist({
   date: string;
 }) {
   const join = useJoinWaitlist();
+  const holdMinutes = usePolicy().data?.offer_hold_minutes ?? 30;
   return (
     <div>
       <p className="muted">
         Or join the waitlist for this day: if a booking is cancelled, the first patient in the queue
-        who can take the slot is offered it for 30 minutes.
+        who can take the slot is offered it for {holdMinutes} minutes.
       </p>
       <button
         type="button"

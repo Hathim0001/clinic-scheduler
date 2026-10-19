@@ -3,14 +3,22 @@ import { Link, useNavigate } from "react-router";
 import { useCancel, useCheckIn, useComplete, useNoShow } from "../api/hooks";
 import type { Action, Appointment, CancelledBy } from "../api/types";
 import { whyDisabled } from "../lib/errors";
-import { istDate } from "../lib/formatIST";
+import { formatDayIST, formatTimeIST, istDate } from "../lib/formatIST";
 import { Banner, ErrorBanner } from "./common";
+import { Modal } from "./Modal";
 
 /**
  * The four things that can be done to an appointment. Which ones are on comes from the server's
  * `allowed_actions`; the page never works that out. A switched-off button says why.
  */
-export function ActionButtons({ appointment }: { appointment: Appointment }) {
+export function ActionButtons({
+  appointment,
+  compact = false,
+}: {
+  appointment: Appointment;
+  /** In a table: the reason an action is off is kept for screen readers, not repeated on every row. */
+  compact?: boolean;
+}) {
   const navigate = useNavigate();
   const cancel = useCancel();
   const complete = useComplete();
@@ -81,29 +89,39 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
           </button>
         )}
       </div>
-      {note && <p className="muted action-note">{note}</p>}
+      {note && <p className={compact ? "visually-hidden" : "muted action-note"}>{note}</p>}
 
       {confirming && (
-        <fieldset>
-          <legend>Cancel this appointment as</legend>
-          <label className="check">
-            <input
-              type="radio"
-              name={`by-${appointment.id}`}
-              checked={by === "PATIENT"}
-              onChange={() => setBy("PATIENT")}
-            />
-            The patient (a cancellation close to the start is recorded as late)
-          </label>
-          <label className="check">
-            <input
-              type="radio"
-              name={`by-${appointment.id}`}
-              checked={by === "CLINIC"}
-              onChange={() => setBy("CLINIC")}
-            />
-            The clinic (never counts against the patient)
-          </label>
+        <Modal labelledBy={`cancel-${appointment.id}`} onClose={() => setConfirming(false)}>
+          <h2 id={`cancel-${appointment.id}`}>Cancel this appointment?</h2>
+          <p className="muted">
+            {appointment.patient_name}, {formatDayIST(appointment.start_at_ist)}{" "}
+            {formatTimeIST(appointment.start_at_ist)} with {appointment.doctor_name}.
+          </p>
+          <fieldset>
+            <legend>Cancel this appointment as</legend>
+            <label className="check">
+              <input
+                type="radio"
+                name={`by-${appointment.id}`}
+                checked={by === "PATIENT"}
+                onChange={() => setBy("PATIENT")}
+              />
+              The patient (a cancellation close to the start is recorded as late)
+            </label>
+            <label className="check">
+              <input
+                type="radio"
+                name={`by-${appointment.id}`}
+                checked={by === "CLINIC"}
+                onChange={() => setBy("CLINIC")}
+              />
+              The clinic (never counts against the patient)
+            </label>
+          </fieldset>
+          {cancel.error && (
+            <ErrorBanner error={cancel.error} doctorName={appointment.doctor_name} />
+          )}
           <div className="actions">
             <button
               type="button"
@@ -122,7 +140,7 @@ export function ActionButtons({ appointment }: { appointment: Appointment }) {
               Keep it
             </button>
           </div>
-        </fieldset>
+        </Modal>
       )}
 
       {cancel.data && (

@@ -14,7 +14,7 @@ export function RemoveDoctor({ doctor, onRemoved }: { doctor: Doctor; onRemoved:
         and leave are deleted with them.
       </p>
       {!confirming ? (
-        <button type="button" onClick={() => setConfirming(true)}>
+        <button type="button" className="danger" onClick={() => setConfirming(true)}>
           Remove {doctor.name}
         </button>
       ) : (

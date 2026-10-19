@@ -19,7 +19,10 @@ describe("page chrome", () => {
   it("names the tab after the page", () => {
     expect(titleFor("/queue")).toBe("Queue · Clinic Scheduler");
     expect(titleFor("/patients/7")).toBe("Patients · Clinic Scheduler");
-    expect(titleFor("/nowhere")).toBe("Clinic Scheduler");
+    expect(titleFor("/nowhere")).toBe("Page not found · Clinic Scheduler");
+    expect(titleFor("/")).toBe("Overview · Clinic Scheduler");
+    expect(titleFor("/my-day")).toBe("My day · Clinic Scheduler");
+    expect(titleFor("/policies")).toBe("Clinic rules · Clinic Scheduler");
   });
 
   it("has a skip link that points at the focusable main region", async () => {

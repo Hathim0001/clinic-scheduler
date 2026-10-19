@@ -1339,25 +1339,25 @@ td.nowrap {
 }
 
 /* The report has eleven columns: tighter cells and wrapping headers let it fit at laptop width */
-.table-scroll th,
-.table-scroll td {
+.table-compact th,
+.table-compact td {
   padding: var(--space-3) var(--space-2);
 }
-.table-scroll th {
+.table-compact th {
   white-space: normal;
   vertical-align: bottom;
   line-height: 1.25;
 }
 @media (min-width: 641px) {
-  .table-scroll tbody th:first-child {
+  .table-compact tbody th:first-child {
     position: sticky;
     left: 0;
     background: var(--surface);
   }
 }
 
-.table-scroll th,
-.table-scroll td {
+.table-compact th,
+.table-compact td {
   padding-inline: 0.4rem;
   font-size: 0.9rem;
 }
@@ -2115,8 +2115,8 @@ td {
   vertical-align: middle;
 }
 
-.table-scroll th,
-.table-scroll td {
+.table-compact th,
+.table-compact td {
   padding-block: var(--space-3);
 }
 
@@ -2210,12 +2210,12 @@ h2 {
 
 /* the report has twelve columns: a slightly smaller face lets them all fit beside the navigation */
 @media (min-width: 641px) {
-  .table-scroll table {
+  .table-compact table {
     font-size: 0.84rem;
   }
 
-  .table-scroll th,
-  .table-scroll td {
+  .table-compact th,
+  .table-compact td {
     padding-inline: 0.3rem;
     font-size: 0.84rem;
   }
@@ -2226,8 +2226,8 @@ h2 {
     padding-inline: var(--space-4);
   }
 
-  .table-scroll th,
-  .table-scroll td {
+  .table-compact th,
+  .table-compact td {
     padding-inline: 0.25rem;
   }
 }
@@ -2677,8 +2677,8 @@ textarea {
   }
 }
 
-.table-scroll th,
-.table-scroll td {
+.table-compact th,
+.table-compact td {
   padding: 0.75rem 0.4rem;
 }
 
@@ -2741,5 +2741,174 @@ textarea {
 
   .stack td[data-label="Actions"]::before {
     display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ audit fixes */
+/* a card that is itself a row of controls: the rhythm between a card's blocks must not push the
+   second and third control down */
+.card.row > * + * {
+  margin-top: 0;
+}
+
+.card.row {
+  align-items: flex-end;
+}
+
+/* every control in a filter row is the same height, so labels and fields line up */
+.row select,
+.row input:not([type="checkbox"]):not([type="radio"]),
+.row button {
+  height: var(--control-height);
+}
+
+.hint {
+  margin-top: var(--space-4);
+}
+
+/* the reviewer's "demo mode" notice: one slim line, not a block on every page */
+.demo-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.4rem var(--page-gutter);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-bottom: 1px solid var(--warn-line);
+  font-size: var(--text-sm);
+}
+
+.demo-strip .icon {
+  flex: none;
+}
+
+body.no-scroll {
+  overflow: hidden;
+}
+
+/* a sentence with the one button that acts on it */
+.inline-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+}
+
+.inline-action p {
+  margin: 0;
+  flex: 1 1 18rem;
+}
+
+/* table cells that hold a name or a time stay on one line */
+.stack td[data-label="Doctor"],
+.stack td[data-label="Time"] {
+  white-space: nowrap;
+}
+
+.avatar-sm {
+  font-size: 0.8rem;
+}
+
+.avatar-md {
+  font-size: 0.9rem;
+}
+
+.clock-toggle {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  /* thumbs: every control is at least 44px tall */
+  button,
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  .small,
+  td .actions button,
+  .actions button,
+  .clock-bar input,
+  .clock-bar button {
+    min-height: 2.75rem;
+  }
+
+  button.link {
+    padding-block: 0.7rem;
+  }
+
+  .nav a {
+    min-height: 3rem;
+  }
+
+  /* the test clock folds away behind one button */
+  .clock-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .clock-bar:not(.open) .clock-controls {
+    display: none;
+  }
+
+  .row select,
+  .row input:not([type="checkbox"]):not([type="radio"]),
+  .row button {
+    height: auto;
+  }
+
+  .demo-strip {
+    padding-inline: var(--page-gutter);
+    font-size: var(--text-xs);
+  }
+}
+
+/* ------------------------------------------------------- audit fixes, second round */
+/* opening the phone menu makes it visible at once, so focus can move into it; closing still
+   slides it away before hiding it */
+@media (max-width: 960px) {
+  .sidebar.open {
+    transition:
+      transform 200ms ease,
+      visibility 0s;
+  }
+}
+
+/* a focused field always shows a ring that does not wait for a transition */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 18%, transparent);
+}
+
+.avatar-sm {
+  font-size: 0.82rem;
+}
+
+@media (max-width: 640px) {
+  /* links that stand alone in a list or a table are touch targets too */
+  .list-main a,
+  .visit-main a,
+  .doctor-day-name a,
+  .doctor-day-figures a,
+  .panel-head a,
+  td a,
+  .page-description a {
+    display: inline-block;
+    padding-block: 0.55rem;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+}
+
+/* the queue's action buttons get room for two to a line */
+@media (min-width: 961px) {
+  .stack td[data-label="Actions"] {
+    min-width: 12.5rem;
   }
 }

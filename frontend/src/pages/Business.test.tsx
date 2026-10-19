@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
+import { Route, Routes } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import App from "../App";
@@ -6,7 +7,9 @@ import type { Delivery, Policy, Trends } from "../api/types";
 import { resetSessionCache, setSession } from "../lib/authStore";
 import { installFakeApi } from "../test/fakeApi";
 import { appointment, clockInfo, doctor, renderPage } from "../test/utils";
+import { ClockBar } from "../components/ClockBar";
 import MyDay from "./MyDay";
+import { PatientDetail } from "./Patients";
 import Policies from "./Policies";
 import Reports from "./Reports";
 import Messages from "./Messages";
@@ -532,5 +535,65 @@ describe("staff: doctor logins and reset codes", () => {
     renderPage(<Staff />);
     expect(await screen.findByText(/Doctor/, { selector: "span" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Role of dr.rao")).not.toBeInTheDocument();
+  });
+});
+
+describe("text that quotes the clinic's rules follows them", () => {
+  it("a patient's deposit rule uses the clinic's strike count and look-back", async () => {
+    installFakeApi({
+      ...open,
+      "GET /policy": { body: policy({ strikes: 3, strike_lookback_days: 45 }) },
+      "GET /patients/1": {
+        body: {
+          id: 1,
+          name: "Meera Iyer",
+          phone: "+919000000001",
+          date_of_birth: "1990-01-01",
+          created_at_utc: "2026-10-01T00:00:00Z",
+          deposit_required: false,
+          deposit: {
+            required: false,
+            required_until_utc: null,
+            required_until_ist: null,
+            reasons: [],
+          },
+          consent_at_utc: null,
+          consent_by: null,
+          erased: false,
+        },
+      },
+      "GET /patients/1/appointments": { body: { items: [], total: 0, limit: 50, offset: 0 } },
+      "GET /patients/1/waitlist": { body: [] },
+    });
+    renderPage(
+      <Routes>
+        <Route path="/patients/:id" element={<PatientDetail />} />
+      </Routes>,
+      "/patients/1",
+    );
+    expect(
+      await screen.findByText(/3 late cancellations or no-shows within 45 days/),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/No late cancellations or no-shows in the last 45 days/),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("the clock strip on a phone", () => {
+  it("has a button that shows and hides the test clock controls", async () => {
+    installFakeApi({
+      ...open,
+      "GET /clock": { body: clockInfo() },
+    });
+    const user = userEvent.setup();
+    renderPage(<ClockBar />);
+    const toggle = await screen.findByRole("button", { name: "Change the test clock" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(screen.getByRole("button", { name: "Hide the clock controls" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 });

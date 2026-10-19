@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError } from "../api/client";
-import { usePatient, usePatientAppointments, useUpdatePatient } from "../api/hooks";
+import { usePatient, usePatientAppointments, usePolicy, useUpdatePatient } from "../api/hooks";
 import type { Patient } from "../api/types";
 import { ActionButtons } from "../components/ActionButtons";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
@@ -21,7 +21,23 @@ export function PatientSearch() {
       <div className="card">
         <PatientPicker onSelect={(patient) => navigate(`/patients/${patient.id}`)} />
       </div>
+      <p className="muted hint">
+        Search by the 10-digit mobile number (the quickest way) or by the start of a name. Someone
+        new to the clinic? Choose New patient.
+      </p>
     </div>
+  );
+}
+
+function DepositRule() {
+  const policy = usePolicy().data;
+  const strikes = policy?.strikes ?? 2;
+  const days = policy?.strike_lookback_days ?? 30;
+  return (
+    <p className="muted">
+      {strikes} late cancellations or no-shows within {days} days mean a deposit must be
+      acknowledged when booking.
+    </p>
   );
 }
 
@@ -70,10 +86,7 @@ export function PatientDetail() {
       <section className="card" aria-label="Deposit status">
         <h2>Deposit status</h2>
         {p.deposit ? <DepositExplanation deposit={p.deposit} /> : null}
-        <p className="muted">
-          Two late cancellations or no-shows within 30 days mean a deposit must be acknowledged when
-          booking.
-        </p>
+        <DepositRule />
       </section>
 
       <PrivacyPanel patient={p} />

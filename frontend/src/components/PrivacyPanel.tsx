@@ -31,12 +31,14 @@ export function PrivacyPanel({ patient }: { patient: Patient }) {
   return (
     <section className="card" aria-label="Privacy">
       <h2>Privacy</h2>
-      <p>
-        {patient.consent_at_utc
-          ? `Accepted the privacy notice${patient.consent_by === "GUARDIAN" ? " by a parent or guardian" : ""} on ${formatIST(patient.consent_at_utc)}.`
-          : child
-            ? "This patient is under 18: a parent or guardian must accept the privacy notice, and it has not been recorded."
-            : "The patient's acceptance of the privacy notice has not been recorded."}{" "}
+      <div className="inline-action">
+        <p>
+          {patient.consent_at_utc
+            ? `Accepted the privacy notice${patient.consent_by === "GUARDIAN" ? " by a parent or guardian" : ""} on ${formatIST(patient.consent_at_utc)}.`
+            : child
+              ? "This patient is under 18: a parent or guardian must accept the privacy notice, and it has not been recorded."
+              : "The patient's acceptance of the privacy notice has not been recorded."}
+        </p>
         <button
           type="button"
           onClick={() =>
@@ -50,11 +52,11 @@ export function PrivacyPanel({ patient }: { patient: Patient }) {
               ? "Record guardian's consent"
               : "Record consent"}
         </button>
-      </p>
+      </div>
       {consent.error && <ErrorBanner error={consent.error} />}
 
       {!confirming ? (
-        <button type="button" onClick={() => setConfirming(true)}>
+        <button type="button" className="danger" onClick={() => setConfirming(true)}>
           Erase this patient&apos;s data…
         </button>
       ) : (

@@ -3,6 +3,8 @@ import { useLocation } from "react-router";
 import { Banner } from "./common";
 
 const TITLES: [prefix: string, title: string][] = [
+  ["/my-day", "My day"],
+  ["/policies", "Clinic rules"],
   ["/day", "Day view"],
   ["/book", "Book an appointment"],
   ["/queue", "Queue"],
@@ -17,8 +19,9 @@ const TITLES: [prefix: string, title: string][] = [
 
 /** The tab title for a path, so a screen-reader user and the browser history both say where they are. */
 export const titleFor = (path: string): string => {
+  if (path === "/") return "Overview · Clinic Scheduler";
   const match = TITLES.find(([prefix]) => path === prefix || path.startsWith(`${prefix}/`));
-  return match ? `${match[1]} · Clinic Scheduler` : "Clinic Scheduler";
+  return match ? `${match[1]} · Clinic Scheduler` : "Page not found · Clinic Scheduler";
 };
 
 /**

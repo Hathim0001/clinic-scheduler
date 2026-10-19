@@ -29,10 +29,18 @@ describe("error messages", () => {
   it.each([
     ["PATIENT_OVERLAP", "This patient already has an appointment at that time."],
     ["BOOKING_IN_PAST", "That time has passed."],
-    ["BOOKING_TOO_FAR", "Bookings open up to 60 days ahead."],
     ["TOO_EARLY_TO_MARK", "An appointment can only be marked once it has started."],
   ])("%s", (code, message) => {
     expect(describeError(error(code)).message).toBe(message);
+  });
+
+  it("names the clinic's own booking horizon when the server sends it", () => {
+    expect(describeError(error("BOOKING_TOO_FAR", { horizon_days: 45 })).message).toBe(
+      "Bookings open up to 45 days ahead.",
+    );
+    expect(describeError(error("BOOKING_TOO_FAR")).message).toBe(
+      "That date is further ahead than the clinic takes bookings.",
+    );
   });
 
   it("keeps the request id so a failure can be found in the server logs", () => {

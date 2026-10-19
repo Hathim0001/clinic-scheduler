@@ -1,4 +1,5 @@
 import { ApiError } from "../../api/client";
+import { usePolicy } from "../../api/hooks";
 import { Banner } from "../common";
 
 export type Mover = "PATIENT" | "CLINIC";
@@ -11,6 +12,7 @@ export function MoverFieldset({
   mover: Mover;
   onChange: (mover: Mover) => void;
 }) {
+  const lateHours = usePolicy().data?.late_cancel_hours ?? 2;
   return (
     <fieldset>
       <legend>Who is moving it?</legend>
@@ -21,7 +23,7 @@ export function MoverFieldset({
           checked={mover === "PATIENT"}
           onChange={() => onChange("PATIENT")}
         />
-        The patient (a move inside 2 hours is recorded as a late cancellation)
+        The patient (a move inside {lateHours} hours is recorded as a late cancellation)
       </label>
       <label className="check">
         <input

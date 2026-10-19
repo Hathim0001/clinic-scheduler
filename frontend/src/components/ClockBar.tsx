@@ -13,6 +13,7 @@ export function ClockBar() {
   const info = useClockInfo();
   const [draft, setDraft] = useState(() => (testClock ? isoToIstInput(testClock) : ""));
   const seedDay = info.data?.seed_queue_day ?? null;
+  const [open, setOpen] = useState(false);
 
   const apply = (event: FormEvent) => {
     event.preventDefault();
@@ -20,7 +21,7 @@ export function ClockBar() {
   };
 
   return (
-    <section className="clock-bar" aria-label="Clock">
+    <section className={open ? "clock-bar open" : "clock-bar"} aria-label="Clock">
       {testClock && (
         <span className="test-clock-badge">TEST CLOCK ACTIVE: {formatIST(testClock)}</span>
       )}
@@ -31,7 +32,17 @@ export function ClockBar() {
         </span>
       )}
       {info.data?.test_clock_enabled && (
-        <form className="row" onSubmit={apply}>
+        <button
+          type="button"
+          className="clock-toggle small"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "Hide the clock controls" : "Change the test clock"}
+        </button>
+      )}
+      {info.data?.test_clock_enabled && (
+        <form className="row clock-controls" onSubmit={apply}>
           <label>
             <span className="visually-hidden">Test clock, India time</span>
             <input
@@ -52,7 +63,7 @@ export function ClockBar() {
         </form>
       )}
       {testClock && (
-        <button type="button" onClick={clearTestClock}>
+        <button type="button" className="clock-controls" onClick={clearTestClock}>
           Use the real time
         </button>
       )}

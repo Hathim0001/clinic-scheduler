@@ -2,7 +2,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { useAuthStatus, useChangePassword, useLogin, useResetPassword } from "../api/hooks";
 import { getSession, setSession, subscribeSession } from "../lib/authStore";
-import { Banner, ErrorBanner, Skeleton } from "./common";
+import { ErrorBanner, Skeleton } from "./common";
+import { Icon } from "./ui";
+import { Modal } from "./Modal";
 
 export function useSession() {
   return useSyncExternalStore(subscribeSession, getSession);
@@ -137,14 +139,8 @@ export function ChangePasswordDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="overlay" role="presentation">
-      <form
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="change-password-title"
-        onSubmit={submit}
-      >
+    <Modal labelledBy="change-password-title" onClose={onClose} closeOnBackdrop={false}>
+      <form onSubmit={submit}>
         <h2 id="change-password-title">Change your password</h2>
         <p className="muted">You will be signed out and can sign in again with the new one.</p>
         <label>
@@ -194,7 +190,7 @@ export function ChangePasswordDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 
@@ -309,10 +305,13 @@ export function OpenAccessBanner() {
   const status = useAuthStatus();
   if (!status.data?.open_access) return null;
   return (
-    <Banner kind="warn">
-      Sign-in is switched off on this server, so anyone with the link can read patient names and
-      phone numbers. That is meant for a demo only.
-    </Banner>
+    <div className="demo-strip" role="status">
+      <Icon name="alert" size={16} />
+      <span>
+        <strong>Demo mode.</strong> Sign-in is switched off, so anyone with the link can read
+        patient names and phone numbers.
+      </span>
+    </div>
   );
 }
 

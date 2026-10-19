@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
 import { formatIST } from "../lib/formatIST";
+import { Modal } from "./Modal";
 
 export interface ConflictedAppointment {
   id: number;
@@ -18,12 +18,9 @@ interface Props {
 
 /** Shown when a change to a doctor's hours would leave booked appointments outside the new hours. */
 export function ConflictDialog({ message, appointments, busy, onConfirm, onCancel }: Props) {
-  const backButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => backButton.current?.focus(), []);
-
   return (
-    <div className="overlay">
-      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+    <Modal labelledBy="conflict-title" onClose={onCancel}>
+      <div>
         <h2 id="conflict-title">Booked appointments would be affected</h2>
         <p>{message}</p>
         <ul>
@@ -39,7 +36,7 @@ export function ConflictDialog({ message, appointments, busy, onConfirm, onCance
           moves or cancels them.
         </p>
         <div className="actions">
-          <button type="button" ref={backButton} onClick={onCancel}>
+          <button type="button" onClick={onCancel}>
             Go back
           </button>
           <button type="button" className="danger" disabled={busy} onClick={onConfirm}>
@@ -47,7 +44,7 @@ export function ConflictDialog({ message, appointments, busy, onConfirm, onCance
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

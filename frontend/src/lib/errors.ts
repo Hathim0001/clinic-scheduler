@@ -61,7 +61,13 @@ export function describeError(error: unknown, context: Context = {}): FriendlyEr
     case "BOOKING_IN_PAST":
       return { ...base, message: "That time has passed." };
     case "BOOKING_TOO_FAR":
-      return { ...base, message: "Bookings open up to 60 days ahead." };
+      return {
+        ...base,
+        message:
+          typeof error.details.horizon_days === "number"
+            ? `Bookings open up to ${error.details.horizon_days} days ahead.`
+            : "That date is further ahead than the clinic takes bookings.",
+      };
     case "DEPOSIT_REQUIRED":
       return {
         ...base,
@@ -155,7 +161,7 @@ export const REASON_TEXT: Record<string, string> = {
   DAILY_CAP_REACHED: "The doctor has reached the daily limit of appointments for this date.",
   FULLY_BOOKED: "Every slot on this date is taken.",
   DATE_IN_PAST: "This date, or the rest of it, has passed.",
-  DATE_TOO_FAR: "Bookings open up to 60 days ahead.",
+  DATE_TOO_FAR: "That date is further ahead than the clinic takes bookings.",
   NOT_ACCEPTING: "The doctor is not taking new bookings at the moment.",
 };
 

@@ -105,7 +105,8 @@ describe("the sign-in gate", () => {
       </AuthGate>,
     );
     expect(await screen.findByText("the app")).toBeInTheDocument();
-    expect(screen.getByText(/Sign-in is switched off on this server/)).toBeInTheDocument();
+    expect(screen.getByText("Demo mode.")).toBeInTheDocument();
+    expect(screen.getByText(/Sign-in is switched off/)).toBeInTheDocument();
   });
 
   it("lets someone choose a new password with a reset code", async () => {

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router";
 import { useAuthStatus, useNeedsAttention, usePendingMessages } from "./api/hooks";
 import { SERVER_ROOT } from "./api/client";
 import { setSession } from "./lib/authStore";
 import { formatDayIST } from "./lib/formatIST";
+import { useFocusTrap } from "./lib/useFocusTrap";
 import { useToday } from "./lib/useToday";
 import {
   AuthGate,
@@ -75,7 +76,15 @@ function NavSection({ heading, items }: { heading: string; items: NavItem[] }) {
   );
 }
 
-function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+function Sidebar({
+  open,
+  onClose,
+  containerRef,
+}: {
+  open: boolean;
+  onClose: () => void;
+  containerRef: React.RefObject<HTMLElement | null>;
+}) {
   const attention = useNeedsAttention().data?.total ?? 0;
   const messagesWaiting = usePendingMessages().data?.count ?? 0;
   const session = useSession();
@@ -131,7 +140,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
     });
 
   return (
-    <aside className={open ? "sidebar open" : "sidebar"} id="sidebar">
+    <aside className={open ? "sidebar open" : "sidebar"} id="sidebar" ref={containerRef}>
       <div className="sidebar-top">
         <Link to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
@@ -209,8 +218,11 @@ function NotFound() {
   return (
     <div>
       <h1>Page not found</h1>
+      <p className="muted">That address does not match a page in the app.</p>
       <p>
-        <Link to="/day">Go to the day view</Link>
+        <Link className="primary" to="/">
+          Go to the overview
+        </Link>
       </p>
     </div>
   );
@@ -223,27 +235,21 @@ function Shell() {
   // The menu belongs to the page it was opened on: moving to another page closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === pathname;
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenOn(null);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
+  const sidebarRef = useRef<HTMLElement>(null);
+  useFocusTrap(sidebarRef, open, () => setOpenOn(null));
 
   return (
     <div className={open ? "app-shell menu-open" : "app-shell"}>
-      <Sidebar open={open} onClose={() => setOpenOn(null)} />
+      <Sidebar open={open} onClose={() => setOpenOn(null)} containerRef={sidebarRef} />
       <div className="app-scrim" onClick={() => setOpenOn(null)} aria-hidden="true" />
       <div className="app-body">
+        <OpenAccessBanner />
         <header className="app-header">
           <Topbar onMenu={() => setOpenOn(open ? null : pathname)} menuOpen={open} />
         </header>
         <ClockBar />
         <main id="main" ref={main} tabIndex={-1}>
           <OfflineBanner />
-          <OpenAccessBanner />
           <WakeBanner />
           <UndoCancel />
           <Routes>

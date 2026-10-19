@@ -275,7 +275,12 @@ export default function Reports() {
           back. At most {MAX_DAYS} days.
         </p>
         {report.data && (
-          <div className="table-scroll" role="region" aria-label="Report by doctor" tabIndex={0}>
+          <div
+            className="table-scroll table-compact"
+            role="region"
+            aria-label="Report by doctor"
+            tabIndex={0}
+          >
             <table>
               <caption className="visually-hidden">
                 Appointments from {start} to {end}

@@ -1,13 +1,16 @@
+import { usePolicy } from "../api/hooks";
 import type { Deposit } from "../api/types";
 import { formatIST } from "../lib/formatIST";
 import { Banner } from "./common";
 
 const KIND_TEXT = { NO_SHOW: "No-show", LATE_CANCELLED: "Late cancellation" } as const;
 
-/** Explains why a patient is flagged: the strikes in the last 30 days and when the flag ends. */
+/** Explains why a patient is flagged: the strikes in the clinic's look-back period and when the flag ends. */
 export function DepositExplanation({ deposit }: { deposit: Deposit }) {
+  const days = usePolicy().data?.strike_lookback_days ?? 30;
+  const strikes = usePolicy().data?.strikes ?? 2;
   if (deposit.reasons.length === 0) {
-    return <p className="muted">No late cancellations or no-shows in the last 30 days.</p>;
+    return <p className="muted">No late cancellations or no-shows in the last {days} days.</p>;
   }
   return (
     <div>
@@ -18,7 +21,9 @@ export function DepositExplanation({ deposit }: { deposit: Deposit }) {
             {deposit.required_until_ist ? ` until ${formatIST(deposit.required_until_ist)}` : ""}.
           </strong>
         ) : (
-          <span>One strike so far: a deposit is only required from the second.</span>
+          <span>
+            {deposit.reasons.length} so far: a deposit is only required from {strikes}.
+          </span>
         )}
       </p>
       <ul>

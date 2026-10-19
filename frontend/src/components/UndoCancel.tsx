@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useUndoCancel } from "../api/hooks";
+import { usePolicy, useUndoCancel } from "../api/hooks";
 import { forgetCancel, useLastCancel } from "../lib/lastCancel";
 import { formatDayIST, formatTimeIST } from "../lib/formatIST";
 import { ErrorBanner } from "./common";
 
-// The server allows 10 minutes; the bar goes a little sooner so it never offers a dead button.
-const SHOW_FOR_MS = 9 * 60 * 1000;
+// The bar goes a minute sooner than the server's undo window, so it never offers a dead button.
+const showForMs = (undoMinutes: number) => Math.max(0, undoMinutes - 1) * 60 * 1000;
 
 /**
  * Offered right after a cancellation, wherever the person has gone since: one press takes it back.
@@ -14,18 +14,19 @@ const SHOW_FOR_MS = 9 * 60 * 1000;
 export function UndoCancel() {
   const last = useLastCancel();
   const undo = useUndoCancel();
+  const undoMinutes = usePolicy().data?.undo_minutes ?? 10;
   const [restored, setRestored] = useState<string | null>(null);
 
   useEffect(() => {
     if (!last) return;
-    const left = SHOW_FOR_MS - (Date.now() - last.at);
+    const left = showForMs(undoMinutes) - (Date.now() - last.at);
     if (left <= 0) {
       forgetCancel();
       return;
     }
     const timer = window.setTimeout(forgetCancel, left);
     return () => window.clearTimeout(timer);
-  }, [last]);
+  }, [last, undoMinutes]);
 
   if (!last && !restored && !undo.error) return null;
   const appointment = last?.appointment;
