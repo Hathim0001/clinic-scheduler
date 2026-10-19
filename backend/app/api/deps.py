@@ -29,6 +29,7 @@ from app.services.patient_service import PatientService
 from app.services.policy_service import PolicyService
 from app.services.record_service import RecordService
 from app.services.staff_service import StaffService
+from app.services.trends_service import TrendsService
 from app.services.waitlist_service import WaitlistService
 
 TEST_CLOCK_HEADER = "x-test-clock"
@@ -48,6 +49,7 @@ class Services:
     staff: StaffService
     notifications: NotificationService
     policy: PolicyService
+    trends: TrendsService
 
     @classmethod
     def build(cls, factory: sessionmaker[Session]) -> Services:
@@ -66,6 +68,7 @@ class Services:
             staff=StaffService(factory),
             notifications=NotificationService(factory),
             policy=PolicyService(factory),
+            trends=TrendsService(factory),
         )
 
 

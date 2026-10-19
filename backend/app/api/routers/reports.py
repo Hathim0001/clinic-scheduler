@@ -5,16 +5,19 @@ from __future__ import annotations
 import csv
 import io
 from dataclasses import asdict
+from datetime import date
 
 from fastapi import APIRouter
 from fastapi.responses import Response
+from pydantic import BaseModel
 
 from app.api.deps import ServicesDep
-from app.api.params import RangeEnd, RangeStart
+from app.api.params import OptionalId, RangeEnd, RangeStart
 from app.api.presenters import report_out
 from app.api.schemas.requests import TriageRequest
 from app.api.schemas.responses import ReportOut, TriageOut
 from app.domain.triage import EMERGENCY_MESSAGE, looks_urgent
+from app.services.trends_service import TrendsView
 
 router = APIRouter(tags=["reports"])
 
@@ -58,6 +61,97 @@ def summary_csv(start: RangeStart, end: RangeEnd, services: ServicesDep) -> Resp
         out.getvalue(),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="report-{start}-{end}.csv"'},
+    )
+
+
+class DayTrendOut(BaseModel):
+    date: date
+    scheduled: int
+    completed: int
+    no_show: int
+    cancelled: int
+    upcoming: int
+
+
+class BucketOut(BaseModel):
+    key: int  # weekday (Monday is 0) or hour of the India day
+    scheduled: int
+    completed: int
+    no_show: int
+    no_show_rate: float | None
+
+
+class ReminderEffectOut(BaseModel):
+    reminded_visits: int
+    reminded_no_shows: int
+    other_visits: int
+    other_no_shows: int
+
+
+class TrendsOut(BaseModel):
+    start: date
+    end: date
+    doctor_id: int | None
+    days: list[DayTrendOut]
+    weekdays: list[BucketOut]
+    hours: list[BucketOut]
+    reminder_effect: ReminderEffectOut
+
+
+def trends_out(view: TrendsView) -> TrendsOut:
+    return TrendsOut(
+        start=view.start,
+        end=view.end,
+        doctor_id=view.doctor_id,
+        days=[
+            DayTrendOut(
+                date=d.day,
+                scheduled=d.scheduled,
+                completed=d.completed,
+                no_show=d.no_show,
+                cancelled=d.cancelled,
+                upcoming=d.upcoming,
+            )
+            for d in view.days
+        ],
+        weekdays=[BucketOut(**asdict(b)) for b in view.weekdays],
+        hours=[BucketOut(**asdict(b)) for b in view.hours],
+        reminder_effect=ReminderEffectOut(**asdict(view.reminder_effect)),
+    )
+
+
+@router.get(
+    "/reports/trends",
+    response_model=TrendsOut,
+    summary="How each day went, the busiest weekdays and hours, and the effect of reminders",
+)
+def trends(
+    start: RangeStart, end: RangeEnd, services: ServicesDep, doctor_id: OptionalId = None
+) -> TrendsOut:
+    """At most 92 days, for every doctor or one (`doctor_id`). A moved visit is left out of every
+    outcome. The no-show rate is no-shows out of completed plus no-shows. `reminder_effect`
+    compares visits whose patient was sent a reminder with the rest."""
+    return trends_out(services.trends.trends(start, end, doctor_id))
+
+
+@router.get(
+    "/reports/trends.csv",
+    response_class=Response,
+    summary="The per-day series of the trends report as a CSV file",
+)
+def trends_csv(
+    start: RangeStart, end: RangeEnd, services: ServicesDep, doctor_id: OptionalId = None
+) -> Response:
+    view = services.trends.trends(start, end, doctor_id)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(["date", "scheduled", "completed", "no_show", "cancelled", "upcoming"])
+    for d in view.days:
+        writer.writerow([d.day, d.scheduled, d.completed, d.no_show, d.cancelled, d.upcoming])
+    return Response(
+        out.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="trends-{start}-{end}.csv"'},
     )
 
 
