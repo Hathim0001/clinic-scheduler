@@ -1,5 +1,5 @@
 /*
- * Clinic Scheduler design system. The direction is written down in DESIGN-BRIEF.md.
+ * Clinic Scheduler design system.
  *
  * One file, in layers: tokens, base, layout, forms, buttons, banners, the timetable and status,
  * tables, feedback, responsive. Every colour, space, radius and shadow comes from a token, so a
@@ -2597,7 +2597,7 @@ textarea:focus-visible {
 }
 
 /* ======================================================================================
- * The KJBN Labs language, as a clinic. Taken from kjbnlabs.in (docs/KJBN-REFERENCE.md):
+ * The KJBN Labs language, as a clinic. Taken from kjbnlabs.in:
  * warm paper with a faint grain, ink-green text, one deep petrol block as the signature, a single
  * saffron accent, hairline rules instead of boxes, Playfair Display for titles over Inter, and
  * small tracked labels. Adapted for work all day: denser tables, visible borders on controls, and

@@ -21,9 +21,14 @@ configuration.
 | API base | https://clinic-api-pn9t.onrender.com/api/v1 |
 | API docs (OpenAPI) | https://clinic-api-pn9t.onrender.com/docs |
 
-Sign-in is **required by default**: patient names and phones must not be readable by anyone with the link. A fresh server with nothing set up refuses every clinical route and says what to set (`AUTH_SECRET`, and `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` for the first administrator). The assignment makes authentication optional, so for a demo or a review `ALLOW_OPEN_ACCESS=true` leaves the app open on purpose, and every page then carries a warning that sign-in is off (see the settings table). The local `docker compose` stack sets it for you. **Cold start:** on Render's free plan the API sleeps when idle and the
-first request can take about a minute; a scheduled workflow pings it every 10 minutes to keep it awake (section 11). The UI says "Waking the server" instead of showing a blank
-page.
+**Sign-in.** Sign-in is required by default, so that patient names and phone numbers are not readable
+by anyone holding the link. The assignment makes authentication optional, so the hosted instance is
+deliberately left open for the review (`ALLOW_OPEN_ACCESS=true`) and every page says so. The local
+`docker compose` stack does the same. Section 5 lists the settings that switch sign-in on.
+
+**Cold start.** On Render's free plan the API sleeps when idle and the first request can take about a
+minute. A scheduled workflow pings it every 10 minutes to keep it awake (section 11), and the UI shows
+"Waking the server" instead of a blank page.
 
 ## 3. Tech stack
 
@@ -77,7 +82,7 @@ overlaps; commit. Any domain error rolls everything back and leaves the standard
 | `backend/scripts/` | `migrate_and_seed.py`, `seed.py`, `run_tests.py`, `burst.py` |
 | `backend/tests/` | `unit/` (no database), `integration/` (PostgreSQL, including race tests), `api/` (through HTTP) |
 | `frontend/` | The React app and its tests |
-| `docs/` | `sample-logs.jsonl` (real log lines) and `prompts/` (the full planning brief) |
+| `docs/` | `CODE-TOUR.md`, `DESIGN-NOTES.md`, `PRIVACY-AND-OPERATIONS.md`, `sample-logs.jsonl` (real log lines), `prompts/` (the full planning brief) and `screenshots/` |
 | `.github/workflows/ci.yml`, `docker-compose.yml`, `render.yaml` | CI, local stack, hosting |
 
 **Where the rules live, and why there.** The rules are in `backend/app/domain/` because they are the
@@ -354,7 +359,7 @@ the other way are A-05, A-08, A-10, A-12 and A-16.
 | A-17 | The API returns UTC and India time, accepts any explicit offset and refuses a time without one |
 | A-18 | Completed and no-show can only be marked at or after the start |
 | A-19 | Completed, cancelled, late-cancelled and no-show are final, with one exception (A-48): a wrongly recorded outcome can be corrected |
-| A-20 | A single clinic. Authentication is optional and off by default (A-53, A-62) |
+| A-20 | A single clinic. Sign-in is required unless `ALLOW_OPEN_ACCESS` is set (A-53, A-62) |
 | A-21 | A "day" for the cap is the India calendar date of the start |
 | A-22 | The trailing 30 days are the closed interval from now minus 30 x 24 hours to now |
 | A-27 | `needs_attention` means: booked, starting at or after now, and outside the doctor's effective windows. It is stored as `appointments.outside_hours`, refreshed in the same transaction as any change to hours, and a test checks it against the rule (A-67) |
@@ -527,22 +532,27 @@ limitations; items it makes optional or leaves out are.
 
 ## 12. AI and third-party usage
 
-- **Claude Code (Anthropic)** wrote most of this repository: the plan, the experiments that tested the
-  design (concurrency, schema, hostile input), the domain rules, the services, the API, the React
-  app, the tests, the container and CI configuration, and this documentation. The assignment
-  suggests writing the business rules by hand; here they were written by the assistant from the
-  plan, so the person submitting this has to read and understand them before the review call.
-  Every commit is authored by the repository owner (`Hathim0001`); the commits carry no AI
-  co-author trailer, so the record of what the assistant did is this section, `PROMPTS.md` and
-  `SUBMISSION.md`, not the commit metadata.
-- **To explain it live:** [docs/CODE-TOUR.md](docs/CODE-TOUR.md) maps every rule to the code that
-  decides it and the test that proves it, and lists drills (change a number, say what fails and why).
-- **Every prompt** given to it is logged in [PROMPTS.md](PROMPTS.md), with what was done with the
-  answer. The full planning brief is in
-  [docs/prompts/01-planning-brief.md](docs/prompts/01-planning-brief.md).
-- Names and phone numbers in the seed data are invented.
-- **Third-party software** is only what is pinned in `backend/requirements*.txt` and
-  `frontend/package-lock.json` (FastAPI, SQLAlchemy, Alembic, Pydantic, structlog, psycopg, pytest,
-  Hypothesis, ruff, mypy, React, Vite, TanStack Query, React Router, Vitest, Testing Library, ESLint)
-  and the official PostgreSQL, Python, Node and nginx images. No template or starter project was
-  copied.
+**AI assistant.** Claude Code (Anthropic) was used throughout, and it wrote most of the repository: the
+plan, the experiments that tested the design (concurrency, schema, hostile input), the domain rules,
+the services, the API, the React application, the tests, the container and CI configuration, and the
+documentation. The rules themselves come from the problem statement; the interpretations and
+decisions are recorded as assumptions in section 8 and in [docs/DESIGN-NOTES.md](docs/DESIGN-NOTES.md).
+The assignment suggests writing the business rules by hand. Here the assistant wrote them from a plan,
+so the author reviews and must be able to explain each one.
+
+**Prompt log.** Every prompt is in [PROMPTS.md](PROMPTS.md), with what was done with the answer. The
+full planning brief is in [docs/prompts/01-planning-brief.md](docs/prompts/01-planning-brief.md).
+
+**Explaining the code.** [docs/CODE-TOUR.md](docs/CODE-TOUR.md) maps each rule to the code that
+decides it and the test that proves it, and lists exercises (change a number, predict what fails).
+
+**Commit authorship.** Every commit is authored by the repository owner (`Hathim0001`). The commits
+carry no AI co-author trailer, so the record of the assistant's work is this section, `PROMPTS.md` and
+`SUBMISSION.md`, not the commit metadata.
+
+**Third-party software.** Only what is pinned in `backend/requirements*.txt` and
+`frontend/package-lock.json` (FastAPI, SQLAlchemy, Alembic, Pydantic, structlog, psycopg, pytest,
+Hypothesis, ruff, mypy, React, Vite, TanStack Query, React Router, Vitest, Testing Library, ESLint),
+the official PostgreSQL, Python, Node and nginx images, and the Inter, Playfair Display and JetBrains
+Mono typefaces (open licence, bundled). No template or starter project was copied. Names and phone
+numbers in the seed data are invented.
