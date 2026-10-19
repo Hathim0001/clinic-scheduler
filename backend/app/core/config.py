@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from datetime import date
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
@@ -50,6 +51,12 @@ class Settings(BaseSettings):
     # Unset (the default) sends nothing: messages wait on the Messages page for reception.
     notify_webhook_url: str | None = Field(default=None, min_length=8)
     notify_webhook_token: str | None = None
+    # Or send straight through a Twilio account: all three must be set. NOTIFY_CHANNEL chooses SMS
+    # or WhatsApp; for WhatsApp, TWILIO_FROM is your approved WhatsApp sender number.
+    twilio_account_sid: str | None = Field(default=None, min_length=8)
+    twilio_auth_token: str | None = Field(default=None, min_length=8)
+    twilio_from: str | None = Field(default=None, min_length=5)
+    notify_channel: Literal["sms", "whatsapp"] = "sms"
     # Optional: when set, GET /metrics needs `Authorization: Bearer <token>`. Unset leaves it open
     # (it holds counts only, never paths, ids or personal data).
     metrics_token: str | None = Field(default=None, min_length=8)
@@ -57,12 +64,28 @@ class Settings(BaseSettings):
     offer_sweep_interval_s: int = Field(default=30, ge=0, le=3600)
 
     @field_validator(
-        "staff_password", "auth_secret", "notify_webhook_url", "metrics_token", mode="before"
+        "staff_password",
+        "auth_secret",
+        "notify_webhook_url",
+        "metrics_token",
+        "twilio_account_sid",
+        "twilio_auth_token",
+        "twilio_from",
+        mode="before",
     )
     @classmethod
     def _blank_means_off(cls, value: object) -> object:
         """An empty STAFF_PASSWORD (a variable that exists but holds nothing) leaves login off."""
         return None if isinstance(value, str) and not value.strip() else value
+
+    @model_validator(mode="after")
+    def _twilio_needs_all_three(self) -> Settings:
+        given = [self.twilio_account_sid, self.twilio_auth_token, self.twilio_from]
+        if any(given) and not all(given):
+            raise ValueError(
+                "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM must all be set together"
+            )
+        return self
 
     @property
     def auth_required(self) -> bool:

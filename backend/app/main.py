@@ -41,14 +41,16 @@ from app.api.routers import (
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.persistence.db import create_db_engine, create_session_factory
-from app.services.notification_service import WebhookProvider
+from app.services.gateways import provider_from_settings
+from app.services.notification_service import Provider
 
 API_PREFIX = "/api/v1"
 log = structlog.get_logger()
 
 
-async def _sweep_offers(app: FastAPI, interval_s: int, provider: WebhookProvider | None) -> None:
-    """Every `interval_s` seconds, pass lapsed waitlist offers to the next patient in line.
+async def _sweep_offers(app: FastAPI, interval_s: int, provider: Provider | None) -> None:
+    """Every `interval_s` seconds: pass lapsed waitlist offers to the next patient, queue the
+    reminders that have come due and, with a gateway configured, send what is waiting.
 
     It runs on the real clock (a test clock only applies to a request) and never stops on an error:
     a database hiccup is logged and the next round tries again.
@@ -61,6 +63,11 @@ async def _sweep_offers(app: FastAPI, interval_s: int, provider: WebhookProvider
             )
             if moved:
                 log.info("waitlist.swept", doctors=moved)
+            reminders = await anyio.to_thread.run_sync(
+                app.state.services.notifications.schedule_reminders, datetime.now(UTC)
+            )
+            if reminders:
+                log.info("reminders.queued", count=reminders)
             if provider is not None:
                 await anyio.to_thread.run_sync(
                     app.state.services.notifications.dispatch, provider, datetime.now(UTC)
@@ -88,11 +95,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     factory = create_session_factory(engine)
 
-    provider = (
-        WebhookProvider(settings.notify_webhook_url, settings.notify_webhook_token)
-        if settings.notify_webhook_url
-        else None
-    )
+    provider = provider_from_settings(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:

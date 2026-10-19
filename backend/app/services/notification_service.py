@@ -25,12 +25,14 @@ from datetime import datetime, timedelta
 from typing import Protocol
 
 import structlog
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.domain.errors import ConflictError, ErrorCode, NotFoundError
 from app.domain.violations import ist_text
-from app.persistence.models import Notification, Patient
+from app.persistence import repositories as repo
+from app.persistence.models import Appointment, AppointmentEvent, Doctor, Notification, Patient
 from app.services.support import run
 from app.services.views import Page
 
@@ -40,6 +42,8 @@ MAX_ATTEMPTS = 3
 LEASE = timedelta(minutes=2)  # how long a claimed message is left alone while it is being sent
 BATCH = 50
 STATUSES = ("PENDING", "SENT", "FAILED", "SKIPPED")
+REMINDER_KINDS = ("REMINDER_FIRST", "REMINDER_SECOND")
+REMINDER_BATCH = 200
 
 
 class Provider(Protocol):
@@ -123,6 +127,13 @@ def restored_text(doctor: str, start: datetime) -> str:
     return (
         f"Good news: your appointment with {doctor} on {ist_text(start)} (India time) "
         "is back on. The cancellation was undone."
+    )
+
+
+def reminder_text(doctor: str, start: datetime) -> str:
+    return (
+        f"Reminder: you have an appointment with {doctor} on {ist_text(start)} (India time). "
+        "Please call the clinic if you cannot come, so the time can go to someone else."
     )
 
 
@@ -222,6 +233,115 @@ class NotificationService:
             row.status, row.sent_at, row.sent_via = "SENT", now, "MANUAL"
             session.flush()
             return _view(row)
+
+        return run(self._factory, work)
+
+    def schedule_reminders(self, now: datetime) -> int:
+        """Queue the reminders that have come due; returns how many were queued.
+
+        A reminder is due when the visit is still ahead, is no more than the clinic's reminder lead
+        away, and was booked before that moment (a visit booked three hours ahead needs no "24 hours
+        before" message on top of its confirmation). Each kind is queued once per appointment: a
+        unique index guarantees it even when two servers run this at the same time. Reminders still
+        waiting for a visit that has since been cancelled or moved are withdrawn. Run it on a timer;
+        it is cheap and safe to repeat.
+        """
+
+        def work(session: Session) -> int:
+            policy = repo.load_policy(session)
+            leads = (
+                ("REMINDER_FIRST", policy.reminder_first_hours),
+                ("REMINDER_SECOND", policy.reminder_second_hours),
+            )
+            queued = sum(
+                self._queue_due(session, kind, timedelta(hours=hours), now)
+                for kind, hours in leads
+                if hours > 0
+            )
+            self._withdraw_stale(session, now)
+            return queued
+
+        return run(self._factory, work)
+
+    @staticmethod
+    def _queue_due(session: Session, kind: str, lead: timedelta, now: datetime) -> int:
+        booked_at = func.coalesce(
+            select(func.min(AppointmentEvent.at))
+            .where(
+                AppointmentEvent.appointment_id == Appointment.id,
+                AppointmentEvent.kind == "BOOKED",
+            )
+            .correlate(Appointment)
+            .scalar_subquery(),
+            Appointment.created_at,
+        )
+        due = session.execute(
+            select(Appointment, Doctor.name, Patient)
+            .join(Doctor, Doctor.id == Appointment.doctor_id)
+            .join(Patient, Patient.id == Appointment.patient_id)
+            .where(
+                Appointment.status == "BOOKED",
+                Appointment.start_at > now,
+                Appointment.start_at <= now + lead,
+                booked_at <= Appointment.start_at - lead,
+                Patient.erased_at.is_(None),
+                ~exists().where(
+                    Notification.appointment_id == Appointment.id, Notification.kind == kind
+                ),
+            )
+            .order_by(Appointment.start_at, Appointment.id)
+            .limit(REMINDER_BATCH)
+        ).all()
+        queued = 0
+        for appointment, doctor_name, patient in due:
+            try:
+                with session.begin_nested():  # a lost race on the unique index costs nothing
+                    queue_message(
+                        session,
+                        patient,
+                        kind,
+                        reminder_text(doctor_name, appointment.start_at),
+                        appointment.id,
+                    )
+            except IntegrityError:
+                continue
+            queued += 1
+        return queued
+
+    @staticmethod
+    def _withdraw_stale(session: Session, now: datetime) -> None:
+        """Reminders that are still waiting for a visit that is over, cancelled or moved."""
+        stale = select(Appointment.id).where(
+            or_(Appointment.status != "BOOKED", Appointment.start_at <= now)
+        )
+        session.execute(
+            update(Notification)
+            .where(
+                Notification.kind.in_(REMINDER_KINDS),
+                Notification.status == "PENDING",
+                Notification.appointment_id.in_(stale),
+            )
+            .values(status="SKIPPED", last_error="The visit is no longer ahead; nothing to remind.")
+        )
+
+    def summary(self) -> dict[str, int]:
+        """How many messages are in each status, and how many were reminders sent by the gateway."""
+
+        def work(session: Session) -> dict[str, int]:
+            rows = session.execute(
+                select(Notification.status, func.count()).group_by(Notification.status)
+            ).all()
+            counts = dict.fromkeys(STATUSES, 0)
+            counts.update({status: int(count) for status, count in rows})
+            counts["reminders_sent"] = (
+                session.scalar(
+                    select(func.count())
+                    .select_from(Notification)
+                    .where(Notification.kind.in_(REMINDER_KINDS), Notification.status == "SENT")
+                )
+                or 0
+            )
+            return counts
 
         return run(self._factory, work)
 
