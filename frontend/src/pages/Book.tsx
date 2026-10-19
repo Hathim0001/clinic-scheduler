@@ -1,6 +1,7 @@
 import { useTriage } from "../api/hooks";
 import { Alternatives } from "../components/booking/Alternatives";
 import { BookedBanner } from "../components/booking/BookedBanner";
+import { BookingSteps } from "../components/booking/BookingSteps";
 import { DoctorDateFields } from "../components/booking/DoctorDateFields";
 import { RepeatFields } from "../components/booking/RepeatFields";
 import {
@@ -33,6 +34,15 @@ export default function Book() {
   return (
     <div>
       <h1>{rescheduleId ? "Reschedule an appointment" : "Book an appointment"}</h1>
+
+      <BookingSteps
+        steps={[
+          { label: "Patient", done: patientId !== null },
+          { label: "Doctor and date", done: doctorId !== null && form.date !== "" },
+          { label: "Time", done: form.start !== null },
+          ...(rescheduleId ? [] : [{ label: "Reason", done: f.reason.trim() !== "" }]),
+        ]}
+      />
 
       {rescheduleId && original.data && (
         <Banner kind="info">

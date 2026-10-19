@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router";
 import { useAuthStatus, useNeedsAttention, usePendingMessages } from "./api/hooks";
 import { SERVER_ROOT } from "./api/client";
@@ -104,15 +104,13 @@ function Sidebar({
 }: {
   open: boolean;
   onClose: () => void;
-  containerRef: React.RefObject<HTMLElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const attention = useNeedsAttention().data?.total ?? 0;
   const messagesWaiting = usePendingMessages().data?.count ?? 0;
-  const session = useSession();
   const auth = useAuthStatus();
   const isAdmin = useIsAdmin();
   const isDoctor = useIsDoctor();
-  const [changingPassword, setChangingPassword] = useState(false);
 
   // A doctor's own login reads the schedule and marks their own visits; the server refuses the
   // rest, so the menu does not offer it.
@@ -161,15 +159,9 @@ function Sidebar({
     });
 
   return (
-    <aside className={open ? "sidebar open" : "sidebar"} id="sidebar" ref={containerRef}>
+    <div className={open ? "sidebar open" : "sidebar"} id="sidebar" ref={containerRef}>
       <div className="sidebar-top">
-        <Link to="/" className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <BrandMark />
-          </span>
-          Clinic Scheduler
-        </Link>
-        <p className="brand-tagline">A calm front desk</p>
+        <p className="brand-tagline">Menu</p>
         <button type="button" className="icon-button sidebar-close" onClick={onClose}>
           <Icon name="close" size={18} />
           <span className="visually-hidden">Close menu</span>
@@ -180,21 +172,61 @@ function Sidebar({
         <NavSection heading="Patients" items={people} />
         <NavSection heading="Clinic" items={clinic} />
       </nav>
-      {auth.data?.required && session && (
-        <div className="sidebar-user">
+    </div>
+  );
+}
+
+/** Who is signed in, with the two things a person does about it. */
+function UserMenu() {
+  const session = useSession();
+  const auth = useAuthStatus();
+  const [changingPassword, setChangingPassword] = useState(false);
+  const details = useRef<HTMLDetailsElement>(null);
+
+  // the small panel closes on a click anywhere else and on Escape
+  useEffect(() => {
+    const close = () => details.current?.removeAttribute("open");
+    const onClick = (event: MouseEvent) => {
+      if (!details.current?.contains(event.target as Node)) close();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && details.current?.hasAttribute("open")) {
+        close();
+        details.current.querySelector("summary")?.focus();
+      }
+    };
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  if (!auth.data?.required || !session) return null;
+  const role =
+    session.role === "ADMIN" ? "Administrator" : session.role === "DOCTOR" ? "Doctor" : "Reception";
+  return (
+    <>
+      <details className="user-menu" ref={details}>
+        <summary>
           <Avatar name={session.name} />
-          <div className="sidebar-user-text">
+          <span className="user-menu-name">{session.name}</span>
+        </summary>
+        <div className="user-pop">
+          <p>
             <strong>{session.name}</strong>
-            <span>
-              {session.role === "ADMIN"
-                ? "Administrator"
-                : session.role === "DOCTOR"
-                  ? "Doctor"
-                  : "Reception"}
-            </span>
-          </div>
+            <span>{role}</span>
+          </p>
           {auth.data.accounts && (
-            <button type="button" className="small" onClick={() => setChangingPassword(true)}>
+            <button
+              type="button"
+              className="small"
+              onClick={() => {
+                details.current?.removeAttribute("open");
+                setChangingPassword(true);
+              }}
+            >
               Change password
             </button>
           )}
@@ -202,9 +234,9 @@ function Sidebar({
             Sign out ({session.name})
           </button>
         </div>
-      )}
+      </details>
       {changingPassword && <ChangePasswordDialog onClose={() => setChangingPassword(false)} />}
-    </aside>
+    </>
   );
 }
 
@@ -223,15 +255,20 @@ function Topbar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: boolean })
         <Icon name="menu" size={20} />
         <span className="visually-hidden">Menu</span>
       </button>
-      <span className="topbar-date">
-        {today ? formatDayIST(`${today}T12:00:00+05:30`) : "Clinic Scheduler"}
-      </span>
+      <Link to="/" className="brand">
+        <span className="brand-mark" aria-hidden="true">
+          <BrandMark />
+        </span>
+        <span className="brand-name">Clinic Scheduler</span>
+      </Link>
+      <span className="topbar-date">{today ? formatDayIST(`${today}T12:00:00+05:30`) : ""}</span>
       {!isDoctor && (
         <Link to="/book" className="primary topbar-action">
           <Icon name="plus" size={16} />
-          New booking
+          <span>New booking</span>
         </Link>
       )}
+      <UserMenu />
     </div>
   );
 }
@@ -257,18 +294,18 @@ function Shell() {
   // The menu belongs to the page it was opened on: moving to another page closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === pathname;
-  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   useFocusTrap(sidebarRef, open, () => setOpenOn(null));
 
   return (
     <div className={open ? "app-shell menu-open" : "app-shell"}>
-      <Sidebar open={open} onClose={() => setOpenOn(null)} containerRef={sidebarRef} />
       <div className="app-scrim" onClick={() => setOpenOn(null)} aria-hidden="true" />
+      <header className="masthead">
+        <Topbar onMenu={() => setOpenOn(open ? null : pathname)} menuOpen={open} />
+        <Sidebar open={open} onClose={() => setOpenOn(null)} containerRef={sidebarRef} />
+      </header>
       <div className="app-body">
         <OpenAccessBanner />
-        <header className="app-header">
-          <Topbar onMenu={() => setOpenOn(open ? null : pathname)} menuOpen={open} />
-        </header>
         <ClockBar />
         <main id="main" ref={main} tabIndex={-1} data-section={sectionOf(pathname)}>
           <OfflineBanner />

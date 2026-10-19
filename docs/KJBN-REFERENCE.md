@@ -46,8 +46,8 @@ shows up in the app.
 |---|---|
 | Warm paper with a faint grain, ink-green text | The page, cards and text colours are these values (`styles.css` tokens). |
 | The petrol signature block with mono labels and a saffron number | The day's figures on the Overview, My day and Report are one petrol block: tracked mono labels, large Inter figures, a saffron highlight when someone did not come. |
-| A thin saffron-outlined logo box and a mono tagline beside a hairline | The brand mark is a saffron-outlined cross, with the tagline "A calm front desk" in mono caps beside a hairline. |
-| Navigation in petrol and ink | The side navigation is a petrol panel with serif small-caps group labels (Schedule, Patients, Clinic) and a saffron bar on the current page. |
+| A thin saffron-outlined logo box and a mono tagline beside a hairline | The brand mark is a saffron-outlined cross beside the name in Playfair Display, with the date set off by a hairline. |
+| A sticky top bar with the pages as text links | One sticky masthead: the brand and the main action above, the pages as grouped text tabs (Schedule, Patients, Clinic) below, a saffron underline on the current page. On a phone the tabs become a petrol menu with serif small-caps group labels. |
 | A serif small-caps eyebrow with a saffron rule above each title | Every page opens with its group name the same way ("Schedule", "Patients", "Clinic"). |
 | Playfair Display titles over Inter | Page and card titles are Playfair Display; every working surface (forms, tables, buttons) is Inter. |
 | Numbered sections "05 Grow with us" and a rule that fades from saffron | Cards on the Overview and the Report are numbered 01, 02, 03 in saffron over a rule that fades to a hairline. |

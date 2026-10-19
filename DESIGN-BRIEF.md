@@ -110,3 +110,14 @@ Playfair Display titles over Inter, and small tracked labels. It supersedes the 
 "linen and scrub" directions above. The evidence (screenshots of kjbnlabs.in, the values copied from
 its stylesheet, and a table of where each part appears in the app) is in
 [docs/KJBN-REFERENCE.md](docs/KJBN-REFERENCE.md).
+
+### Top navigation (current)
+
+A left rail is what most generated dashboards ship with, so the navigation moved to the top, as on
+kjbnlabs.in: one sticky masthead with the brand, the date, the one action used all day and the
+signed-in person on the first line, and the pages as a row of text tabs on the second, grouped
+(Schedule, Patients, Clinic) with a saffron underline on the current page. Below 960 px the tabs
+become a menu that slides in. Reviewed against other open-source schedulers (Easy!Appointments,
+Cal.com, Medplum, OpenEMR): the booking form gained a progress line of its steps, after the
+three-step flow of Easy!Appointments; the rest of their screens were already covered by the day
+view, the queue and the slot picker, or did not suit a two-doctor clinic.

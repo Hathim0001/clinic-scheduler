@@ -21,6 +21,9 @@ if (!status.required) {
 }
 
 const text = (page) => page.evaluate(() => document.body.innerText);
+// the signed-in person is named on the menu in the top bar
+const whoIs = (page) =>
+  page.evaluate(() => document.querySelector(".user-menu summary")?.innerText ?? "");
 const browser = await launch();
 try {
   const open = await fetch(`${API_URL}/doctors`);
@@ -57,13 +60,18 @@ try {
   await page.waitForFunction(() => document.body.innerText.includes("Day view"), {
     timeout: 20000,
   });
-  check("the right password opens the app", (await text(page)).includes("Sign out (Meera)"));
+  check("the right password opens the app", (await whoIs(page)).includes("Meera"));
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page
-    .waitForFunction(() => document.body.innerText.includes("Sign out (Meera)"), { timeout: 20000 })
+    .waitForFunction(
+      () => document.querySelector(".user-menu summary")?.innerText.includes("Meera"),
+      {
+        timeout: 20000,
+      },
+    )
     .catch(() => undefined);
-  check("a reload keeps the person signed in", (await text(page)).includes("Sign out (Meera)"));
+  check("a reload keeps the person signed in", (await whoIs(page)).includes("Meera"));
 
   // a token the server no longer accepts brings the form back instead of a page of errors
   await page.evaluate(() => {
@@ -85,12 +93,15 @@ try {
   await page.type('input[autocomplete="username"]', "Ravi");
   await page.type('input[type="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForFunction(() => document.body.innerText.includes("Sign out (Ravi)"), {
-    timeout: 20000,
-  });
+  await page.waitForFunction(
+    () => document.querySelector(".user-menu summary")?.innerText.includes("Ravi"),
+    {
+      timeout: 20000,
+    },
+  );
   await page.evaluate(() =>
     [...document.querySelectorAll("button")]
-      .find((b) => b.innerText.startsWith("Sign out"))
+      .find((b) => b.textContent.trim().startsWith("Sign out"))
       .click(),
   );
   await page
