@@ -25,7 +25,7 @@ export function ClockBar() {
         <span className="test-clock-badge">TEST CLOCK ACTIVE: {formatIST(testClock)}</span>
       )}
       {info.data && (
-        <span>
+        <span className="clock-note">
           Server time {formatIST(info.data.now_utc)} (
           {info.data.source === "HEADER" ? "test" : "real"} clock)
         </span>

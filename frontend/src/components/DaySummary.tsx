@@ -1,5 +1,6 @@
 import type { ScheduleSlot } from "../api/types";
 import { formatTimeIST } from "../lib/formatIST";
+import { Meter } from "./ui";
 
 interface Props {
   slots: ScheduleSlot[];
@@ -16,7 +17,7 @@ export function DaySummary({ slots, onBook }: Props) {
   const next = free[0];
 
   return (
-    <div className="day-summary">
+    <div className="day-summary card">
       <p className="day-figures">
         <span>
           <strong>{booked}</strong> booked
@@ -25,6 +26,7 @@ export function DaySummary({ slots, onBook }: Props) {
           <strong>{free.length}</strong> free
         </span>
       </p>
+      <Meter value={booked} max={booked + free.length} label="Share of the day booked" />
       {next ? (
         <p>
           Next free time is {formatTimeIST(next.start_at_ist)}–{formatTimeIST(next.end_at_ist)}.{" "}

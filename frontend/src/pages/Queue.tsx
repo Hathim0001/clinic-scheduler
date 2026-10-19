@@ -3,6 +3,7 @@ import { useClockInfo, useDoctors, useQueue } from "../api/hooks";
 import { ActionButtons } from "../components/ActionButtons";
 import { UrgentBadge } from "../components/AppointmentExtras";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
+import { Avatar, PageHeader, StatCard } from "../components/ui";
 import { useTestClock } from "../lib/clock";
 import { formatDayIST, formatTimeIST } from "../lib/formatIST";
 import { useToday } from "../lib/useToday";
@@ -27,14 +28,22 @@ export default function Queue() {
 
   const queue = useQueue(date, doctorId, includeCancelled);
   const seedDay = clockInfo.data?.seed_queue_day ?? null;
+  const rows = queue.data ?? [];
+  const waiting = rows.filter((a) => a.status === "BOOKED" && !a.checked_in_at_ist).length;
+  const arrived = rows.filter((a) => a.status === "BOOKED" && a.checked_in_at_ist).length;
+  const seen = rows.filter((a) => a.status === "COMPLETED").length;
+  const missed = rows.filter((a) => a.status === "NO_SHOW").length;
 
   return (
     <div>
-      <h1>
-        {date && date !== today
-          ? `Queue for ${formatDayIST(`${date}T12:00:00+05:30`)}`
-          : "Today's queue"}
-      </h1>
+      <PageHeader
+        title={
+          date && date !== today
+            ? `Queue for ${formatDayIST(`${date}T12:00:00+05:30`)}`
+            : "Today's queue"
+        }
+        description="Everyone booked for the day, in time order. Check people in as they arrive."
+      />
       <div className="card row">
         <label>
           Date (India)
@@ -67,6 +76,15 @@ export default function Queue() {
           Show cancelled
         </label>
       </div>
+
+      {rows.length > 0 && (
+        <section className="stat-grid compact" aria-label="The queue in numbers">
+          <StatCard label="Expected" value={waiting} tone="brand" />
+          <StatCard label="In the waiting room" value={arrived} />
+          <StatCard label="Seen" value={seen} tone="ok" />
+          <StatCard label="Missed" value={missed} tone={missed > 0 ? "danger" : "default"} />
+        </section>
+      )}
 
       {queue.error && <ErrorBanner error={queue.error} onRetry={() => void queue.refetch()} />}
       {queue.isPending && date && <Skeleton rows={5} />}
@@ -111,8 +129,15 @@ export default function Queue() {
                   {formatTimeIST(appointment.start_at_ist)}–{formatTimeIST(appointment.end_at_ist)}
                 </td>
                 <td data-label="Patient">
-                  <Link to={`/patients/${appointment.patient_id}`}>{appointment.patient_name}</Link>
-                  <div className="muted">{appointment.patient_phone}</div>
+                  <div className="person">
+                    <Avatar name={appointment.patient_name} size="sm" />
+                    <div>
+                      <Link to={`/patients/${appointment.patient_id}`}>
+                        {appointment.patient_name}
+                      </Link>
+                      <div className="muted">{appointment.patient_phone}</div>
+                    </div>
+                  </div>
                 </td>
                 <td data-label="Doctor">{appointment.doctor_name}</td>
                 <td data-label="Reason">{appointment.reason}</td>

@@ -6,6 +6,7 @@ import { BASE_URL, check, finish, launch, openPage, seedClock, sleep } from "./l
 
 const { clock } = await seedClock();
 const pages = [
+  "/",
   "/day",
   "/book?patient=1",
   "/queue",

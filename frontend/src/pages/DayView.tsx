@@ -5,6 +5,7 @@ import type { SlotState } from "../api/types";
 import { AppointmentCard } from "../components/AppointmentCard";
 import { Banner, ErrorBanner, Skeleton, StatusBadge } from "../components/common";
 import { DaySummary } from "../components/DaySummary";
+import { Avatar, PageHeader } from "../components/ui";
 import { DayWaitlist } from "../components/Waitlist";
 import { addDays, formatDayIST, formatTimeIST } from "../lib/formatIST";
 import { REASON_TEXT } from "../lib/errors";
@@ -60,7 +61,14 @@ export default function DayView() {
 
   return (
     <div>
-      <h1>Day view</h1>
+      <PageHeader
+        title="Day view"
+        description={
+          doctor
+            ? `${doctor.name} · ${doctor.speciality} · ${doctor.slot_length_min}-minute slots`
+            : undefined
+        }
+      />
       <div className="card row">
         <label>
           Doctor
@@ -155,7 +163,10 @@ export default function DayView() {
                         onClick={() => setSelectedId(appointment.id)}
                       >
                         <span className="time">{time}</span>
-                        <span>{appointment.patient_name}</span>
+                        <span className="slot-name">
+                          <Avatar name={appointment.patient_name} size="sm" />
+                          {appointment.patient_name}
+                        </span>
                         <span>
                           <StatusBadge status={appointment.status} />
                           {appointment.needs_attention ? " needs attention" : ""}

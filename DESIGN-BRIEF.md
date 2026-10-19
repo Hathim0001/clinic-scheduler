@@ -55,10 +55,33 @@ shadow is kept for things that float (the dialog). All values live in the `:root
 
 What changed, from a review of the rendered screens at 1280, 768 and 390 px:
 
-- The header keeps the five links used all day; Report, Doctors, Messages, Staff and the rule proof sit in a "More" menu that shows the attention count on its button.
+- The five links used all day sat in the header and the rest in a "More" menu (replaced by the side navigation below).
 - Appointment actions show only what is allowed, with one sentence on why the rest are not.
 - The day view's side panel shows booked and free counts and a one-press "Book it" for the next free time until a booking is selected.
 - The booking form says what pressing the button will do, or what is still missing, and the button reads "Booking…" or "Moving…" while it saves.
 - The queue heading names the day when it is not today; the report fits at laptop width; the clock bar is compact on a phone.
 
 Not done: no testing with real clinic staff, and no screen-reader walkthrough by a person (axe and keyboard checks only).
+
+## Redesign: a business-style app shell, October 2026
+
+The first design was a document with a header. The clinic desk works in an application, so the shell
+now behaves like one, and the earlier "serif and ink-green on chart paper" direction above is
+superseded by this section.
+
+- **Side navigation** in three groups (Schedule, Patients, Clinic), with an icon and a text label for
+  every page, the current page marked, and the attention counts on Messages and Doctors. Below 960 px
+  it becomes a drawer behind a Menu button (Escape or choosing a page closes it).
+- **Top bar** with today's date and the one action used all day, New booking. The reviewer clock sits
+  in a quiet strip under it.
+- **Overview** is the new landing page: visits today, who has arrived, who was seen, who was missed,
+  the next six visits, each doctor's load with the next free time, and a "needs a look" list that
+  reads "All clear" when there is nothing.
+- **Queue and day view** gain a figures strip, initials avatars, a load meter and a page description.
+  The appointment book stays the day view's one memorable thing.
+- **Type and colour:** one bundled typeface (Inter, served from the app itself, so the content
+  security policy and the no-third-party rule still hold), a cool grey page, white sheets on a
+  whisper of shadow, a clinical teal for the primary action, and a dark slate navigation. Status is
+  still text first, never colour alone. Dark mode has its own tokens.
+- **Checks:** unit tests for the overview and the navigation, and the accessibility sweep now covers
+  the overview too (40 scans).

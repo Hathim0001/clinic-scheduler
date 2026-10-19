@@ -53,7 +53,7 @@ makes every time rule testable at its boundary and lets the reviewer's `X-Test-C
 5. `persistence/models.py` constraints, then `migrations/versions/0001_*.py`.
 6. `api/routers/appointments.py` to see how thin the HTTP layer is.
 7. `frontend/src/components/booking/useBookingForm.ts`: the booking page's decisions, with `Book.tsx` as layout only.
-8. `frontend/src/components/NavMenu.tsx`, `DaySummary.tsx`, `UndoCancel.tsx`: the small pieces added in the UI pass.
+8. `frontend/src/App.tsx` (the side navigation, top bar and drawer), `pages/Overview.tsx`, `components/ui.tsx` (icons, avatars, figure cards, meter), `DaySummary.tsx`, `UndoCancel.tsx`: the app shell and the small pieces added in the UI passes.
 
 ## Drills: change it live
 
