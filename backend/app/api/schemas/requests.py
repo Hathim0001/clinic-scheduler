@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import Field, StrictBool, model_validator
+from pydantic import ConfigDict, Field, StrictBool, model_validator
 
 from app.api.schemas.types import (
     BirthDate,
@@ -148,6 +148,19 @@ class BookRequest(StrictModel):
     deposit_confirmed: StrictBool = False
     slots: Annotated[int, Field(strict=True, ge=1, le=MAX_APPOINTMENT_SLOTS)] = 1
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "doctor_id": 1,
+                    "patient_id": 1,
+                    "start_at": "2026-11-02T10:30:00+05:30",
+                    "reason": "Fever for two days",
+                }
+            ]
+        }
+    )
+
 
 class RecurringBookRequest(BookRequest):
     every_days: Annotated[int, Field(strict=True, ge=1, le=60)]
@@ -176,3 +189,7 @@ class RescheduleRequest(StrictModel):
     by: Literal["PATIENT", "CLINIC"] = "PATIENT"
     # A patient move that would be recorded as a late cancellation must be confirmed.
     acknowledge_late: StrictBool = False
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"start_at": "2026-11-03T11:00:00+05:30", "by": "CLINIC"}]}
+    )

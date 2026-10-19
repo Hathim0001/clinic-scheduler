@@ -157,8 +157,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "X-Test-Clock",
             "X-Request-ID",
             "Idempotency-Key",
+            "If-Match",
         ],
-        expose_headers=["X-Request-ID", "X-Effective-Now", "Retry-After", "Idempotent-Replay"],
+        expose_headers=[
+            "X-Request-ID",
+            "X-Effective-Now",
+            "Retry-After",
+            "Idempotent-Replay",
+            "ETag",
+        ],
         allow_credentials=False,
         max_age=600,
     )

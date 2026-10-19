@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict
 from datetime import datetime, timedelta
 
@@ -107,6 +108,23 @@ def patient_out(view: PatientView) -> PatientOut:
     )
 
 
+def etag_of(view: AppointmentView) -> str:
+    """A short name for this version of the appointment: it changes whenever something a second
+    receptionist could be acting on changes (status, time, doctor, check-in, phone confirmation)."""
+    parts = (
+        view.id,
+        view.status.value,
+        view.start_at.isoformat(),
+        view.doctor_id,
+        view.status_changed_at,
+        view.checked_in_at,
+        view.confirmed_by_phone_at,
+        view.deposit_confirmed,
+        view.rescheduled_to_id,
+    )
+    return hashlib.sha256("|".join(str(p) for p in parts).encode()).hexdigest()[:16]
+
+
 def appointment_out(view: AppointmentView) -> AppointmentOut:
     return AppointmentOut(
         id=view.id,
@@ -137,6 +155,7 @@ def appointment_out(view: AppointmentView) -> AppointmentOut:
         urgent_symptoms=view.urgent_symptoms,
         slots=view.slots,
         duration_min=int((view.end_at - view.start_at).total_seconds() // 60),
+        etag=etag_of(view),
     )
 
 

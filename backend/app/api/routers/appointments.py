@@ -9,6 +9,7 @@ import structlog
 from fastapi import APIRouter, Header, Query, Request, Response
 
 from app.api.deps import NowDep, ServicesDep
+from app.api.errors import ApiError
 from app.api.ics import calendar_text
 from app.api.params import (
     AppointmentId,
@@ -18,7 +19,7 @@ from app.api.params import (
     OptionalDayQuery,
     OptionalId,
 )
-from app.api.presenters import appointment_out, deposit_out, event_out
+from app.api.presenters import appointment_out, deposit_out, etag_of, event_out
 from app.api.schemas.requests import (
     BookRequest,
     CancelRequest,
@@ -34,11 +35,41 @@ from app.api.schemas.responses import (
     RescheduleOut,
     SeriesOut,
 )
+from app.domain.errors import ErrorCode
 from app.domain.model import CancelledBy, Status
 from app.services.views import BookCommand
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 log = structlog.get_logger()
+
+IfMatch = Annotated[
+    str | None,
+    Header(
+        max_length=200,
+        description=(
+            "Optional. The `etag` of the appointment as you last saw it. If it has changed since "
+            "(someone else cancelled, moved or marked it), nothing is done and the answer is 412 "
+            "PRECONDITION_FAILED with the current etag in `details`. Leave it out to act anyway."
+        ),
+    ),
+]
+
+
+def require_current(
+    services: ServicesDep, appointment_id: int, now: NowDep, if_match: str | None
+) -> None:
+    """Refuse to act on an appointment that changed since the caller looked at it. A check before
+    the action, not a lock: the state rules still decide what is allowed if two calls race."""
+    if if_match is None or if_match.strip() == "*":
+        return
+    current = etag_of(services.queries.get(appointment_id, now))
+    sent = {tag.strip().removeprefix("W/").strip('"') for tag in if_match.split(",")}
+    if current not in sent:
+        raise ApiError(
+            ErrorCode.PRECONDITION_FAILED,
+            "This appointment has changed since you opened it. Reload it and check before acting.",
+            {"current_etag": current},
+        )
 
 
 @router.get("", response_model=PageOut[AppointmentOut], summary="List appointments")
@@ -168,9 +199,11 @@ def book_series(
 
 @router.get("/{appointment_id}", response_model=AppointmentOut, summary="Get an appointment")
 def get_appointment(
-    appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+    appointment_id: AppointmentId, services: ServicesDep, now: NowDep, response: Response
 ) -> AppointmentOut:
-    return appointment_out(services.queries.get(appointment_id, now))
+    out = appointment_out(services.queries.get(appointment_id, now))
+    response.headers["ETag"] = f'"{out.etag}"'
+    return out
 
 
 @router.get(
@@ -200,8 +233,10 @@ def cancel(
     services: ServicesDep,
     now: NowDep,
     body: CancelRequest | None = None,
+    if_match: IfMatch = None,
 ) -> CancelOut:
     request.state.log_fields.update(appointment_id=appointment_id)
+    require_current(services, appointment_id, now, if_match)
     cancelled_by = CancelledBy(body.cancelled_by if body is not None else "PATIENT")
     result = services.booking.cancel(appointment_id, cancelled_by, now)
     log.info(
@@ -228,8 +263,10 @@ def reschedule(
     body: RescheduleRequest,
     services: ServicesDep,
     now: NowDep,
+    if_match: IfMatch = None,
 ) -> RescheduleOut:
     request.state.log_fields.update(appointment_id=appointment_id, doctor_id=body.doctor_id)
+    require_current(services, appointment_id, now, if_match)
     result = services.booking.reschedule(
         appointment_id,
         body.start_at,
@@ -250,9 +287,14 @@ def reschedule(
 
 @router.post("/{appointment_id}/complete", response_model=AppointmentOut, summary="Mark completed")
 def complete(
-    request: Request, appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+    request: Request,
+    appointment_id: AppointmentId,
+    services: ServicesDep,
+    now: NowDep,
+    if_match: IfMatch = None,
 ) -> AppointmentOut:
     request.state.log_fields.update(appointment_id=appointment_id)
+    require_current(services, appointment_id, now, if_match)
     view = services.booking.complete(appointment_id, now)
     log.info("appointment.completed", appointment_id=appointment_id)
     return appointment_out(view)
@@ -260,9 +302,14 @@ def complete(
 
 @router.post("/{appointment_id}/no-show", response_model=AppointmentOut, summary="Mark no-show")
 def no_show(
-    request: Request, appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+    request: Request,
+    appointment_id: AppointmentId,
+    services: ServicesDep,
+    now: NowDep,
+    if_match: IfMatch = None,
 ) -> AppointmentOut:
     request.state.log_fields.update(appointment_id=appointment_id)
+    require_current(services, appointment_id, now, if_match)
     view = services.booking.no_show(appointment_id, now)
     log.info("appointment.no_show", appointment_id=appointment_id)
     return appointment_out(view)
@@ -275,9 +322,14 @@ def no_show(
     responses={409: {"description": "INVALID_TRANSITION: only a booked appointment"}},
 )
 def confirmed_by_phone(
-    request: Request, appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+    request: Request,
+    appointment_id: AppointmentId,
+    services: ServicesDep,
+    now: NowDep,
+    if_match: IfMatch = None,
 ) -> AppointmentOut:
     request.state.log_fields.update(appointment_id=appointment_id)
+    require_current(services, appointment_id, now, if_match)
     view = services.booking.confirm_by_phone(appointment_id, now)
     log.info("appointment.confirmed_by_phone", appointment_id=appointment_id)
     return appointment_out(view)
@@ -289,9 +341,14 @@ def confirmed_by_phone(
     summary="Record the patient arriving (on the day of the visit; repeating it is harmless)",
 )
 def check_in(
-    request: Request, appointment_id: AppointmentId, services: ServicesDep, now: NowDep
+    request: Request,
+    appointment_id: AppointmentId,
+    services: ServicesDep,
+    now: NowDep,
+    if_match: IfMatch = None,
 ) -> AppointmentOut:
     request.state.log_fields.update(appointment_id=appointment_id)
+    require_current(services, appointment_id, now, if_match)
     view = services.booking.check_in(appointment_id, now)
     log.info("appointment.checked_in", appointment_id=appointment_id)
     return appointment_out(view)
@@ -309,9 +366,11 @@ def correct(
     body: CorrectRequest,
     services: ServicesDep,
     now: NowDep,
+    if_match: IfMatch = None,
 ) -> AppointmentOut:
     """The original outcome and the note stay in `GET /appointments/{id}/history`."""
     request.state.log_fields.update(appointment_id=appointment_id)
+    require_current(services, appointment_id, now, if_match)
     view = services.booking.correct(appointment_id, Status(body.status), body.note, now)
     log.info("appointment.corrected", appointment_id=appointment_id, status=body.status)
     return appointment_out(view)

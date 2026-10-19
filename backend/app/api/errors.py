@@ -69,6 +69,7 @@ STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.INVALID_CORRECTION: 409,
     ErrorCode.LATE_RESCHEDULE_NEEDS_CONFIRMATION: 409,
     ErrorCode.CONFLICT: 409,
+    ErrorCode.PRECONDITION_FAILED: 412,
     ErrorCode.UNAUTHENTICATED: 401,
     ErrorCode.FORBIDDEN: 403,
     ErrorCode.RATE_LIMITED: 429,

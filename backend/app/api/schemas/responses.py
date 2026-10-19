@@ -82,6 +82,8 @@ class AppointmentOut(BaseModel):
     urgent_symptoms: bool  # the reason mentions symptoms that may need emergency care
     slots: int  # how many of the doctor's slots the visit lasts
     duration_min: int
+    # Names this version of the appointment: send it back as If-Match to act only if unchanged.
+    etag: str
 
 
 class PageOut[T](BaseModel):

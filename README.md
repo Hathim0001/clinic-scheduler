@@ -261,6 +261,7 @@ timestamp is returned twice, `..._utc` and `..._ist`.
 | POST | `/appointments/{id}/confirmed-by-phone` | Reception rang the patient and they confirmed (recorded once; feeds the Calls page) | 404, 409 `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/check-in` | Patient arrived (on the day; repeating it changes nothing) | 409 `TOO_EARLY_TO_MARK`, `INVALID_TRANSITION` |
 | POST | `/appointments/{id}/correct` | Fix a wrong outcome: completed and no-show swap, a late cancel is waived; a note is required | 409 `INVALID_CORRECTION` |
+| — | `If-Match` on cancel, reschedule, complete, no-show, check-in, confirmed-by-phone and correct | Optional. Send the appointment's `etag` (also the `ETag` header of `GET /appointments/{id}`); if it changed since, nothing is done | 412 `PRECONDITION_FAILED`, `details.current_etag` |
 | GET | `/appointments/{id}/history` | Audit trail, oldest first | 404 |
 | GET | `/queue?date&doctor_id&include_cancelled` | One day's queue in time order | 422 |
 | POST, GET | `/doctors/{id}/waitlist` | Join the waitlist for a doctor and India date; list who is waiting or holds an offer (`?date`) | 409 `ALREADY_WAITING`, 422 `BOOKING_IN_PAST`, `BOOKING_TOO_FAR` |
@@ -372,7 +373,7 @@ an oversized body, a database that is down and the catch-all 500):
 | A client sending too many requests | In-memory sliding window per address | 429 `RATE_LIMITED` with `Retry-After` |
 | Anything else | Any other exception | 500 `INTERNAL_ERROR` with a generic message and the request id; the stack trace is logged, never sent |
 
-All 49 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
+All 50 codes are in `backend/app/domain/errors.py` and `backend/app/api/errors.py`. Every write runs
 in one transaction, so a failure leaves the data as it was.
 
 **Logging.** structlog writes one JSON line per event to stdout: `ts` (UTC), `level`, `event` and the
