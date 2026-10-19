@@ -112,6 +112,9 @@ docker compose up --build
 # UI  http://localhost:8080     API docs  http://localhost:8000/docs
 ```
 
+Optional settings for the stack (sign-in, demo logins, a message gateway) go in a `.env` copied from
+the root [`.env.example`](.env.example); the backend's own settings are in `backend/.env.example`.
+
 **For development**, with the API and the UI on the host (bash; PowerShell equivalents in comments):
 
 ```bash
