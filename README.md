@@ -82,7 +82,7 @@ overlaps; commit. Any domain error rolls everything back and leaves the standard
 | `backend/scripts/` | `migrate_and_seed.py`, `seed.py`, `run_tests.py`, `burst.py` |
 | `backend/tests/` | `unit/` (no database), `integration/` (PostgreSQL, including race tests), `api/` (through HTTP) |
 | `frontend/` | The React app and its tests |
-| `docs/` | `CODE-TOUR.md`, `DESIGN-NOTES.md`, `PRIVACY-AND-OPERATIONS.md`, `sample-logs.jsonl` (real log lines), `prompts/` (the full planning brief) and `screenshots/` |
+| `docs/` | `DESIGN-NOTES.md`, `PRIVACY-AND-OPERATIONS.md`, `sample-logs.jsonl` (real log lines), `prompts/` (the full planning brief) and `screenshots/` |
 | `.github/workflows/ci.yml`, `docker-compose.yml`, `render.yaml` | CI, local stack, hosting |
 
 **Where the rules live, and why there.** The rules are in `backend/app/domain/` because they are the
@@ -542,9 +542,6 @@ so the author reviews and must be able to explain each one.
 
 **Prompt log.** Every prompt is in [PROMPTS.md](PROMPTS.md), with what was done with the answer. The
 full planning brief is in [docs/prompts/01-planning-brief.md](docs/prompts/01-planning-brief.md).
-
-**Explaining the code.** [docs/CODE-TOUR.md](docs/CODE-TOUR.md) maps each rule to the code that
-decides it and the test that proves it, and lists exercises (change a number, predict what fails).
 
 **Commit authorship.** Every commit is authored by the repository owner (`Hathim0001`). The commits
 carry no AI co-author trailer, so the record of the assistant's work is this section, `PROMPTS.md` and

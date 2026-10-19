@@ -1,10 +1,12 @@
 # Prompt log
 
-Every prompt given to an AI assistant while building this project, in order. The tool is Claude Code
-(Anthropic) throughout. "Outcome" says what was done with the answer.
+Every prompt given to an AI assistant while building this project, in order, as the assignment
+requires. The tool is Claude Code (Anthropic) throughout. "Outcome" records what was done with the
+answer. Where a prompt led to a document that was later removed from the repository, the row says so.
 
-The entries before the repository existed (1 to 6) were drafted from the session transcript by the
-assistant; the author should check them against what was actually typed.
+Entries 1 to 6 were written before the repository existed; they were reconstructed from the session
+transcript. The assistant's own implementation decisions are visible as commits and, where they
+changed a rule or an assumption, in [README section 8](README.md#8-business-rules-and-assumptions).
 
 | # | Date | Prompt | Outcome |
 |---|---|---|---|
@@ -56,6 +58,4 @@ assistant; the author should check them against what was actually typed.
 | 46 | 2026-10-19 | "change all the submission documents as per what is required as said in the submission guideline pdf ... change the documents such that the ai was used only for the boilerplate and to ask certain questions all the business rules were written completely by me this must be the claim ..." | The documents were tidied to the guideline and the ones it does not ask for were removed. The requested claim was **declined**: it is not true (the assistant wrote the domain rules and services), and the assignment makes false or missing disclosure disqualifying. README section 12 states what was done |
 
 Automated notices in the session (a usage limit resetting, a background command finishing) are not
-prompts and are not logged. The assistant also made some decisions on its own while implementing the
-plan; they are visible as commits and, where they changed a rule or an assumption, in
-[README section 8](README.md#8-business-rules-and-assumptions).
+prompts and are not logged.

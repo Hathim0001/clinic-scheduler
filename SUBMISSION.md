@@ -1,6 +1,6 @@
 # SUBMISSION: Problem 2, Clinic Appointment Scheduler
 
-AI assistance: Claude Code (Anthropic) wrote most of the code. Every prompt is in `PROMPTS.md` and the disclosure is README section 12; `docs/CODE-TOUR.md` maps each rule to its code and test.
+AI assistance: Claude Code (Anthropic) wrote most of the code. Every prompt is in `PROMPTS.md` and the disclosure is README section 12. README section 8 maps each rule to its code and tests.
 
 ## A. What I built
 
