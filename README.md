@@ -198,10 +198,10 @@ cd frontend && npm test -- --run             # all UI tests
 
 | Measured on the last run | Result |
 |---|---|
-| Backend tests | 1,450 passing in about 9 minutes (unit tests without a database, integration and race tests on real PostgreSQL, and tests through HTTP) |
-| Backend line and branch coverage, all of `app/` | 99 % (3,904 statements, 8 missed, branches included) |
-| Rules layer (`app/domain` + `app/services`) | 99 % (1,930 statements, none missed; one branch partly covered); the gate is 80 % |
-| Frontend tests (Vitest, network faked at `fetch`) | 214 passing; 91.9 % of lines, 82.3 % of branches covered (gate: 85 % lines, 75 % branches) |
+| Backend tests | 1,450 passing in about 10 minutes (unit tests without a database, integration and race tests on real PostgreSQL, and tests through HTTP) |
+| Backend line and branch coverage, all of `app/` | 99 % (4,586 statements, 13 missed, branches included) |
+| Rules layer (`app/domain` + `app/services`) | 99 % (2,304 statements, 1 missed; 3 branches partly covered); the gate is 80 % |
+| Frontend tests (Vitest, network faked at `fetch`) | 220 passing; 92.0 % of lines, 82.7 % of branches covered (gate: 85 % lines, 75 % branches) |
 | Browser end-to-end (real Chrome against the compose stack, `npm run e2e`) | 26 flow checks and 24 accessibility scans (axe-core, desktop and phone) |
 
 **What is covered.** Every rule has fast unit tests with a boundary test for each number: the
