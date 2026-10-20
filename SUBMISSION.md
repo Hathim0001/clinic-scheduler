@@ -31,17 +31,17 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 
 ## E. Milestone log
 
-| Milestone | Date completed | Commit | Last change in this area |
+| Milestone | Date completed | Commit | First pass (tag) |
 |---|---|---|---|
-| M0 Scaffold and tooling | 2026-10-17 | `1075d3d` | `1075d3d`, 2026-10-17 |
-| M1 Schema, seed and rule tests | 2026-10-17 | `91d1bb4` | `51ddce5`, 2026-10-18 |
-| M2 Rules and services | 2026-10-17 | `88121a4` | `116d6e6`, 2026-10-19 |
-| M3 API | 2026-10-17 | `42b2a18` | `aef29b3`, 2026-10-19 |
-| M4 UI | 2026-10-17 | `1b68991` | `a69a72d`, 2026-10-20 |
-| M5 Docker, CI, deployment config | 2026-10-17 | `2a1559b` | `8be8791`, 2026-10-19 |
-| M6 Documentation | 2026-10-17 | `bd72eaf` | `a1c3671`, 2026-10-19 |
+| M0 Scaffold and tooling | 2026-10-17 | `1075d3d` | `m0` at `1075d3d`, 17 Oct |
+| M1 Schema, seed and rule tests | 2026-10-18 | `51ddce5` | `m1` at `91d1bb4`, 17 Oct |
+| M2 Rules and services | 2026-10-19 | `116d6e6` | `m2` at `88121a4`, 17 Oct |
+| M3 API | 2026-10-19 | `aef29b3` | `m3` at `42b2a18`, 17 Oct |
+| M4 UI | 2026-10-20 | `a69a72d` | `m4` at `1b68991`, 17 Oct |
+| M5 Docker, CI, deployment config | 2026-10-19 | `8be8791` | `m5` at `2a1559b`, 17 Oct |
+| M6 Documentation | 2026-10-19 | `a1c3671` | `m6` at `bd72eaf`, 17 Oct |
 
-The first commit column is the tagged commit (`m0` to `m6`) at which each milestone first met its definition. The last column is the most recent commit tagged with that milestone, because the work continued after the tags: 60 commits on 17 October, 54 on the 18th, 30 on the 19th and 1 on the 20th. `v1.0` is the final commit.
+"Date completed" and "Commit" are the most recent commit tagged with that milestone, since the work continued after the tags (60 commits on 17 October, 54 on the 18th, 30 on the 19th, 1 on the 20th). The last column is the tagged first pass. `v1.0` is the final commit.
 
 ## F. If I had two more days
 
