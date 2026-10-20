@@ -1,6 +1,6 @@
 # SUBMISSION: Problem 2, Clinic Appointment Scheduler
 
-AI assistance: Claude Code (Anthropic) wrote most of the code. Every prompt is in `PROMPTS.md` and the disclosure is README section 12. README section 8 maps each rule to its code and tests.
+An appointment desk for a two-doctor clinic, where every booking is checked against the clinic's rules on the server, so a doctor is never double-booked, even when two receptionists click at once.
 
 ## A. What I built
 
@@ -31,17 +31,17 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 
 ## E. Milestone log
 
-| Milestone | Date completed | Commit |
-|---|---|---|
-| M0 Scaffold and tooling | 2026-10-17 | `1075d3d` |
-| M1 Schema, seed and rule tests | 2026-10-17 | `91d1bb4` |
-| M2 Rules and services | 2026-10-17 | `88121a4` |
-| M3 API | 2026-10-17 | `42b2a18` |
-| M4 UI | 2026-10-17 | `1b68991` |
-| M5 Docker, CI, deployment config | 2026-10-17 | `2a1559b` |
-| M6 Documentation | 2026-10-17 | `bd72eaf` |
+| Milestone | Date completed | Commit | Last change in this area |
+|---|---|---|---|
+| M0 Scaffold and tooling | 2026-10-17 | `1075d3d` | `1075d3d`, 2026-10-17 |
+| M1 Schema, seed and rule tests | 2026-10-17 | `91d1bb4` | `51ddce5`, 2026-10-18 |
+| M2 Rules and services | 2026-10-17 | `88121a4` | `116d6e6`, 2026-10-19 |
+| M3 API | 2026-10-17 | `42b2a18` | `aef29b3`, 2026-10-19 |
+| M4 UI | 2026-10-17 | `1b68991` | `a69a72d`, 2026-10-20 |
+| M5 Docker, CI, deployment config | 2026-10-17 | `2a1559b` | `8be8791`, 2026-10-19 |
+| M6 Documentation | 2026-10-17 | `bd72eaf` | `a1c3671`, 2026-10-19 |
 
-These are the commits tagged `m0` to `m6`. Later work is tagged `[M2]` to `[M6]` by area, and `v1.0` is the final commit.
+The first commit column is the tagged commit (`m0` to `m6`) at which each milestone first met its definition. The last column is the most recent commit tagged with that milestone, because the work continued after the tags: 60 commits on 17 October, 54 on the 18th, 30 on the 19th and 1 on the 20th. `v1.0` is the final commit.
 
 ## F. If I had two more days
 
@@ -64,5 +64,5 @@ These are the commits tagged `m0` to `m6`. Later work is tagged `[M2]` to `[M6]`
 | UI (6) | 4 | Flows work unaided, axe clean, phone layouts; never tried by a real receptionist or screen-reader user |
 | Testing (7) | 5 | 1,450 backend and 222 frontend tests, browser, fuzz and load runs, 99% coverage |
 | Deployment (5) | 4 | One-command stack, CI and a keep-alive; hosted and checked live (README section 2) |
-| Git hygiene (4) | 3 | Conventional commits, one author, tags; but commits came in batches over several days. Timestamps are real and unedited |
+| Git hygiene (4) | 3 | Conventional commits, one author, tags; but commits came in batches over four days (17 to 20 October). Timestamps are real and unedited |
 | Documentation (4) | 4 | README in the required order, limitations stated, this write-up cites commits |
