@@ -1,5 +1,28 @@
 # Clinic Appointment Scheduler
 
+[![CI](https://github.com/Hathim0001/clinic-scheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/Hathim0001/clinic-scheduler/actions/workflows/ci.yml)
+![Python 3.13](https://img.shields.io/badge/python-3.13-3776ab)
+![PostgreSQL 16](https://img.shields.io/badge/postgresql-16-336791)
+![React 19](https://img.shields.io/badge/react-19-149eca)
+
+> An appointment desk for a two-doctor clinic, where every booking is checked against the clinic's
+> rules on the server, so a doctor is never double-booked, even when two receptionists click at once.
+
+**Contents:**
+[1 Title](#1-title-and-one-liner) ·
+[2 Live links](#2-live-links) ·
+[3 Tech stack](#3-tech-stack) ·
+[4 Architecture](#4-architecture) ·
+[5 Running locally](#5-running-locally) ·
+[5a Deployment](#5a-deployment) ·
+[6 Tests and coverage](#6-running-tests-and-coverage) ·
+[7 API](#7-api-overview) ·
+[8 Business rules](#8-business-rules-and-assumptions) ·
+[9 Errors and logging](#9-error-handling-and-logging) ·
+[10 Reviewer aids](#10-reviewer-aids) ·
+[11 Limitations](#11-known-limitations) ·
+[12 AI usage](#12-ai-and-third-party-usage)
+
 ## 1. Title and one-liner
 
 **Problem 2: Clinic Appointment Scheduler** (KJBN Labs software engineering internship take-home).
@@ -8,6 +31,23 @@ can really be booked and enforces availability, the slot grid, double booking, t
 late-cancellation and deposit rules and the 60-day booking window, including under concurrent
 requests. Every AI prompt used is logged in [PROMPTS.md](PROMPTS.md) and disclosed in
 [section 12](#12-ai-and-third-party-usage).
+
+**At a glance**
+
+| | |
+|---|---|
+| Business rules | All 7 enforced in the backend, each with boundary tests and a race test where concurrency matters |
+| Tests | 1,450 backend (99 % coverage) and 222 frontend; 26 browser flow checks and 24 accessibility scans |
+| Robustness | OpenAPI fuzzed over every operation with no server error; one error shape for every failure |
+| Data integrity | PostgreSQL exclusion, CHECK and UNIQUE constraints back the rules; hash-chained audit trail |
+| Beyond the brief | Waitlist with offers, recurring bookings, reminders, staff roles, clinic-editable rules, trends report |
+
+**Review in five minutes**
+
+1. Open the [live UI](https://clinic-scheduler-ruby.vercel.app) and press **Seed day 09:30** in the amber clock bar: the demo data is built around that morning.
+2. Try a rule: book Arjun Mehta with Dr. Menon at 10:00 on that day (he is already with Dr. Rao: the time is not offered), or cancel the 11:15 visit as the patient (inside two hours: a late cancel).
+3. Open **Prove the rules** to run every rule scenario against the real database and see it rolled back.
+4. Read [section 8](#8-business-rules-and-assumptions) for each rule, its code and its tests, and [section 11](#11-known-limitations) for what is not built.
 
 ## 2. Live links
 
