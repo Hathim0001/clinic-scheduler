@@ -43,7 +43,7 @@ Every response has one shape: `code`, `message`, `details`, `request_id`.
 | M5 Docker, CI, deployment config | 2026-10-19 | `8be8791` | `m5` at `2a1559b`, 17 Oct |
 | M6 Documentation | 2026-10-19 | `a1c3671` | `m6` at `bd72eaf`, 17 Oct |
 
-Date and commit are the most recent commit tagged with that milestone; the work continued after the tags (60 commits on 17 October, 54 on the 18th, 30 on the 19th, 1 on the 20th). `v1.0` is the final commit.
+Date and commit are the most recent commit tagged with that milestone; the work continued after the tags (60 commits on 17 October, 54 on the 18th, 30 on the 19th, 1 on the 20th). Three early UI commits (`4b7cfe7`, `88c1d36`, `66cedb4`) use the type `style`, which Section 5.2 does not list; I left them unrewritten so the hashes above stay valid. `v1.0` is the final commit.
 
 ## F. If I had two more days
 
