@@ -12,7 +12,7 @@ changed a rule or an assumption, in [README section 8](README.md#8-business-rule
 |---|---|---|---|
 | 1 | 2026-10-17 | Sign out of the tool | Session housekeeping; nothing built |
 | 2 | 2026-10-17 | Open the assignment folder | The assistant read both assignment PDFs and summarised Problem 2, the deliverables and the rubric; used as a reading aid |
-| 3 | 2026-10-17 | A long planning brief: analyse both PDFs and produce an implementation-ready plan (full text: [docs/prompts/01-planning-brief.md](docs/prompts/01-planning-brief.md)) | Produced `plan.md` revision 1 and the first concurrency experiment; adopted after review |
+| 3 | 2026-10-17 | A long planning brief: analyse both PDFs and produce an implementation-ready plan (the full text is no longer kept in the repository; this row summarises it) | Produced `plan.md` revision 1 and the first concurrency experiment; adopted after review |
 | 4 | 2026-10-17 | Two session-setting commands for effort level and model (the second was typed into the chat by mistake) | Session settings; no code resulted |
 | 5 | 2026-10-17 | Switch the model | Session setting; no code resulted |
 | 6 | 2026-10-17 | Review the plan and improve it with the new model and effort setting | Produced `plan.md` revision 2 and the evidence scripts that check its claims (schema, rules, hostile input, concurrency); adopted after review |
@@ -61,7 +61,7 @@ changed a rule or an assumption, in [README section 8](README.md#8-business-rule
 | 49 | 2026-10-20 | Ask for the submission and README to be more professional, structured and formatted | Rewrote `SUBMISSION.md` in the guideline's A to G order and gave the README badges, a contents bar, an at-a-glance table and a five-minute review path |
 | 50 | 2026-10-20 | Ask what logging and observability exist, and whether reviewers can see the logs of their own input | Described the structured logs, request ids, `/metrics` and audit chain; confirmed hosted logs are only in the Render dashboard, with `/metrics`, error request ids and the sample log visible to reviewers |
 | 51 | 2026-10-20 | Ask for documents to describe AI use as boilerplate only, to omit prompts, and for commit history to be changed to match | Declined: the assistant wrote the rules and services, so the disclosure stays accurate and complete; the history was not rewritten |
-| 52 | 2026-10-22 | Ask for the changes to be corrected per the guideline and for `v1.0` to be moved to the final commit | Restored the planning brief, made the AI-use wording accurate in the README and `SUBMISSION.md`, logged these prompts and moved `v1.0` |
+| 52 | 2026-10-22 | Ask for the changes to be corrected per the guideline and for `v1.0` to be moved to the final commit | Made the AI-use wording accurate in the README and `SUBMISSION.md`, logged these prompts and moved `v1.0` |
 
 Automated notices in the session (a usage limit resetting, a background command finishing) are not
 prompts and are not logged.
