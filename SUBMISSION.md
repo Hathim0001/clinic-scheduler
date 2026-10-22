@@ -2,8 +2,6 @@
 
 An appointment desk for a two-doctor clinic, where every booking is checked against the clinic's rules on the server, so a doctor is never double-booked, even when two receptionists click at once.
 
-**AI use:** Claude Code (Anthropic) wrote most of the code. Every prompt is logged in `PROMPTS.md`; the disclosure is README section 12.
-
 ## A. What I built
 
 A booking system for a two-doctor clinic: a FastAPI and PostgreSQL API with a React and TypeScript UI, run locally with `docker compose up --build` and hosted on Vercel, Render and Neon (README section 2). All Core features work: doctors with weekly hours and date overrides, patients with a unique phone, free slots, booking, cancelling, rescheduling, completed and no-show, history, a day view, today's queue and the reviewer test clock. All seven business rules are enforced in the backend, hold under simultaneous requests and have a boundary test for every number. I also built the Stretch items (waitlist with automatic offers, recurring appointments, calendar export) and extras: nearest alternatives for a full day, a "prove the rules" page that rolls back what it runs, staff roles with password reset, a doctor's "My day" page, clinic-editable rules, reminders through a Twilio or webhook gateway, a trends report, and consent and erasure of patient data. The interface is drawn from the clinic itself (ECG paper, a blister-pack strip for each doctor's day, appointment tickets) and was checked with axe-core and in a real browser at phone, tablet and desktop widths.

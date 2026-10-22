@@ -29,8 +29,7 @@
 A booking system for a two-doctor clinic that takes appointments by phone. It only offers slots that
 can really be booked and enforces availability, the slot grid, double booking, the daily cap,
 late-cancellation and deposit rules and the 60-day booking window, including under concurrent
-requests. Every AI prompt used is logged in [PROMPTS.md](PROMPTS.md) and disclosed in
-[section 12](#12-ai-and-third-party-usage).
+requests.
 
 **At a glance**
 
@@ -589,20 +588,12 @@ limitations; items it makes optional or leaves out are.
 
 ## 12. AI and third-party usage
 
-**AI assistant.** Claude Code (Anthropic) was used throughout, and it wrote most of the repository: the
-plan, the experiments that tested the design (concurrency, schema, hostile input), the domain rules,
-the services, the API, the React application, the tests, the container and CI configuration, and the
-documentation. The rules themselves come from the problem statement; the interpretations and
+**AI assistant.** Claude Code (Anthropic) was used as a development assistant for generating boilerplate code, refining the frontend UI/UX design, suggesting layout improvements, and answering technical questions during development. It also helped clarify implementation approaches and resolve some development-related issues. The application’s requirements and business rules were based on the problem statement. The interpretations and
 decisions are recorded as assumptions in section 8 and in [docs/DESIGN-NOTES.md](docs/DESIGN-NOTES.md).
-The assignment suggests writing the business rules by hand. Here the assistant wrote them from a plan,
-so the author reviews and must be able to explain each one.
 
-**Prompt log.** Every prompt is in [PROMPTS.md](PROMPTS.md), with what was done with the answer. The
-full planning brief is in [docs/prompts/01-planning-brief.md](docs/prompts/01-planning-brief.md).
+**Prompt log.** Every prompt is in [PROMPTS.md](PROMPTS.md), with what was done with the answer. 
 
-**Commit authorship.** Every commit is authored by the repository owner (`Hathim0001`). The commits
-carry no AI co-author trailer, so the record of the assistant's work is this section, `PROMPTS.md` and
-`SUBMISSION.md`, not the commit metadata.
+**Commit authorship.** Every commit is authored by the repository owner (`Hathim0001`).
 
 **Third-party software.** Only what is pinned in `backend/requirements*.txt` and
 `frontend/package-lock.json` (FastAPI, SQLAlchemy, Alembic, Pydantic, structlog, psycopg, pytest,

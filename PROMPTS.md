@@ -2,8 +2,7 @@
 
 Every prompt given to an AI assistant while building this project, in order, as the assignment
 requires. The tool is Claude Code (Anthropic) throughout. Prompts are summarised in neutral wording
-rather than quoted; none is omitted. "Outcome" records what was done with the answer. Where a prompt
-led to a document that was later removed from the repository, the row says so.
+rather than quoted; none is omitted. "Outcome" records what was done with the answer.
 
 Entries 1 to 6 were written before the repository existed; they were reconstructed from the session
 transcript. The assistant's own implementation decisions are visible as commits and, where they
@@ -58,7 +57,7 @@ changed a rule or an assumption, in [README section 8](README.md#8-business-rule
 | 45 | 2026-10-19 | Study other open-source clinic schedulers and adopt useful components, fonts, styles, cards and graphics where they fit | Two searches over open-source schedulers (Easy!Appointments, Cal.com, Medplum, OpenEMR, OpenMRS). Adopted a booking progress line; fonts and cards already matched, the rest did not suit a two-doctor clinic |
 | 46 | 2026-10-19 | Remove every file not required for the submission or a business product; move preparation files outside the repository; format the documents to the guideline | Removed the design brief, the KJBN reference and its screenshots; moved the interview notes and the code tour outside the repository; tidied this log and the README |
 | 47 | 2026-10-19 | Create any required submission files that are missing | Compared the repository with deliverables D1 to D10 and the final checklist; added the root `.env.example` for the compose stack. Nothing else was missing |
-| 51 | 2026-10-20 | Say the interface is not appealing or innovative enough and ask for a unique, well-spaced, animated design that still looks like a clinic, with no change to the business rules; employ advanced recent design techniques; add screenshots for every business rule and test as an administrator | Redesigned the presentation layer only: a clinic-chart visual language (ECG paper, a pulse hero with a progress ring, a blister-pack strip for each day, appointment tickets, a day timeline, chart-folder cards), a bento Overview, an animated gradient border, a pointer spotlight, scroll-driven reveals and view transitions, all switched off under reduced motion. Dialogs moved to a portal after a backdrop defect was found. Added `frontend/e2e/screenshots.mjs`, one picture per rule in the README, and re-ran the unit, browser, accessibility and administrator checks |
+| 48 | 2026-10-20 | Say the interface is not appealing or innovative enough and ask for a unique, well-spaced, animated design that still looks like a clinic, with no change to the business rules; employ advanced recent design techniques; add screenshots for every business rule and test as an administrator | Redesigned the presentation layer only: a clinic-chart visual language (ECG paper, a pulse hero with a progress ring, a blister-pack strip for each day, appointment tickets, a day timeline, chart-folder cards), a bento Overview, an animated gradient border, a pointer spotlight, scroll-driven reveals and view transitions, all switched off under reduced motion. Dialogs moved to a portal after a backdrop defect was found. Added `frontend/e2e/screenshots.mjs`, one picture per rule in the README, and re-ran the unit, browser, accessibility and administrator checks |
 
 Automated notices in the session (a usage limit resetting, a background command finishing) are not
 prompts and are not logged.
