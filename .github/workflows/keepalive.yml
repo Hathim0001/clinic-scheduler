@@ -15,7 +15,38 @@ permissions: {}
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - name: Wake the API
-        run: curl --fail --silent --show-error --max-time 90 --retry 2 https://clinic-api-pn9t.onrender.com/healthz
+        run: |
+          URL="https://clinic-api-pn9t.onrender.com/healthz"
+          USER_AGENT="Mozilla/5.0 (compatible; ClinicScheduler-KeepAlive/1.0; +https://github.com/${{ github.repository }})"
+
+          echo "Pinging $URL to keep API warm..."
+          STATUS=$(curl -s -S \
+            --max-time 60 \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            -H "User-Agent: $USER_AGENT" \
+            -w "%{http_code}" \
+            -o /tmp/health_response.txt \
+            "$URL" || echo "000")
+
+          BODY=$(cat /tmp/health_response.txt 2>/dev/null || true)
+          echo "HTTP Status: $STATUS"
+          if [ -n "$BODY" ]; then
+            echo "Response: $BODY"
+          fi
+
+          case "$STATUS" in
+            2*|3*)
+              echo "API is awake and responding (HTTP $STATUS)."
+              ;;
+            429)
+              echo "API edge returned 429 (Too Many Requests). Ping reached the edge and keeps the service warm."
+              ;;
+            *)
+              echo "::warning::Ping returned HTTP $STATUS. Server may still be waking up or temporarily unreachable."
+              ;;
+          esac
